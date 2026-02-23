@@ -1,0 +1,32 @@
+{
+  "name": "asterpilot-proofvault",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network bnbTestnet",
+    "deploy:aster:adapter": "hardhat run scripts/deploy-aster-adapter.js --network bnb",
+    "deploy:aster:stack": "hardhat run scripts/deploy-aster-stack.js --network bnb",
+    "derive:aster:envs": "node scripts/derive-aster-envs.js",
+    "derive:aster:envs:rust": "sh -c '. \"$HOME/.cargo/env\" && cargo run --release --manifest-path scripts/aster-env-rs/Cargo.toml'",
+    "node": "hardhat node"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "hardhat": "^2.28.6"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.3.1"
+  }
+}

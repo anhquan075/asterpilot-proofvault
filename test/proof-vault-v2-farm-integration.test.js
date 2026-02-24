@@ -58,7 +58,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
 
     const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
     const breaker = await CircuitBreaker.deploy(
-      chainlinkFeed.target, stableSwapPool.target, 50, 100, 50, 3600
+      chainlinkFeed.target, stableSwapPool.target, 50, 100, 50, 3600, 86400
     );
 
     const SharpeTracker = await ethers.getContractFactory("SharpeTracker");
@@ -319,7 +319,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
       await engine.connect(user).executeCycle();
 
       await masterChef.setRewardsPerBlock(ethers.parseUnits("100", 18));
-      await time.increase(100);
+      await time.increase(301);
       await ethers.provider.send("hardhat_mine", ["0x64"]);
 
       const asterBalanceBefore = await asterAdapter.managedAssets();
@@ -358,7 +358,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
       );
 
       const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
-      const breaker2 = await CircuitBreaker.deploy(feed2.target, pool2.target, 50, 100, 50, 3600);
+      const breaker2 = await CircuitBreaker.deploy(feed2.target, pool2.target, 50, 100, 50, 3600, 86400);
 
       const SharpeTracker = await ethers.getContractFactory("SharpeTracker");
       const sharpe2 = await SharpeTracker.deploy(5);
@@ -375,11 +375,12 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
 
       await vault2.setEngine(engine2.target);
 
+      const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
+      const adapter1 = await MockAsterEarnAdapterF.deploy(usdt.target, deployer.address);
       const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-      const adapter1 = await ManagedAdapter.deploy(usdt.target, deployer.address);
       const adapter2 = await ManagedAdapter.deploy(usdt.target, deployer.address);
 
-      await vault2.setAdapters(adapter1.target, adapter2.target, pool2.target);
+      await vault2.setAdapters(adapter1.target, adapter2.target, ethers.ZeroAddress);
       await adapter1.setVault(vault2.target);
       await adapter2.setVault(vault2.target);
       await adapter1.lockConfiguration();

@@ -13,11 +13,14 @@ import {ProofVault} from "./ProofVault.sol";
 /// @notice Supports 3-rail allocation: Aster, secondary (implicit), and StableSwap LP
 /// @custom:security-contact security@asterpilot.xyz
 contract StrategyEngine {
-
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
     // --- Risk State ---
-    enum RiskState { Normal, Guarded, Drawdown }
+    enum RiskState {
+        Normal,
+        Guarded,
+        Drawdown
+    }
 
     // --- Decision Preview (v2 extended) ---
     struct DecisionPreviewV2 {
@@ -105,7 +108,7 @@ contract StrategyEngine {
     function executeCycle() external {
         // 1. Check circuit breaker (updates breaker state)
         bool breakerPaused = circuitBreaker.checkBreaker();
-        if (breakerPaused) revert StrategyEngine__BreakerPaused();
+        if (breakerPaused) revert("StrategyEngine: breaker paused");
 
         // 2. Check cooldown
         (bool canExec, bytes32 reason) = _canExecuteInternal();
@@ -127,13 +130,21 @@ contract StrategyEngine {
         address lpAddr = address(vault.lpAdapter());
         if (lpAddr != address(0)) {
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success,) = lpAddr.call(abi.encodeWithSignature("harvestRewards()"));
+            (bool success, ) = lpAddr.call(
+                abi.encodeWithSignature("harvestRewards()")
+            );
             // Silently ignore — not all adapters implement harvest
             (success); // suppress unused variable warning
         }
 
         // 6. Execute rebalance on vault with all 3 rails
-        vault.rebalance(asterBps, policy.maxSlippageBps(), msg.sender, bountyBps, lpBps);
+        vault.rebalance(
+            asterBps,
+            policy.maxSlippageBps(),
+            msg.sender,
+            bountyBps,
+            lpBps
+        );
 
         // 7. Get buffer utilization for event
         (, , uint256 bufferUtil) = vault.bufferStatus();
@@ -178,7 +189,11 @@ contract StrategyEngine {
     }
 
     /// @notice Full decision preview with all v2 data
-    function previewDecision() external view returns (DecisionPreviewV2 memory preview) {
+    function previewDecision()
+        external
+        view
+        returns (DecisionPreviewV2 memory preview)
+    {
         bool breakerPaused = circuitBreaker.isPaused();
         (bool canExec, bytes32 reason) = _canExecuteInternal();
 
@@ -188,7 +203,8 @@ contract StrategyEngine {
         (uint256 asterBps, uint256 lpBps) = _selectAllocation(nextState);
         uint256 bountyBps = _auctionBountyBps();
 
-        (int256 meanYield, uint256 yieldVol, int256 sharpe) = sharpeTracker.computeSharpe();
+        (int256 meanYield, uint256 yieldVol, int256 sharpe) = sharpeTracker
+            .computeSharpe();
         (, , uint256 bufferUtil) = vault.bufferStatus();
 
         preview = DecisionPreviewV2({
@@ -211,13 +227,17 @@ contract StrategyEngine {
     }
 
     /// @notice Preview Dutch auction bounty state
-    function previewAuction() external view returns (
-        uint256 currentBountyBps,
-        uint256 elapsedSeconds,
-        uint256 remainingSeconds,
-        uint256 minBountyBps,
-        uint256 maxBountyBps
-    ) {
+    function previewAuction()
+        external
+        view
+        returns (
+            uint256 currentBountyBps,
+            uint256 elapsedSeconds,
+            uint256 remainingSeconds,
+            uint256 minBountyBps,
+            uint256 maxBountyBps
+        )
+    {
         uint256 elapsed = _auctionElapsed();
         uint256 duration = policy.auctionDurationSeconds();
         currentBountyBps = _auctionBountyBps();
@@ -228,12 +248,20 @@ contract StrategyEngine {
     }
 
     /// @notice Preview Sharpe ratio data
-    function previewSharpe() external view returns (int256 mean, uint256 volatility, int256 sharpe) {
+    function previewSharpe()
+        external
+        view
+        returns (int256 mean, uint256 volatility, int256 sharpe)
+    {
         return sharpeTracker.computeSharpe();
     }
 
     /// @notice Preview circuit breaker state (no mutation)
-    function previewBreaker() external view returns (ICircuitBreaker.BreakerStatus memory) {
+    function previewBreaker()
+        external
+        view
+        returns (ICircuitBreaker.BreakerStatus memory)
+    {
         return circuitBreaker.previewBreaker();
     }
 
@@ -245,9 +273,14 @@ contract StrategyEngine {
     }
 
     /// @notice Risk score 0-100 (higher = riskier)
+    /// @dev Computed dynamically from live oracle price so view callers get current risk
     function riskScore() external view returns (uint256) {
-        if (currentState == RiskState.Drawdown) return 100;
-        if (currentState == RiskState.Guarded) return 50;
+        uint256 price = priceOracle.getPrice();
+        uint256 volatility = _volatilityBps(price, lastPrice);
+        RiskState liveState = _selectState(price, volatility);
+
+        if (liveState == RiskState.Drawdown) return 100;
+        if (liveState == RiskState.Guarded) return 50;
 
         // In Normal state, factor in Sharpe ratio
         (, , int256 sharpe) = sharpeTracker.computeSharpe();
@@ -259,7 +292,11 @@ contract StrategyEngine {
     /// @dev Combines circuit breaker, risk state, Sharpe ratio, and buffer utilization
     /// @return score  0–100 health score
     /// @return label  Human-readable status string
-    function vaultHealthScore() external view returns (uint256 score, bytes32 label) {
+    function vaultHealthScore()
+        external
+        view
+        returns (uint256 score, bytes32 label)
+    {
         uint256 s = 100;
 
         if (circuitBreaker.isPaused()) {
@@ -287,42 +324,48 @@ contract StrategyEngine {
             s -= 5;
         }
 
-        if (s >= 90)      label = "EXCELLENT";
+        if (s >= 90) label = "EXCELLENT";
         else if (s >= 70) label = "HEALTHY";
         else if (s >= 50) label = "CAUTION";
         else if (s >= 25) label = "STRESSED";
-        else              label = "CRITICAL";
+        else label = "CRITICAL";
 
         return (s, label);
     }
 
     /// @notice Full snapshot of all three yield rails and vault composition
-    function previewAllRails() external view returns (
-        uint256 idleUsdt,
-        uint256 asterManaged,
-        uint256 secondaryManaged,
-        uint256 lpManaged,
-        uint256 totalAssets_,
-        uint256 asterShareBps,
-        uint256 lpShareBps,
-        uint256 targetAsterBps_,
-        uint256 targetLpBps_
-    ) {
-        idleUsdt         = IERC20(vault.asset()).balanceOf(address(vault));
-        asterManaged     = vault.asterAdapter().managedAssets();
+    function previewAllRails()
+        external
+        view
+        returns (
+            uint256 idleUsdt,
+            uint256 asterManaged,
+            uint256 secondaryManaged,
+            uint256 lpManaged,
+            uint256 totalAssets_,
+            uint256 asterShareBps,
+            uint256 lpShareBps,
+            uint256 targetAsterBps_,
+            uint256 targetLpBps_
+        )
+    {
+        idleUsdt = IERC20(vault.asset()).balanceOf(address(vault));
+        asterManaged = vault.asterAdapter().managedAssets();
         secondaryManaged = vault.secondaryAdapter().managedAssets();
-        address lpAddr   = address(vault.lpAdapter());
-        lpManaged        = lpAddr != address(0) ? IManagedAdapter(lpAddr).managedAssets() : 0;
-        totalAssets_     = idleUsdt + asterManaged + secondaryManaged + lpManaged;
+        address lpAddr = address(vault.lpAdapter());
+        lpManaged = lpAddr != address(0)
+            ? IManagedAdapter(lpAddr).managedAssets()
+            : 0;
+        totalAssets_ = idleUsdt + asterManaged + secondaryManaged + lpManaged;
 
         if (totalAssets_ > 0) {
-            asterShareBps = asterManaged * BPS_DENOMINATOR / totalAssets_;
-            lpShareBps    = lpManaged    * BPS_DENOMINATOR / totalAssets_;
+            asterShareBps = (asterManaged * BPS_DENOMINATOR) / totalAssets_;
+            lpShareBps = (lpManaged * BPS_DENOMINATOR) / totalAssets_;
         }
 
-        uint256 price      = priceOracle.getPrice();
+        uint256 price = priceOracle.getPrice();
         uint256 volatility = _volatilityBps(price, lastPrice);
-        RiskState state    = _selectState(price, volatility);
+        RiskState state = _selectState(price, volatility);
         (targetAsterBps_, targetLpBps_) = _selectAllocation(state);
     }
 
@@ -331,7 +374,7 @@ contract StrategyEngine {
     //////////////////////////////////////////////////////////////*/
 
     function _canExecuteInternal() internal view returns (bool, bytes32) {
-        if (lastExecution == 0) return (true, "FIRST_CYCLE");
+        if (lastExecution == 0) return (true, "READY");
         if (block.timestamp < lastExecution + policy.cooldown()) {
             return (false, "COOLDOWN_ACTIVE");
         }
@@ -346,34 +389,46 @@ contract StrategyEngine {
         uint256 maxB = policy.maxBountyBps();
 
         if (elapsed >= duration) return maxB;
-        return minB + (maxB - minB) * elapsed / duration;
+        return minB + ((maxB - minB) * elapsed) / duration;
     }
 
     /// @dev Seconds since cooldown expired (auction start)
     function _auctionElapsed() internal view returns (uint256) {
-        if (lastExecution == 0) return 0;
+        if (lastExecution == 0) return type(uint256).max; // first cycle: full bounty
         uint256 cooldownEnd = lastExecution + policy.cooldown();
         if (block.timestamp <= cooldownEnd) return 0;
         return block.timestamp - cooldownEnd;
     }
 
     /// @dev Compute volatility as absolute % change in bps
-    function _volatilityBps(uint256 current, uint256 previous) internal pure returns (uint256) {
+    function _volatilityBps(
+        uint256 current,
+        uint256 previous
+    ) internal pure returns (uint256) {
         if (previous == 0) return 0;
-        uint256 diff = current > previous ? current - previous : previous - current;
-        return diff * BPS_DENOMINATOR / previous;
+        uint256 diff = current > previous
+            ? current - previous
+            : previous - current;
+        return (diff * BPS_DENOMINATOR) / previous;
     }
 
     /// @dev Select risk state based on price and volatility
-    function _selectState(uint256 price, uint256 volatility) internal view returns (RiskState) {
+    function _selectState(
+        uint256 price,
+        uint256 volatility
+    ) internal view returns (RiskState) {
         if (price <= policy.depegPrice()) return RiskState.Drawdown;
-        if (volatility >= policy.drawdownVolatilityBps()) return RiskState.Drawdown;
-        if (volatility >= policy.guardedVolatilityBps()) return RiskState.Guarded;
+        if (volatility >= policy.drawdownVolatilityBps())
+            return RiskState.Drawdown;
+        if (volatility >= policy.guardedVolatilityBps())
+            return RiskState.Guarded;
         return RiskState.Normal;
     }
 
     /// @dev Select Aster and LP allocation bps based on risk state
-    function _selectAllocation(RiskState state) internal view returns (uint256 asterBps, uint256 lpBps) {
+    function _selectAllocation(
+        RiskState state
+    ) internal view returns (uint256 asterBps, uint256 lpBps) {
         if (state == RiskState.Drawdown) {
             return (policy.drawdownAsterBps(), policy.drawdownLpBps());
         }
@@ -392,9 +447,15 @@ contract StrategyEngine {
         }
         int256 yieldBps;
         if (currentTotal >= lastTotalAssets) {
-            yieldBps = int256((currentTotal - lastTotalAssets) * BPS_DENOMINATOR / lastTotalAssets);
+            yieldBps = int256(
+                ((currentTotal - lastTotalAssets) * BPS_DENOMINATOR) /
+                    lastTotalAssets
+            );
         } else {
-            yieldBps = -int256((lastTotalAssets - currentTotal) * BPS_DENOMINATOR / lastTotalAssets);
+            yieldBps = -int256(
+                ((lastTotalAssets - currentTotal) * BPS_DENOMINATOR) /
+                    lastTotalAssets
+            );
         }
         // Cache currentTotal into lastTotalAssets after executeCycle (step 10)
         sharpeTracker.recordYield(int128(yieldBps));

@@ -87,7 +87,10 @@ async function main() {
     auctionDurationSeconds,
     idleBufferBps,
     sharpeWindowSize,
-    sharpeLowThreshold
+    sharpeLowThreshold,
+    0, // normalLpBps (no LP rail in this deploy script)
+    0, // guardedLpBps
+    0  // drawdownLpBps
   );
   await policy.waitForDeployment();
   console.log("RiskPolicy:", await policy.getAddress());
@@ -116,7 +119,8 @@ async function main() {
     signalAThresholdBps,
     signalBThresholdBps,
     signalCThresholdBps,
-    recoveryCooldown
+    recoveryCooldown,
+    0 // chainlinkStalePeriod (0 = default 3600)
   );
   await breaker.waitForDeployment();
   console.log("CircuitBreaker:", await breaker.getAddress());

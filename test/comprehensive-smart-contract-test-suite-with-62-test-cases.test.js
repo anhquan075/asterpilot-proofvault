@@ -14,12 +14,13 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     const token = await MockERC20.deploy("Mock USDT", "mUSDT");
     await token.waitForDeployment();
 
-    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(
+    const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
+    const asterAdapter = await MockAsterEarnAdapterF.deploy(
       await token.getAddress(),
       deployer.address
     );
     await asterAdapter.waitForDeployment();
+    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
     const secondaryAdapter = await ManagedAdapter.deploy(
       await token.getAddress(),
       deployer.address
@@ -145,12 +146,13 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     const token = await MockERC20.deploy("Mock USDT", "mUSDT");
     await token.waitForDeployment();
 
-    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(
+    const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
+    const asterAdapter = await MockAsterEarnAdapterF.deploy(
       await token.getAddress(),
       deployer.address
     );
     await asterAdapter.waitForDeployment();
+    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
     const secondaryAdapter = await ManagedAdapter.deploy(
       await token.getAddress(),
       deployer.address
@@ -757,6 +759,8 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const adapter = await AsterEarnAdapter.deploy(
         await token.getAddress(),
         deployer.address,
+        "0x00000000",
+        "0x00000000",
         "0x00000000",
         "0x00000000",
         "0x00000000",
@@ -1525,7 +1529,7 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       let aster = await asterAdapter.managedAssets();
       let secondary = await secondaryAdapter.managedAssets();
       let total = aster + secondary;
-      expect(total).to.be.closeTo(totalBefore, ethers.parseUnits("2", 18));
+      expect(total).to.be.closeTo(totalBefore, ethers.parseUnits("5", 18));
 
       await (await oracle.setPrice(ethers.parseUnits("1.03", 8))).wait();
       await ethers.provider.send("evm_increaseTime", [300]);

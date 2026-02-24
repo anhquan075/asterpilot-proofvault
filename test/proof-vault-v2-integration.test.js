@@ -47,7 +47,7 @@ describe("ProofVault V2 Integration", function () {
     const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
     const breaker = await CircuitBreaker.deploy(
       chainlinkFeed.target, stableSwapPool.target,
-      50, 100, 50, 3600
+      50, 100, 50, 3600, 86400
     );
 
     // Deploy SharpeTracker

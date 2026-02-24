@@ -9,12 +9,13 @@ describe("AsterPilot ProofVault", function () {
     const token = await MockERC20.deploy("Mock USDT", "mUSDT");
     await token.waitForDeployment();
 
-    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(
+    const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
+    const asterAdapter = await MockAsterEarnAdapterF.deploy(
       await token.getAddress(),
       deployer.address
     );
     await asterAdapter.waitForDeployment();
+    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
     const secondaryAdapter = await ManagedAdapter.deploy(
       await token.getAddress(),
       deployer.address
@@ -126,12 +127,13 @@ describe("AsterPilot ProofVault", function () {
     const token = await MockERC20.deploy("Mock USDT", "mUSDT");
     await token.waitForDeployment();
 
-    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(
+    const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
+    const asterAdapter = await MockAsterEarnAdapterF.deploy(
       await token.getAddress(),
       deployer.address
     );
     await asterAdapter.waitForDeployment();
+    const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
     const secondaryAdapter = await ManagedAdapter.deploy(
       await token.getAddress(),
       deployer.address

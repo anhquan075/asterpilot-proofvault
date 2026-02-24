@@ -73,7 +73,8 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       50,
       100,
       50,
-      3600
+      3600,
+      86400
     );
 
     const SharpeTracker = await ethers.getContractFactory("SharpeTracker");
@@ -324,7 +325,8 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
         50,
         100,
         50,
-        3600
+        3600,
+        86400
       );
       const SharpeTracker = await ethers.getContractFactory("SharpeTracker");
       const sharpeT = await SharpeTracker.deploy(5);

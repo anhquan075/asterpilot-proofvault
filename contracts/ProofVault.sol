@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -14,6 +14,7 @@ import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
 
 /// @title ProofVault — ERC-4626 vault with idle buffer + 3-tier withdrawal + async Aster tracking
 /// @notice Supports 3 yield rails: Aster (async), secondary (ManagedAdapter), LP (StableSwap)
+/// @custom:security-contact security@asterpilot.xyz
 contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -26,17 +27,31 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     address public engine;
     IAsterEarnAdapter public asterAdapter;
     IManagedAdapter public secondaryAdapter;
-    IManagedAdapter public lpAdapter; // 3rd rail: StableSwap LP
+    IManagedAdapter public lpAdapter;
     bool public configurationLocked;
 
     // --- Events ---
     event Rebalanced(uint256 asterTarget, uint256 actualAster, uint256 idle, uint256 secondary, uint256 lp);
     event BountyPaid(address indexed executor, uint256 amount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
+    event EngineSet(address indexed engine);
+    event AdaptersSet(address indexed aster, address indexed secondary, address indexed lp);
+
+    // --- Errors ---
+    error ProofVault__CallerNotEngine();
+    error ProofVault__ConfigurationLocked();
+    error ProofVault__ZeroAddress();
+    error ProofVault__BufferTooHigh();
+    error ProofVault__NotLocked();
+    error ProofVault__EngineNotSet();
+    error ProofVault__AsterNotSet();
+    error ProofVault__SecondaryNotSet();
+    error ProofVault__LpNotSet();
+    error ProofVault__InsufficientLiquidity();
 
     // --- Modifiers ---
     modifier onlyEngine() {
-        require(msg.sender == engine, "ProofVault: caller is not engine");
+        if (msg.sender != engine) revert ProofVault__CallerNotEngine();
         _;
     }
 
@@ -47,18 +62,19 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address initialOwner_,
         uint256 idleBufferBps_
     ) ERC20(name_, symbol_) ERC4626(asset_) Ownable(initialOwner_) {
-        require(idleBufferBps_ <= 2000, "ProofVault: buffer > 20%");
+        if (idleBufferBps_ > 2000) revert ProofVault__BufferTooHigh();
         idleBufferBps = idleBufferBps_;
     }
 
-    // ═══════════════════════════════════════════
-    //  Configuration (one-time wiring)
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                         CONFIGURATION (ONE-TIME WIRING)
+    //////////////////////////////////////////////////////////////*/
 
     function setEngine(address engine_) external onlyOwner {
-        require(!configurationLocked, "ProofVault: locked");
-        require(engine_ != address(0), "ProofVault: zero address");
+        if (configurationLocked) revert ProofVault__ConfigurationLocked();
+        if (engine_ == address(0)) revert ProofVault__ZeroAddress();
         engine = engine_;
+        emit EngineSet(engine_);
     }
 
     function setAdapters(
@@ -66,24 +82,25 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         IManagedAdapter secondary_,
         IManagedAdapter lp_
     ) external onlyOwner {
-        require(!configurationLocked, "ProofVault: locked");
+        if (configurationLocked) revert ProofVault__ConfigurationLocked();
         asterAdapter = aster_;
         secondaryAdapter = secondary_;
         lpAdapter = lp_;
+        emit AdaptersSet(address(aster_), address(secondary_), address(lp_));
     }
 
     function lockConfiguration() external onlyOwner {
-        require(engine != address(0), "ProofVault: engine not set");
-        require(address(asterAdapter) != address(0), "ProofVault: aster not set");
-        require(address(secondaryAdapter) != address(0), "ProofVault: secondary not set");
-        require(address(lpAdapter) != address(0), "ProofVault: lp not set");
+        if (engine == address(0)) revert ProofVault__EngineNotSet();
+        if (address(asterAdapter) == address(0)) revert ProofVault__AsterNotSet();
+        if (address(secondaryAdapter) == address(0)) revert ProofVault__SecondaryNotSet();
+        // lpAdapter is optional: some deployments use only 2 yield rails
         configurationLocked = true;
         renounceOwnership();
     }
 
-    // ═══════════════════════════════════════════
-    //  ERC-4626 Overrides
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                           ERC-4626 OVERRIDES
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Total assets = idle balance + aster managed + secondary managed + lp managed
     function totalAssets() public view override returns (uint256) {
@@ -94,13 +111,13 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             + lpManaged;
     }
 
-    function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        require(configurationLocked, "ProofVault: not locked");
+    function deposit(uint256 assets, address receiver) public override nonReentrant returns (uint256) {
+        if (!configurationLocked) revert ProofVault__NotLocked();
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override returns (uint256) {
-        require(configurationLocked, "ProofVault: not locked");
+    function mint(uint256 shares, address receiver) public override nonReentrant returns (uint256) {
+        if (!configurationLocked) revert ProofVault__NotLocked();
         return super.mint(shares, receiver);
     }
 
@@ -120,9 +137,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         return 6;
     }
 
-    // ═══════════════════════════════════════════
-    //  Rebalance (called by StrategyEngine)
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                     REBALANCE (CALLED BY STRATEGY ENGINE)
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Rebalance assets between idle buffer, aster, secondary, and LP
     function rebalance(
@@ -166,9 +183,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         emit Rebalanced(asterTarget, asterAdapter.managedAssets(), idle, secondaryAdapter.managedAssets(), lpManaged);
     }
 
-    // ═══════════════════════════════════════════
-    //  Views
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                                  VIEWS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Returns buffer status: target amount, current idle, utilization in bps
     function bufferStatus() external view returns (uint256 target, uint256 current, uint256 utilizationBps) {
@@ -183,9 +200,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         return asterAdapter.maturedWithdrawals();
     }
 
-    // ═══════════════════════════════════════════
-    //  Internal
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                              INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /// @dev Buffer target = totalAssets * idleBufferBps / BPS_DENOMINATOR
     function _bufferTarget(uint256 total) internal view returns (uint256) {
@@ -205,7 +222,6 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             secondaryAdapter.withdrawToVault(toPull);
             idle = IERC20(asset()).balanceOf(address(this));
             if (idle >= needed) return;
-            remaining = needed - idle;
         }
 
         // Tier 2.5: Pull from LP adapter — withdraw full balance to absorb fee slippage
@@ -225,7 +241,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             if (idle >= needed) return;
         }
 
-        require(IERC20(asset()).balanceOf(address(this)) >= needed, "ProofVault: insufficient liquidity");
+        if (IERC20(asset()).balanceOf(address(this)) < needed) revert ProofVault__InsufficientLiquidity();
     }
 
     /// @dev Rebalance LP adapter toward target allocation

@@ -1,12 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 /// @title RiskPolicy — Immutable policy parameters for StrategyEngine
 /// @notice Extends v1 RiskPolicy with Dutch auction bounty, idle buffer, Sharpe ratio params,
 ///         and LP rail allocation targets per risk state.
 ///         All values set once at construction; no setters, no owner.
-
+/// @custom:security-contact security@asterpilot.xyz
 contract RiskPolicy {
+    // ── errors ──
+    error RiskPolicy__ZeroCooldown();
+    error RiskPolicy__VolatilityOrderInvalid();
+    error RiskPolicy__ZeroDepegPrice();
+    error RiskPolicy__SlippageTooHigh();
+    error RiskPolicy__BountyTooHigh();
+    error RiskPolicy__AllocationTooHigh();
+    error RiskPolicy__AllocsNotMonotonic();
+    error RiskPolicy__MinBountyExceedsMax();
+    error RiskPolicy__ZeroAuctionDuration();
+    error RiskPolicy__IdleBufferTooHigh();
+    error RiskPolicy__SharpeWindowOutOfRange();
+    error RiskPolicy__CombinedAllocationTooHigh();
+
     // ── v1 params ───────────────────────────────────────────────
     uint256 public immutable cooldown;
     uint256 public immutable guardedVolatilityBps;
@@ -26,9 +40,9 @@ contract RiskPolicy {
     uint256 public immutable sharpeLowThreshold;
 
     // ── LP rail params ──────────────────────────────────────────
-    uint256 public immutable normalLpBps;    // LP allocation in Normal state
-    uint256 public immutable guardedLpBps;   // LP allocation in Guarded state
-    uint256 public immutable drawdownLpBps;  // LP allocation in Drawdown state
+    uint256 public immutable normalLpBps;
+    uint256 public immutable guardedLpBps;
+    uint256 public immutable drawdownLpBps;
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -54,37 +68,35 @@ contract RiskPolicy {
         uint256 drawdownLpBps_
     ) {
         // ── v1 validations ──────────────────────────────────────
-        require(cooldown_ > 0, "cooldown=0");
-        require(guardedVolatilityBps_ <= drawdownVolatilityBps_, "guarded>drawdown vol");
-        require(depegPrice_ > 0, "depeg=0");
-        require(maxSlippageBps_ <= 1000, "slippage>10%");
-        require(maxBountyBps_ <= 200, "bounty>2%");
-        require(normalAsterBps_ <= BPS_DENOMINATOR, "normal>100%");
-        require(guardedAsterBps_ <= BPS_DENOMINATOR, "guarded>100%");
-        require(drawdownAsterBps_ <= BPS_DENOMINATOR, "drawdown>100%");
-        
-        // H3 FIX: Allocations should DECREASE as risk increases (Normal -> Guarded -> Drawdown)
-        require(
-            normalAsterBps_ >= guardedAsterBps_ && guardedAsterBps_ >= drawdownAsterBps_,
-            "allocs not monotonic (aster)"
-        );
+        if (cooldown_ == 0) revert RiskPolicy__ZeroCooldown();
+        if (guardedVolatilityBps_ > drawdownVolatilityBps_) revert RiskPolicy__VolatilityOrderInvalid();
+        if (depegPrice_ == 0) revert RiskPolicy__ZeroDepegPrice();
+        if (maxSlippageBps_ > 1000) revert RiskPolicy__SlippageTooHigh();
+        if (maxBountyBps_ > 200) revert RiskPolicy__BountyTooHigh();
+        if (normalAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__AllocationTooHigh();
+        if (guardedAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__AllocationTooHigh();
+        if (drawdownAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__AllocationTooHigh();
+
+        // Aster concentration INCREASES as risk increases: Normal ≤ Guarded ≤ Drawdown
+        // (In distress, concentrate in Aster as the safest protocol; reduce LP/secondary)
+        if (normalAsterBps_ > guardedAsterBps_ || guardedAsterBps_ > drawdownAsterBps_) {
+            revert RiskPolicy__AllocsNotMonotonic();
+        }
 
         // ── v2 validations ──────────────────────────────────────
-        require(minBountyBps_ <= maxBountyBps_, "minBounty>maxBounty");
-        require(auctionDurationSeconds_ > 0, "auctionDuration=0");
-        require(idleBufferBps_ <= 2000, "idleBuffer>20%");
-        require(sharpeWindowSize_ >= 3 && sharpeWindowSize_ <= 30, "sharpeWindow out of range");
+        if (minBountyBps_ > maxBountyBps_) revert RiskPolicy__MinBountyExceedsMax();
+        if (auctionDurationSeconds_ == 0) revert RiskPolicy__ZeroAuctionDuration();
+        if (idleBufferBps_ > 2000) revert RiskPolicy__IdleBufferTooHigh();
+        if (sharpeWindowSize_ < 3 || sharpeWindowSize_ > 30) revert RiskPolicy__SharpeWindowOutOfRange();
 
         // ── LP rail validations ─────────────────────────────────
-        require(normalLpBps_ + normalAsterBps_ <= 9000, "normal aster+lp > 90%");
-        require(guardedLpBps_ + guardedAsterBps_ <= 9000, "guarded aster+lp > 90%");
-        require(drawdownLpBps_ + drawdownAsterBps_ <= 9000, "drawdown aster+lp > 90%");
-        
-        // H3 FIX: LP allocations should also decrease (or stay same) as risk increases
-        require(
-            normalLpBps_ >= guardedLpBps_ && guardedLpBps_ >= drawdownLpBps_,
-            "allocs not monotonic (lp)"
-        );
+        if (normalLpBps_ + normalAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
+        if (guardedLpBps_ + guardedAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
+        if (drawdownLpBps_ + drawdownAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
+
+        if (normalLpBps_ < guardedLpBps_ || guardedLpBps_ < drawdownLpBps_) {
+            revert RiskPolicy__AllocsNotMonotonic();
+        }
 
         // ── v1 assignments ──────────────────────────────────────
         cooldown = cooldown_;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {ICircuitBreaker} from "./interfaces/ICircuitBreaker.sol";
 import {IChainlinkAggregator} from "./interfaces/IChainlinkAggregator.sol";
@@ -7,6 +7,7 @@ import {IStableSwapPool} from "./interfaces/IStableSwapPool.sol";
 
 /// @title CircuitBreaker — 3-signal auto-pause / auto-recover
 /// @notice Trips on ANY single signal. Recovers when ALL clear + cooldown elapsed.
+/// @custom:security-contact security@asterpilot.xyz
 contract CircuitBreaker is ICircuitBreaker {
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -16,13 +17,19 @@ contract CircuitBreaker is ICircuitBreaker {
     uint256 public immutable signalAThresholdBps; // Chainlink USDT/USD deviation
     uint256 public immutable signalBThresholdBps; // reserve-ratio deviation
     uint256 public immutable signalCThresholdBps; // virtual-price drop
-    uint256 public immutable recoveryCooldown;     // seconds
+    uint256 public immutable recoveryCooldown;        // seconds
+    /// @notice Chainlink answer older than this is treated as stale (trips Signal A conservatively)
+    uint256 public constant CHAINLINK_STALE_PERIOD = 3600; // 1 hour
 
     // ── storage ──
     bool    public paused;
     uint256 public lastTripTimestamp;
     uint256 public lastVirtualPrice;
 
+    // ── errors ──
+    error CircuitBreaker__ZeroAddress();
+    error CircuitBreaker__InvalidThreshold();
+    error CircuitBreaker__ZeroCooldown();
     constructor(
         address _chainlinkFeed,
         address _stableSwapPool,
@@ -31,12 +38,12 @@ contract CircuitBreaker is ICircuitBreaker {
         uint256 _signalCThresholdBps,
         uint256 _recoveryCooldown
     ) {
-        require(_chainlinkFeed != address(0), "zero feed");
-        require(_stableSwapPool != address(0), "zero pool");
-        require(_signalAThresholdBps > 0 && _signalAThresholdBps < BPS_DENOMINATOR, "bad sigA");
-        require(_signalBThresholdBps > 0 && _signalBThresholdBps < BPS_DENOMINATOR, "bad sigB");
-        require(_signalCThresholdBps > 0 && _signalCThresholdBps < BPS_DENOMINATOR, "bad sigC");
-        require(_recoveryCooldown > 0, "zero cooldown");
+        if (_chainlinkFeed == address(0)) revert CircuitBreaker__ZeroAddress();
+        if (_stableSwapPool == address(0)) revert CircuitBreaker__ZeroAddress();
+        if (_signalAThresholdBps == 0 || _signalAThresholdBps >= BPS_DENOMINATOR) revert CircuitBreaker__InvalidThreshold();
+        if (_signalBThresholdBps == 0 || _signalBThresholdBps >= BPS_DENOMINATOR) revert CircuitBreaker__InvalidThreshold();
+        if (_signalCThresholdBps == 0 || _signalCThresholdBps >= BPS_DENOMINATOR) revert CircuitBreaker__InvalidThreshold();
+        if (_recoveryCooldown == 0) revert CircuitBreaker__ZeroCooldown();
 
         chainlinkFeed        = IChainlinkAggregator(_chainlinkFeed);
         stableSwapPool       = IStableSwapPool(_stableSwapPool);
@@ -48,7 +55,9 @@ contract CircuitBreaker is ICircuitBreaker {
         lastVirtualPrice = IStableSwapPool(_stableSwapPool).get_virtual_price();
     }
 
-    // ── public mutative ──
+    /*//////////////////////////////////////////////////////////////
+                           PUBLIC MUTATIVE
+    //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc ICircuitBreaker
     function checkBreaker() external returns (bool) {
@@ -74,7 +83,9 @@ contract CircuitBreaker is ICircuitBreaker {
         return paused;
     }
 
-    // ── views ──
+    /*//////////////////////////////////////////////////////////////
+                                 VIEWS
+    //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc ICircuitBreaker
     function previewBreaker() external view returns (BreakerStatus memory status) {
@@ -92,7 +103,9 @@ contract CircuitBreaker is ICircuitBreaker {
         return paused;
     }
 
-    // ── internals ──
+    /*//////////////////////////////////////////////////////////////
+                              INTERNAL LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function _evaluateSignals()
         internal
@@ -100,20 +113,38 @@ contract CircuitBreaker is ICircuitBreaker {
         returns (bool sigA, bool sigB, bool sigC, uint256 currentVP)
     {
         // Signal A — Chainlink USDT/USD deviation from $1.00
-        (, int256 answer, , , ) = chainlinkFeed.latestRoundData();
-        uint256 price  = uint256(answer); // 8 decimals
-        uint256 target = 1e8;
-        uint256 devA   = price > target ? price - target : target - price;
-        sigA = (devA * BPS_DENOMINATOR / target) > signalAThresholdBps;
+        (uint80 roundId, int256 answer, , uint256 updatedAt, uint80 answeredInRound) =
+            chainlinkFeed.latestRoundData();
+
+        // Treat feed as unavailable / stale — default trip signal A to be safe
+        bool feedStale = (
+            answer <= 0 ||
+            updatedAt == 0 ||
+            answeredInRound < roundId ||
+            block.timestamp - updatedAt > CHAINLINK_STALE_PERIOD
+        );
+
+        if (feedStale) {
+            sigA = true; // conservative: treat stale/invalid feed as signal
+        } else {
+            uint256 price  = uint256(answer); // safe: answer > 0 checked above
+            uint256 target = 1e8;
+            uint256 devA   = price > target ? price - target : target - price;
+            sigA = (devA * BPS_DENOMINATOR / target) > signalAThresholdBps;
+        }
 
         // Signal B — StableSwap reserve-ratio deviation from 1:1
         uint256[2] memory bal = stableSwapPool.get_balances();
-        uint256 impliedPrice  = bal[0] * 1e18 / bal[1]; // USDT per USDF
-        uint256 rTarget       = 1e18;
-        uint256 devB = impliedPrice > rTarget
-            ? impliedPrice - rTarget
-            : rTarget - impliedPrice;
-        sigB = (devB * BPS_DENOMINATOR / rTarget) > signalBThresholdBps;
+        if (bal[1] == 0) {
+            sigB = true; // empty pool is a trip condition
+        } else {
+            uint256 impliedPrice = bal[0] * 1e18 / bal[1]; // USDT per USDF
+            uint256 rTarget      = 1e18;
+            uint256 devB = impliedPrice > rTarget
+                ? impliedPrice - rTarget
+                : rTarget - impliedPrice;
+            sigB = (devB * BPS_DENOMINATOR / rTarget) > signalBThresholdBps;
+        }
 
         // Signal C — virtual-price drop
         currentVP = stableSwapPool.get_virtual_price();

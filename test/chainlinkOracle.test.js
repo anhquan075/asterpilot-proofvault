@@ -28,7 +28,10 @@ describe("ChainlinkPriceOracle", function () {
     const oracle = await Oracle.deploy(await agg.getAddress(), 3600);
     await oracle.waitForDeployment();
 
-    await expect(oracle.getPrice()).to.be.revertedWith("stale price");
+    await expect(oracle.getPrice()).to.be.revertedWithCustomError(
+      oracle,
+      "ChainlinkPriceOracle__StalePrice"
+    );
   });
 
   it("reverts on invalid non-positive price", async function () {
@@ -42,6 +45,9 @@ describe("ChainlinkPriceOracle", function () {
     const oracle = await Oracle.deploy(await agg.getAddress(), 3600);
     await oracle.waitForDeployment();
 
-    await expect(oracle.getPrice()).to.be.revertedWith("invalid price");
+    await expect(oracle.getPrice()).to.be.revertedWithCustomError(
+      oracle,
+      "ChainlinkPriceOracle__InvalidPrice"
+    );
   });
 });

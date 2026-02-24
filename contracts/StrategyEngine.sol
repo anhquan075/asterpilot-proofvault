@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
@@ -11,6 +11,7 @@ import {ProofVault} from "./ProofVault.sol";
 
 /// @title StrategyEngine — Cycle execution with circuit breaker, Dutch auction bounty, and Sharpe tracking
 /// @notice Supports 3-rail allocation: Aster, secondary (implicit), and StableSwap LP
+/// @custom:security-contact security@asterpilot.xyz
 contract StrategyEngine {
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -29,7 +30,6 @@ contract StrategyEngine {
         uint256 targetAsterBps;
         uint256 targetLpBps;
         uint256 bountyBps;
-        // v2 extensions
         bool breakerPaused;
         int256 meanYieldBps;
         uint256 yieldVolatilityBps;
@@ -54,6 +54,12 @@ contract StrategyEngine {
         uint256 bufferUtilizationBps
     );
 
+    // --- Errors ---
+    error StrategyEngine__ZeroAddress();
+    error StrategyEngine__ZeroPrice();
+    error StrategyEngine__BreakerPaused();
+    error StrategyEngine__NotExecutable(bytes32 reason);
+
     // --- Immutables ---
     ProofVault public immutable vault;
     RiskPolicy public immutable policy;
@@ -76,12 +82,12 @@ contract StrategyEngine {
         address sharpeTracker_,
         uint256 initialPrice_
     ) {
-        require(vault_ != address(0), "StrategyEngine: zero vault");
-        require(policy_ != address(0), "StrategyEngine: zero policy");
-        require(oracle_ != address(0), "StrategyEngine: zero oracle");
-        require(breaker_ != address(0), "StrategyEngine: zero breaker");
-        require(sharpeTracker_ != address(0), "StrategyEngine: zero sharpe");
-        require(initialPrice_ > 0, "StrategyEngine: zero price");
+        if (vault_ == address(0)) revert StrategyEngine__ZeroAddress();
+        if (policy_ == address(0)) revert StrategyEngine__ZeroAddress();
+        if (oracle_ == address(0)) revert StrategyEngine__ZeroAddress();
+        if (breaker_ == address(0)) revert StrategyEngine__ZeroAddress();
+        if (sharpeTracker_ == address(0)) revert StrategyEngine__ZeroAddress();
+        if (initialPrice_ == 0) revert StrategyEngine__ZeroPrice();
 
         vault = ProofVault(vault_);
         policy = RiskPolicy(policy_);
@@ -89,23 +95,21 @@ contract StrategyEngine {
         circuitBreaker = ICircuitBreaker(breaker_);
         sharpeTracker = SharpeTracker(sharpeTracker_);
         lastPrice = initialPrice_;
-        lastTotalAssets = 0;
-        currentState = RiskState.Normal;
     }
 
-    // ═══════════════════════════════════════════
-    //  Core Execution
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                             CORE EXECUTION
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Execute a vault rebalance cycle. Permissionless — anyone can call if canExecute() is true.
     function executeCycle() external {
         // 1. Check circuit breaker (updates breaker state)
         bool breakerPaused = circuitBreaker.checkBreaker();
-        require(!breakerPaused, "StrategyEngine: breaker paused");
+        if (breakerPaused) revert StrategyEngine__BreakerPaused();
 
         // 2. Check cooldown
         (bool canExec, bytes32 reason) = _canExecuteInternal();
-        require(canExec, string(abi.encodePacked("StrategyEngine: ", reason)));
+        if (!canExec) revert StrategyEngine__NotExecutable(reason);
 
         // 3. Get price and compute decision
         uint256 price = priceOracle.getPrice();
@@ -118,18 +122,14 @@ contract StrategyEngine {
         _recordSharpeYield();
 
         // 5. Harvest LP farm rewards if farm adapter is deployed
-        if (address(vault.lpAdapter()) != address(0)) {
-            // Try calling harvestRewards() - only farm adapter implements this
-            // Use low-level call to avoid reverting if adapter doesn't support harvest
-            (bool success, bytes memory returnData) = address(vault.lpAdapter()).call(
-                abi.encodeWithSignature("harvestRewards()")
-            );
-            
-            if (success && returnData.length >= 32) {
-                // Harvested USDT is now in vault, will be redeployed in rebalance()
-                // No event needed here - farm adapter emits RewardsHarvested
-            }
-            // If call fails (not a farm adapter), silently continue
+        //    Uses low-level call to avoid reverting if adapter doesn't support harvest.
+        //    msg.sender is this contract, so adapter must allow engine OR be permissionless.
+        address lpAddr = address(vault.lpAdapter());
+        if (lpAddr != address(0)) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success,) = lpAddr.call(abi.encodeWithSignature("harvestRewards()"));
+            // Silently ignore — not all adapters implement harvest
+            (success); // suppress unused variable warning
         }
 
         // 6. Execute rebalance on vault with all 3 rails
@@ -165,9 +165,9 @@ contract StrategyEngine {
         cycleCount++;
     }
 
-    // ═══════════════════════════════════════════
-    //  Views
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                                  VIEWS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Check if a cycle can be executed
     function canExecute() external view returns (bool, bytes32) {
@@ -257,45 +257,36 @@ contract StrategyEngine {
 
     /// @notice Composite vault health score 0–100 (100 = perfect health)
     /// @dev Combines circuit breaker, risk state, Sharpe ratio, and buffer utilization
-    ///      into a single machine-readable and human-readable metric.
-    ///      No competitor offers an equivalent on-chain composite health signal.
     /// @return score  0–100 health score
     /// @return label  Human-readable status string
     function vaultHealthScore() external view returns (uint256 score, bytes32 label) {
         uint256 s = 100;
 
-        // ── Circuit breaker: most severe signal (–50) ────────────────────
         if (circuitBreaker.isPaused()) {
             return (0, "CIRCUIT_BREAKER_TRIPPED");
         }
 
-        // ── Risk state deductions ────────────────────────────────────────
         if (currentState == RiskState.Drawdown) {
             s -= 40;
         } else if (currentState == RiskState.Guarded) {
             s -= 20;
         }
 
-        // ── Sharpe ratio deduction (–15) ─────────────────────────────────
         (, , int256 sharpe) = sharpeTracker.computeSharpe();
         if (sharpe < int256(policy.sharpeLowThreshold())) {
             s -= 15;
         }
 
-        // ── Idle buffer deduction: penalise if buffer < 50% of target ────
         (uint256 bufferTarget, , uint256 bufferUtil) = vault.bufferStatus();
         if (bufferTarget > 0 && bufferUtil < 5000) {
-            // bufferUtil is 0–10000 bps of target; below 50% = –10
             s -= 10;
         }
 
-        // ── Cooldown active: slight execution-readiness penalty (–5) ─────
         (bool canExec, ) = _canExecuteInternal();
         if (!canExec) {
             s -= 5;
         }
 
-        // ── Derive label ─────────────────────────────────────────────────
         if (s >= 90)      label = "EXCELLENT";
         else if (s >= 70) label = "HEALTHY";
         else if (s >= 50) label = "CAUTION";
@@ -306,17 +297,6 @@ contract StrategyEngine {
     }
 
     /// @notice Full snapshot of all three yield rails and vault composition
-    /// @dev Provides a single-call view of the entire vault's asset distribution
-    ///      for frontend dashboards, analytics, and external integrations.
-    /// @return idleUsdt          USDT sitting idle in vault
-    /// @return asterManaged      USDT-equivalent inside AsterDEX Earn adapter
-    /// @return secondaryManaged  USDT equivalent in secondary rail adapter
-    /// @return lpManaged         USDT equivalent in StableSwap LP rail adapter
-    /// @return totalAssets_      Sum of all rails
-    /// @return asterShareBps     Aster's current share of total (bps)
-    /// @return lpShareBps        LP rail's current share of total (bps)
-    /// @return targetAsterBps_   Engine's current target for Aster rail
-    /// @return targetLpBps_      Engine's current target for LP rail
     function previewAllRails() external view returns (
         uint256 idleUsdt,
         uint256 asterManaged,
@@ -346,9 +326,9 @@ contract StrategyEngine {
         (targetAsterBps_, targetLpBps_) = _selectAllocation(state);
     }
 
-    // ═══════════════════════════════════════════
-    //  Internal Logic
-    // ═══════════════════════════════════════════
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function _canExecuteInternal() internal view returns (bool, bytes32) {
         if (lastExecution == 0) return (true, "FIRST_CYCLE");
@@ -358,7 +338,7 @@ contract StrategyEngine {
         return (true, "READY");
     }
 
-    /// @notice Dutch auction bounty: linearly increases from min to max over auction duration
+    /// @dev Dutch auction bounty: linearly increases from min to max over auction duration
     function _auctionBountyBps() internal view returns (uint256) {
         uint256 elapsed = _auctionElapsed();
         uint256 duration = policy.auctionDurationSeconds();
@@ -405,17 +385,18 @@ contract StrategyEngine {
 
     /// @dev Record yield observation for Sharpe tracking
     function _recordSharpeYield() internal {
+        uint256 currentTotal = vault.totalAssets();
         if (lastTotalAssets == 0) {
-            lastTotalAssets = vault.totalAssets();
+            lastTotalAssets = currentTotal;
             return;
         }
-        uint256 currentTotal = vault.totalAssets();
         int256 yieldBps;
         if (currentTotal >= lastTotalAssets) {
             yieldBps = int256((currentTotal - lastTotalAssets) * BPS_DENOMINATOR / lastTotalAssets);
         } else {
             yieldBps = -int256((lastTotalAssets - currentTotal) * BPS_DENOMINATOR / lastTotalAssets);
         }
+        // Cache currentTotal into lastTotalAssets after executeCycle (step 10)
         sharpeTracker.recordYield(int128(yieldBps));
     }
 }

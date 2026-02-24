@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,10 +10,25 @@ import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
 /// @title AsterEarnAdapter — async request / claim withdrawal pattern
 /// @notice Wraps AsterDEX Earn minter with selector-based calls.
 ///         Supports async withdrawal request tracking with batch-claim support.
+/// @custom:security-contact security@asterpilot.xyz
 contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_CLAIM_BATCH = 50;
+
+    // ── errors ──
+    error AsterEarnAdapter__OnlyVault();
+    error AsterEarnAdapter__ConfigurationLocked();
+    error AsterEarnAdapter__ZeroAddress();
+    error AsterEarnAdapter__VaultNotSet();
+    error AsterEarnAdapter__ZeroAmount();
+    error AsterEarnAdapter__BadIndex();
+    error AsterEarnAdapter__AlreadyClaimed();
+    error AsterEarnAdapter__NotMatured();
+    error AsterEarnAdapter__RequestFailed();
+    error AsterEarnAdapter__QueryFailed();
+    error AsterEarnAdapter__CallFailed();
+    error AsterEarnAdapter__CallReturnedFalse();
 
     // ── immutables ──
     IERC20  private immutable _asset;
@@ -31,12 +46,12 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
     WithdrawRequest[] private _withdrawRequests;
     uint256 public totalPending;
 
-    // ── events (adapter) ──
+    // ── events ──
     event ExternalCallResult(bytes4 indexed selector, bool success, bytes data);
 
     // ── modifiers ──
     modifier onlyVault() {
-        require(msg.sender == vault, "only vault");
+        if (msg.sender != vault) revert AsterEarnAdapter__OnlyVault();
         _;
     }
 
@@ -50,33 +65,37 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         bytes4  _getWithdrawRequestSel,
         address _initialOwner
     ) Ownable(_initialOwner) {
-        require(_assetAddr != address(0), "zero asset");
-        require(_asterMinter != address(0), "zero minter");
+        if (_assetAddr == address(0)) revert AsterEarnAdapter__ZeroAddress();
+        if (_asterMinter == address(0)) revert AsterEarnAdapter__ZeroAddress();
 
-        _asset                    = IERC20(_assetAddr);
-        asterMinter               = _asterMinter;
-        depositSelector           = _depositSel;
-        managedAssetsSelector     = _managedAssetsSel;
-        requestWithdrawSelector   = _requestWithdrawSel;
-        claimWithdrawSelector     = _claimWithdrawSel;
+        _asset                     = IERC20(_assetAddr);
+        asterMinter                = _asterMinter;
+        depositSelector            = _depositSel;
+        managedAssetsSelector      = _managedAssetsSel;
+        requestWithdrawSelector    = _requestWithdrawSel;
+        claimWithdrawSelector      = _claimWithdrawSel;
         getWithdrawRequestSelector = _getWithdrawRequestSel;
     }
 
-    // ── configuration (owner-only, one-shot) ──
+    /*//////////////////////////////////////////////////////////////
+                    CONFIGURATION (OWNER-ONLY, ONE-SHOT)
+    //////////////////////////////////////////////////////////////*/
 
     function setVault(address _vault) external onlyOwner {
-        require(!configurationLocked, "locked");
-        require(_vault != address(0), "zero vault");
+        if (configurationLocked) revert AsterEarnAdapter__ConfigurationLocked();
+        if (_vault == address(0)) revert AsterEarnAdapter__ZeroAddress();
         vault = _vault;
     }
 
     function lockConfiguration() external onlyOwner {
-        require(vault != address(0), "vault not set");
+        if (vault == address(0)) revert AsterEarnAdapter__VaultNotSet();
         configurationLocked = true;
         renounceOwnership();
     }
 
-    // ── IManagedAdapter ──
+    /*//////////////////////////////////////////////////////////////
+                          IMANAGEDADAPTER
+    //////////////////////////////////////////////////////////////*/
 
     function asset() external view returns (address) {
         return address(_asset);
@@ -91,7 +110,6 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
     }
 
     function onVaultDeposit(uint256 amount) external onlyVault {
-        _asset.forceApprove(asterMinter, 0);
         _asset.forceApprove(asterMinter, amount);
         _callWithAmount(depositSelector, amount);
         _asset.forceApprove(asterMinter, 0);
@@ -109,24 +127,24 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         return actual;
     }
 
-    // ── async withdraw (IAsterEarnAdapter) ──
+    /*//////////////////////////////////////////////////////////////
+                    ASYNC WITHDRAW (IASTEREARNADAPTER)
+    //////////////////////////////////////////////////////////////*/
 
     function requestWithdraw(uint256 amount) external onlyVault returns (uint256 requestId) {
-        require(amount > 0, "zero amount");
+        if (amount == 0) revert AsterEarnAdapter__ZeroAmount();
 
-        // call minter requestWithdraw
         (bool ok, bytes memory data) = asterMinter.call(
             abi.encodeWithSelector(requestWithdrawSelector, amount)
         );
         emit ExternalCallResult(requestWithdrawSelector, ok, data);
-        require(ok && data.length >= 32, "request failed");
+        if (!ok || data.length < 32) revert AsterEarnAdapter__RequestFailed();
         requestId = abi.decode(data, (uint256));
 
-        // query maturity from minter
         (bool ok2, bytes memory data2) = asterMinter.staticcall(
             abi.encodeWithSelector(getWithdrawRequestSelector, requestId)
         );
-        require(ok2 && data2.length >= 96, "query failed");
+        if (!ok2 || data2.length < 96) revert AsterEarnAdapter__QueryFailed();
         (uint256 amt, uint256 maturity, ) = abi.decode(data2, (uint256, uint256, bool));
 
         _withdrawRequests.push(WithdrawRequest({
@@ -140,13 +158,12 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         emit WithdrawRequested(requestId, amt, maturity);
     }
 
-    function claimWithdraw(uint256 index) external onlyVault returns (uint256) {
-        return _claimAtIndex(index);
+    function claimWithdraw(uint256 idx) external onlyVault returns (uint256) {
+        return _claimAtIndex(idx);
     }
 
     function claimAllMatured() external onlyVault returns (uint256 totalClaimed) {
         totalClaimed = _claimAllMaturedInternal();
-        // C2 FIX: Forward claimed funds to vault immediately
         if (totalClaimed > 0) {
             uint256 balance = _asset.balanceOf(address(this));
             if (balance > 0) {
@@ -156,11 +173,11 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
     }
 
     function pendingWithdrawals() external view returns (WithdrawRequest[] memory) {
-        uint256 count;
+        uint256 cnt;
         for (uint256 i; i < _withdrawRequests.length; i++) {
-            if (!_withdrawRequests[i].claimed) count++;
+            if (!_withdrawRequests[i].claimed) cnt++;
         }
-        WithdrawRequest[] memory result = new WithdrawRequest[](count);
+        WithdrawRequest[] memory result = new WithdrawRequest[](cnt);
         uint256 j;
         for (uint256 i; i < _withdrawRequests.length; i++) {
             if (!_withdrawRequests[i].claimed) {
@@ -180,19 +197,21 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         }
     }
 
-    // ── internals ──
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
-    function _claimAtIndex(uint256 index) internal returns (uint256) {
-        require(index < _withdrawRequests.length, "bad index");
-        WithdrawRequest storage req = _withdrawRequests[index];
-        require(!req.claimed, "already claimed");
-        require(block.timestamp >= req.maturityTimestamp, "not matured");
+    function _claimAtIndex(uint256 idx) internal returns (uint256) {
+        if (idx >= _withdrawRequests.length) revert AsterEarnAdapter__BadIndex();
+        WithdrawRequest storage req = _withdrawRequests[idx];
+        if (req.claimed) revert AsterEarnAdapter__AlreadyClaimed();
+        if (block.timestamp < req.maturityTimestamp) revert AsterEarnAdapter__NotMatured();
 
         (bool ok, bytes memory data) = asterMinter.call(
             abi.encodeWithSelector(claimWithdrawSelector, req.requestId)
         );
         emit ExternalCallResult(claimWithdrawSelector, ok, data);
-        require(ok, "claim failed");
+        if (!ok) revert AsterEarnAdapter__CallFailed();
 
         req.claimed = true;
         totalPending -= req.amount;
@@ -225,10 +244,10 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
             abi.encodeWithSelector(selector, amount)
         );
         emit ExternalCallResult(selector, ok, data);
-        require(ok, "call failed");
+        if (!ok) revert AsterEarnAdapter__CallFailed();
         if (data.length >= 32) {
             bool result = abi.decode(data, (bool));
-            require(result, "call returned false");
+            if (!result) revert AsterEarnAdapter__CallReturnedFalse();
         }
     }
 }

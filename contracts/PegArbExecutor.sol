@@ -1,16 +1,30 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPegArbExecutor} from "./interfaces/IPegArbExecutor.sol";
 import {IStableSwapPool} from "./interfaces/IStableSwapPool.sol";
 import {IUSDFMinting} from "./interfaces/IUSDFMinting.sol";
 
 /// @title PegArbExecutor — permissionless atomic USDF/USDT arb
 /// @notice Detects peg deviation, executes arb, pays bounty, returns profit to vault.
-contract PegArbExecutor is IPegArbExecutor {
+/// @custom:security-contact security@asterpilot.xyz
+contract PegArbExecutor is IPegArbExecutor, ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    // ── errors ──
+    error PegArbExecutor__ZeroAddress();
+    error PegArbExecutor__BadMinProfit();
+    error PegArbExecutor__BadMaxArb();
+    error PegArbExecutor__BadBounty();
+    error PegArbExecutor__BadDeviation();
+    error PegArbExecutor__EmptyPool();
+    error PegArbExecutor__NoArbOpportunity();
+    error PegArbExecutor__ZeroTrade();
+    error PegArbExecutor__NoProfit();
+    error PegArbExecutor__BelowMinProfit();
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -36,89 +50,85 @@ contract PegArbExecutor is IPegArbExecutor {
         uint256 _arbBountyBps,
         uint256 _deviationThresholdBps
     ) {
-        require(_vault != address(0), "zero vault");
-        require(_usdt != address(0), "zero usdt");
-        require(_usdf != address(0), "zero usdf");
-        require(_usdfMinting != address(0), "zero minting");
-        require(_stableSwapPool != address(0), "zero pool");
-        require(_minProfitBps > 0 && _minProfitBps <= BPS_DENOMINATOR, "bad minProfit");
-        require(_maxArbBps > 0 && _maxArbBps <= BPS_DENOMINATOR, "bad maxArb");
-        require(_arbBountyBps <= BPS_DENOMINATOR, "bad bounty");
-        require(_deviationThresholdBps > 0 && _deviationThresholdBps <= BPS_DENOMINATOR, "bad dev");
+        if (_vault == address(0) || _usdt == address(0) || _usdf == address(0)
+            || _usdfMinting == address(0) || _stableSwapPool == address(0))
+        {
+            revert PegArbExecutor__ZeroAddress();
+        }
+        if (_minProfitBps == 0 || _minProfitBps > BPS_DENOMINATOR) revert PegArbExecutor__BadMinProfit();
+        if (_maxArbBps == 0 || _maxArbBps > BPS_DENOMINATOR) revert PegArbExecutor__BadMaxArb();
+        if (_arbBountyBps > BPS_DENOMINATOR) revert PegArbExecutor__BadBounty();
+        if (_deviationThresholdBps == 0 || _deviationThresholdBps > BPS_DENOMINATOR) revert PegArbExecutor__BadDeviation();
 
-        vault                = _vault;
-        usdt                 = IERC20(_usdt);
-        usdf                 = IERC20(_usdf);
-        usdfMinting          = IUSDFMinting(_usdfMinting);
-        stableSwapPool       = IStableSwapPool(_stableSwapPool);
-        minProfitBps         = _minProfitBps;
-        maxArbBps            = _maxArbBps;
-        arbBountyBps         = _arbBountyBps;
+        vault                 = _vault;
+        usdt                  = IERC20(_usdt);
+        usdf                  = IERC20(_usdf);
+        usdfMinting           = IUSDFMinting(_usdfMinting);
+        stableSwapPool        = IStableSwapPool(_stableSwapPool);
+        minProfitBps          = _minProfitBps;
+        maxArbBps             = _maxArbBps;
+        arbBountyBps          = _arbBountyBps;
         deviationThresholdBps = _deviationThresholdBps;
     }
 
-    // ── views ──
+    /*//////////////////////////////////////////////////////////////
+                                 VIEWS
+    //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IPegArbExecutor
     function previewArb() external view returns (ArbPreview memory preview) {
         (uint256 poolPrice, ArbDirection dir) = _detectDirection();
-        preview.poolPrice  = poolPrice;
-        preview.direction  = dir;
+        preview.poolPrice = poolPrice;
+        preview.direction = dir;
 
         if (dir == ArbDirection.None) return preview;
 
-        uint256 vaultBal   = usdt.balanceOf(vault);
-        preview.tradeSize  = vaultBal * maxArbBps / BPS_DENOMINATOR;
+        uint256 vaultBal  = usdt.balanceOf(vault);
+        preview.tradeSize = vaultBal * maxArbBps / BPS_DENOMINATOR;
 
-        uint256 deviation  = poolPrice > 1e18
-            ? poolPrice - 1e18
-            : 1e18 - poolPrice;
-        // rough profit estimate: deviation minus ~8 bps fees
-        uint256 feeBps     = 8;
-        preview.estimatedProfitBps = deviation * BPS_DENOMINATOR / 1e18 > feeBps
-            ? deviation * BPS_DENOMINATOR / 1e18 - feeBps
-            : 0;
+        uint256 deviation = poolPrice > 1e18 ? poolPrice - 1e18 : 1e18 - poolPrice;
+        uint256 feeBps    = 8; // rough pool fee estimate
+        uint256 devBps    = deviation * BPS_DENOMINATOR / 1e18;
+        preview.estimatedProfitBps = devBps > feeBps ? devBps - feeBps : 0;
     }
 
-    // ── mutative ──
+    /*//////////////////////////////////////////////////////////////
+                              STATE-CHANGING
+    //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IPegArbExecutor
-    function executeArb() external returns (uint256 profit) {
-        (, ArbDirection dir) = _detectDirection();
-        require(dir != ArbDirection.None, "no arb opportunity");
+    function executeArb() external nonReentrant returns (uint256 profit) {
+        (uint256 poolPrice, ArbDirection dir) = _detectDirection();
+        if (dir == ArbDirection.None) revert PegArbExecutor__NoArbOpportunity();
 
         uint256 vaultBal  = usdt.balanceOf(vault);
         uint256 tradeSize = vaultBal * maxArbBps / BPS_DENOMINATOR;
-        require(tradeSize > 0, "zero trade");
+        if (tradeSize == 0) revert PegArbExecutor__ZeroTrade();
 
-        // pull USDT from vault (vault must have approved this contract)
+        // Pull USDT from vault (vault must have approved this contract)
         usdt.safeTransferFrom(vault, address(this), tradeSize);
 
         uint256 usdtBefore = usdt.balanceOf(address(this));
 
         if (dir == ArbDirection.BuyUSDF) {
-            _executeBuyUSDF(tradeSize);
+            _executeBuyUSDF(tradeSize, poolPrice);
         } else {
-            _executeSellUSDF(tradeSize);
+            _executeSellUSDF(tradeSize, poolPrice);
         }
 
         uint256 usdtAfter = usdt.balanceOf(address(this));
-        require(usdtAfter > usdtBefore, "no profit");
+        if (usdtAfter <= usdtBefore) revert PegArbExecutor__NoProfit();
         profit = usdtAfter - usdtBefore;
 
-        // enforce min profit
-        require(
-            profit * BPS_DENOMINATOR / tradeSize >= minProfitBps,
-            "below min profit"
-        );
+        if (profit * BPS_DENOMINATOR / tradeSize < minProfitBps) revert PegArbExecutor__BelowMinProfit();
 
-        // pay bounty to caller
+        // Pay bounty to caller
         uint256 bounty = profit * arbBountyBps / BPS_DENOMINATOR;
         if (bounty > 0) {
             usdt.safeTransfer(msg.sender, bounty);
         }
 
-        // return everything else to vault
+        // Return remaining to vault
         uint256 remaining = usdt.balanceOf(address(this));
         if (remaining > 0) {
             usdt.safeTransfer(vault, remaining);
@@ -127,7 +137,9 @@ contract PegArbExecutor is IPegArbExecutor {
         emit ArbExecuted(dir, tradeSize, profit, bounty, msg.sender);
     }
 
-    // ── internals ──
+    /*//////////////////////////////////////////////////////////////
+                              INTERNAL LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function _detectDirection()
         internal
@@ -135,13 +147,13 @@ contract PegArbExecutor is IPegArbExecutor {
         returns (uint256 poolPrice, ArbDirection dir)
     {
         uint256[2] memory bal = stableSwapPool.get_balances();
-        require(bal[1] > 0, "empty pool");
+        if (bal[1] == 0) revert PegArbExecutor__EmptyPool();
         poolPrice = bal[0] * 1e18 / bal[1]; // USDT per USDF
 
         uint256 threshold = 1e18 * deviationThresholdBps / BPS_DENOMINATOR;
 
         if (poolPrice < 1e18 - threshold) {
-            dir = ArbDirection.BuyUSDF; // USDF cheap → buy on pool, redeem at par
+            dir = ArbDirection.BuyUSDF;  // USDF cheap → buy on pool, redeem at par
         } else if (poolPrice > 1e18 + threshold) {
             dir = ArbDirection.SellUSDF; // USDF expensive → mint at par, sell on pool
         } else {
@@ -149,11 +161,15 @@ contract PegArbExecutor is IPegArbExecutor {
         }
     }
 
-    /// @dev Path A: USDT → buy cheap USDF on pool → redeem USDF at par → USDT
-    function _executeBuyUSDF(uint256 usdtAmount) internal {
+    /// @dev Path A: USDT → buy cheap USDF on pool → redeem at par → USDT
+    ///      min_dy is derived from current pool price with slippage tolerance
+    function _executeBuyUSDF(uint256 usdtAmount, uint256 poolPrice) internal {
+        // Expected USDF out ≈ usdtAmount / poolPrice; apply 1% slippage tolerance
+        uint256 expectedUsdf = usdtAmount * 1e18 / poolPrice;
+        uint256 minUsdfOut   = expectedUsdf * 9900 / BPS_DENOMINATOR; // 1% slippage
+
         usdt.forceApprove(address(stableSwapPool), usdtAmount);
-        // exchange: i=0 (USDT) → j=1 (USDF), min_dy=0 (profit check later)
-        stableSwapPool.exchange(0, 1, usdtAmount, 0);
+        stableSwapPool.exchange(0, 1, usdtAmount, minUsdfOut);
         usdt.forceApprove(address(stableSwapPool), 0);
 
         uint256 usdfBal = usdf.balanceOf(address(this));
@@ -163,15 +179,19 @@ contract PegArbExecutor is IPegArbExecutor {
     }
 
     /// @dev Path B: USDT → mint USDF at par → sell expensive USDF on pool → USDT
-    function _executeSellUSDF(uint256 usdtAmount) internal {
+    ///      min_dy is derived from current pool price with slippage tolerance
+    function _executeSellUSDF(uint256 usdtAmount, uint256 poolPrice) internal {
         usdt.forceApprove(address(usdfMinting), usdtAmount);
         usdfMinting.mint(usdtAmount);
         usdt.forceApprove(address(usdfMinting), 0);
 
         uint256 usdfBal = usdf.balanceOf(address(this));
+        // Expected USDT out ≈ usdfBal * poolPrice / 1e18; apply 1% slippage tolerance
+        uint256 expectedUsdt = usdfBal * poolPrice / 1e18;
+        uint256 minUsdtOut   = expectedUsdt * 9900 / BPS_DENOMINATOR; // 1% slippage
+
         usdf.forceApprove(address(stableSwapPool), usdfBal);
-        // exchange: i=1 (USDF) → j=0 (USDT), min_dy=0 (profit check later)
-        stableSwapPool.exchange(1, 0, usdfBal, 0);
+        stableSwapPool.exchange(1, 0, usdfBal, minUsdtOut);
         usdf.forceApprove(address(stableSwapPool), 0);
     }
 }

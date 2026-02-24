@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -25,11 +25,14 @@ import {IStrategyEngine} from "./interfaces/IStrategyEngine.sol";
  * Bid routing:    winner pays bid → this contract → vault (after successful execution).
  *
  * Works as overlay on existing StrategyEngine — no vault re-deployment needed.
+ * @custom:security-contact security@asterpilot.xyz
  */
 contract ExecutionAuction is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // ─── Enums / Structs ─────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                            ENUMS / STRUCTS
+    //////////////////////////////////////////////////////////////*/
 
     enum Phase { NotOpen, BidPhase, ExecutePhase, FallbackPhase }
 
@@ -38,58 +41,69 @@ contract ExecutionAuction is ReentrancyGuard {
         uint256 openedAt;
         address winner;
         uint256 winningBid;
-        bool    closed;     // true after executed or fallback used
+        bool    closed;
     }
 
-    // ─── Immutables ──────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                              ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error ExecutionAuction__ZeroAddress();
+    error ExecutionAuction__ZeroWindow();
+    error ExecutionAuction__EngineNotReady();
+    error ExecutionAuction__NotBidPhase();
+    error ExecutionAuction__BelowMinBid();
+    error ExecutionAuction__BidTooLow();
+    error ExecutionAuction__NotExecutePhase();
+    error ExecutionAuction__NotWinner();
+    error ExecutionAuction__NotFallbackPhase();
+    error ExecutionAuction__NoRefund();
+
+    /*//////////////////////////////////////////////////////////////
+                             IMMUTABLES
+    //////////////////////////////////////////////////////////////*/
 
     IStrategyEngine public immutable engine;
-    address           public immutable vault;
-    IERC20            public immutable usdt;
-    uint256           public immutable bidWindow;      // bid phase duration (seconds)
-    uint256           public immutable executeWindow;  // winner's exclusive window (seconds)
-    uint256           public immutable minBid;         // minimum bid (18 decimals)
+    address         public immutable vault;
+    IERC20          public immutable usdt;
+    uint256         public immutable bidWindow;
+    uint256         public immutable executeWindow;
+    uint256         public immutable minBid;
 
-    // ─── State ───────────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                               STATE
+    //////////////////////////////////////////////////////////////*/
 
     Round   public round;
-    uint256 public totalBidRevenue; // cumulative USDT deposited to vault via winning bids
+    uint256 public totalBidRevenue;
     mapping(address => uint256) public pendingRefunds;
 
-    // ─── Events ──────────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                               EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     event RoundOpened(uint256 indexed id, uint256 timestamp);
-    event BidPlaced(
-        uint256 indexed id,
-        address indexed bidder,
-        uint256 bid,
-        address outbid,
-        uint256 outbidAmount
-    );
-    event Executed(
-        uint256 indexed id,
-        address indexed executor,
-        uint256 bidToVault,
-        uint256 bountyToExecutor,
-        bool    byWinner
-    );
+    event BidPlaced(uint256 indexed id, address indexed bidder, uint256 bid, address outbid, uint256 outbidAmount);
+    event Executed(uint256 indexed id, address indexed executor, uint256 bidToVault, uint256 bountyToExecutor, bool byWinner);
     event Refunded(address indexed to, uint256 amount);
 
-    // ─── Constructor ─────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                             CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
 
     constructor(
         address engine_,
         address vault_,
         address usdt_,
-        uint256 bidWindow_,     // recommended: 120 (2 min)
-        uint256 executeWindow_, // recommended: 60 (1 min)
-        uint256 minBid_         // recommended: 1e18 (1 USDT)
+        uint256 bidWindow_,
+        uint256 executeWindow_,
+        uint256 minBid_
     ) {
-        require(
-            engine_ != address(0) && vault_ != address(0) && usdt_ != address(0),
-            "EA: zero addr"
-        );
-        require(bidWindow_ > 0 && executeWindow_ > 0, "EA: window=0");
+        if (engine_ == address(0) || vault_ == address(0) || usdt_ == address(0)) {
+            revert ExecutionAuction__ZeroAddress();
+        }
+        if (bidWindow_ == 0 || executeWindow_ == 0) revert ExecutionAuction__ZeroWindow();
+
         engine        = IStrategyEngine(engine_);
         vault         = vault_;
         usdt          = IERC20(usdt_);
@@ -98,33 +112,37 @@ contract ExecutionAuction is ReentrancyGuard {
         minBid        = minBid_;
     }
 
-    // ─── Phase Logic ─────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                           PHASE LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Current auction phase based on elapsed time since round opened.
     function phase() public view returns (Phase) {
         if (round.openedAt == 0 || round.closed) return Phase.NotOpen;
         uint256 elapsed = block.timestamp - round.openedAt;
-        if (elapsed < bidWindow)             return Phase.BidPhase;
-        if (elapsed < bidWindow + executeWindow) return Phase.ExecutePhase;
+        if (elapsed < bidWindow)                     return Phase.BidPhase;
+        if (elapsed < bidWindow + executeWindow)     return Phase.ExecutePhase;
         return Phase.FallbackPhase;
     }
 
-    // ─── External Functions ──────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                         EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Place or raise a bid for execution rights.
     ///         Auto-opens a new round when engine is ready and no round is active.
     ///         Outbid party's amount becomes claimable via claimRefund().
-    /// @param amount USDT to bid (18 decimals); must be >= minBid and > current winning bid
+    /// @param amount USDT to bid; must be >= minBid and > current winning bid
     function bid(uint256 amount) external nonReentrant {
         Phase p = phase();
         if (p == Phase.NotOpen) {
-            require(engine.timeUntilNextCycle() == 0, "EA: engine not ready");
+            if (engine.timeUntilNextCycle() != 0) revert ExecutionAuction__EngineNotReady();
             _openRound();
             p = Phase.BidPhase;
         }
-        require(p == Phase.BidPhase, "EA: not bid phase");
-        require(amount >= minBid,         "EA: below min bid");
-        require(amount > round.winningBid, "EA: bid too low");
+        if (p != Phase.BidPhase) revert ExecutionAuction__NotBidPhase();
+        if (amount < minBid) revert ExecutionAuction__BelowMinBid();
+        if (amount <= round.winningBid) revert ExecutionAuction__BidTooLow();
 
         // Queue refund for displaced winner
         address prev    = round.winner;
@@ -139,17 +157,16 @@ contract ExecutionAuction is ReentrancyGuard {
 
     /// @notice Winner executes their exclusive rights during the execute window.
     ///         Winning bid transfers to vault as yield; vault's bounty returns to winner.
-    ///         Net vault gain = bid - bounty.
     function winnerExecute() external nonReentrant {
-        require(phase() == Phase.ExecutePhase, "EA: not execute phase");
-        require(msg.sender == round.winner,    "EA: not winner");
+        if (phase() != Phase.ExecutePhase) revert ExecutionAuction__NotExecutePhase();
+        if (msg.sender != round.winner) revert ExecutionAuction__NotWinner();
         _execute(true);
     }
 
     /// @notice Fallback execution after execute window expires. Anyone may call.
     ///         Winner's bid is queued for refund; vault's bounty goes to the caller.
     function fallbackExecute() external nonReentrant {
-        require(phase() == Phase.FallbackPhase, "EA: not fallback phase");
+        if (phase() != Phase.FallbackPhase) revert ExecutionAuction__NotFallbackPhase();
         // Refund winner — they forfeited their exclusive window
         if (round.winner != address(0)) {
             pendingRefunds[round.winner] += round.winningBid;
@@ -162,13 +179,15 @@ contract ExecutionAuction is ReentrancyGuard {
     /// @notice Claim pending refund (from being outbid or missing execute window).
     function claimRefund() external nonReentrant {
         uint256 amount = pendingRefunds[msg.sender];
-        require(amount > 0, "EA: no refund");
+        if (amount == 0) revert ExecutionAuction__NoRefund();
         pendingRefunds[msg.sender] = 0;
         usdt.safeTransfer(msg.sender, amount);
         emit Refunded(msg.sender, amount);
     }
 
-    // ─── Internal ────────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                             INTERNAL
+    //////////////////////////////////////////////////////////////*/
 
     /// @dev Open a new auction round. Refunds any stale previous winner who never executed.
     function _openRound() internal {
@@ -215,7 +234,9 @@ contract ExecutionAuction is ReentrancyGuard {
         emit Executed(round.id, recipient, byWinner ? bid_ : 0, bounty, byWinner);
     }
 
-    // ─── Views ───────────────────────────────────────────────────────────────
+    /*//////////////////////////////////////////////////////////////
+                               VIEWS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Current round status for frontend consumption.
     function roundStatus() external view returns (

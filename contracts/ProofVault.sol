@@ -2,12 +2,18 @@
 pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    ERC4626
+} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IManagedAdapter} from "./interfaces/IManagedAdapter.sol";
 import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
@@ -31,11 +37,21 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     bool public configurationLocked;
 
     // --- Events ---
-    event Rebalanced(uint256 asterTarget, uint256 actualAster, uint256 idle, uint256 secondary, uint256 lp);
+    event Rebalanced(
+        uint256 asterTarget,
+        uint256 actualAster,
+        uint256 idle,
+        uint256 secondary,
+        uint256 lp
+    );
     event BountyPaid(address indexed executor, uint256 amount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
     event EngineSet(address indexed engine);
-    event AdaptersSet(address indexed aster, address indexed secondary, address indexed lp);
+    event AdaptersSet(
+        address indexed aster,
+        address indexed secondary,
+        address indexed lp
+    );
 
     // --- Errors ---
     error ProofVault__CallerNotEngine();
@@ -91,8 +107,10 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
     function lockConfiguration() external onlyOwner {
         if (engine == address(0)) revert ProofVault__EngineNotSet();
-        if (address(asterAdapter) == address(0)) revert ProofVault__AsterNotSet();
-        if (address(secondaryAdapter) == address(0)) revert ProofVault__SecondaryNotSet();
+        if (address(asterAdapter) == address(0))
+            revert ProofVault__AsterNotSet();
+        if (address(secondaryAdapter) == address(0))
+            revert ProofVault__SecondaryNotSet();
         // lpAdapter is optional: some deployments use only 2 yield rails
         configurationLocked = true;
         renounceOwnership();
@@ -104,29 +122,46 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
     /// @notice Total assets = idle balance + aster managed + secondary managed + lp managed
     function totalAssets() public view override returns (uint256) {
-        uint256 lpManaged = address(lpAdapter) != address(0) ? lpAdapter.managedAssets() : 0;
-        return IERC20(asset()).balanceOf(address(this))
-            + asterAdapter.managedAssets()
-            + secondaryAdapter.managedAssets()
-            + lpManaged;
+        uint256 lpManaged = address(lpAdapter) != address(0)
+            ? lpAdapter.managedAssets()
+            : 0;
+        return
+            IERC20(asset()).balanceOf(address(this)) +
+            asterAdapter.managedAssets() +
+            secondaryAdapter.managedAssets() +
+            lpManaged;
     }
 
-    function deposit(uint256 assets, address receiver) public override nonReentrant returns (uint256) {
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override nonReentrant returns (uint256) {
         if (!configurationLocked) revert ProofVault__NotLocked();
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override nonReentrant returns (uint256) {
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public override nonReentrant returns (uint256) {
         if (!configurationLocked) revert ProofVault__NotLocked();
         return super.mint(shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner_) public override nonReentrant returns (uint256) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner_
+    ) public override nonReentrant returns (uint256) {
         _ensureLiquid(assets);
         return super.withdraw(assets, receiver, owner_);
     }
 
-    function redeem(uint256 shares, address receiver, address owner_) public override nonReentrant returns (uint256) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner_
+    ) public override nonReentrant returns (uint256) {
         uint256 assets = previewRedeem(shares);
         _ensureLiquid(assets);
         return super.redeem(shares, receiver, owner_);
@@ -149,12 +184,21 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         uint256 bountyBps,
         uint256 lpTargetBps
     ) external onlyEngine nonReentrant {
+        if (!configurationLocked) revert ProofVault__NotLocked();
         uint256 total = totalAssets();
         uint256 buffer = _bufferTarget(total);
         uint256 deployable = total > buffer ? total - buffer : 0;
 
+        // Pull secondary to idle first so funds can be reallocated across rails
+        {
+            uint256 secManaged = secondaryAdapter.managedAssets();
+            if (secManaged > 0) {
+                secondaryAdapter.withdrawToVault(secManaged);
+            }
+        }
+
         // Aster rail
-        uint256 asterTarget = deployable * asterTargetBps / BPS_DENOMINATOR;
+        uint256 asterTarget = (deployable * asterTargetBps) / BPS_DENOMINATOR;
         uint256 currentAster = asterAdapter.managedAssets();
 
         if (asterTarget > currentAster) {
@@ -172,15 +216,23 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         // LP rail
         _rebalanceLp(deployable, lpTargetBps, buffer);
 
+        // Pay executor bounty (before secondary absorbs excess)
+        _payExecutorBounty(executor, bountyBps, total);
+
         // Secondary rail: absorb remaining idle excess
         _rebalanceSecondary(buffer);
 
-        // Pay executor bounty
-        _payExecutorBounty(executor, bountyBps, total);
-
         uint256 idle = IERC20(asset()).balanceOf(address(this));
-        uint256 lpManaged = address(lpAdapter) != address(0) ? lpAdapter.managedAssets() : 0;
-        emit Rebalanced(asterTarget, asterAdapter.managedAssets(), idle, secondaryAdapter.managedAssets(), lpManaged);
+        uint256 lpManaged = address(lpAdapter) != address(0)
+            ? lpAdapter.managedAssets()
+            : 0;
+        emit Rebalanced(
+            asterTarget,
+            asterAdapter.managedAssets(),
+            idle,
+            secondaryAdapter.managedAssets(),
+            lpManaged
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -188,15 +240,25 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Returns buffer status: target amount, current idle, utilization in bps
-    function bufferStatus() external view returns (uint256 target, uint256 current, uint256 utilizationBps) {
+    function bufferStatus()
+        external
+        view
+        returns (uint256 target, uint256 current, uint256 utilizationBps)
+    {
         uint256 total = totalAssets();
         target = _bufferTarget(total);
         current = IERC20(asset()).balanceOf(address(this));
-        utilizationBps = target > 0 ? Math.min(current * BPS_DENOMINATOR / target, BPS_DENOMINATOR) : BPS_DENOMINATOR;
+        utilizationBps = target > 0
+            ? Math.min((current * BPS_DENOMINATOR) / target, BPS_DENOMINATOR)
+            : BPS_DENOMINATOR;
     }
 
     /// @notice Returns total pending async Aster withdrawals
-    function pendingAsterWithdrawals() external view returns (uint256 count, uint256 totalAmount) {
+    function pendingAsterWithdrawals()
+        external
+        view
+        returns (uint256 count, uint256 totalAmount)
+    {
         return asterAdapter.maturedWithdrawals();
     }
 
@@ -206,7 +268,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
     /// @dev Buffer target = totalAssets * idleBufferBps / BPS_DENOMINATOR
     function _bufferTarget(uint256 total) internal view returns (uint256) {
-        return total * idleBufferBps / BPS_DENOMINATOR;
+        return (total * idleBufferBps) / BPS_DENOMINATOR;
     }
 
     /// @dev 4-tier liquidity: idle → secondary → LP → matured Aster claims
@@ -241,13 +303,18 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             if (idle >= needed) return;
         }
 
-        if (IERC20(asset()).balanceOf(address(this)) < needed) revert ProofVault__InsufficientLiquidity();
+        if (IERC20(asset()).balanceOf(address(this)) < needed)
+            revert ProofVault__InsufficientLiquidity();
     }
 
     /// @dev Rebalance LP adapter toward target allocation
-    function _rebalanceLp(uint256 deployable, uint256 lpTargetBps, uint256 bufferTarget_) internal {
+    function _rebalanceLp(
+        uint256 deployable,
+        uint256 lpTargetBps,
+        uint256 bufferTarget_
+    ) internal {
         if (address(lpAdapter) == address(0) || lpTargetBps == 0) return;
-        uint256 lpTarget = deployable * lpTargetBps / BPS_DENOMINATOR;
+        uint256 lpTarget = (deployable * lpTargetBps) / BPS_DENOMINATOR;
         uint256 currentLp = lpAdapter.managedAssets();
 
         if (lpTarget > currentLp) {
@@ -274,9 +341,13 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     }
 
     /// @dev Pay executor bounty from vault's idle assets
-    function _payExecutorBounty(address executor, uint256 bountyBps, uint256 totalAssets_) internal {
+    function _payExecutorBounty(
+        address executor,
+        uint256 bountyBps,
+        uint256 totalAssets_
+    ) internal {
         if (bountyBps == 0 || executor == address(0)) return;
-        uint256 bounty = totalAssets_ * bountyBps / BPS_DENOMINATOR;
+        uint256 bounty = (totalAssets_ * bountyBps) / BPS_DENOMINATOR;
         uint256 available = IERC20(asset()).balanceOf(address(this));
         bounty = Math.min(bounty, available);
         if (bounty > 0) {

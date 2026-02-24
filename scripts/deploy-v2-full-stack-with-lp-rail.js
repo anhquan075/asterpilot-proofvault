@@ -124,7 +124,8 @@ async function main() {
   const CircuitBreaker = await hre.ethers.getContractFactory("CircuitBreaker");
   const breaker = await CircuitBreaker.deploy(
     chainlinkFeed, stableSwapPool,
-    signalAThresholdBps, signalBThresholdBps, signalCThresholdBps, recoveryCooldown
+    signalAThresholdBps, signalBThresholdBps, signalCThresholdBps, recoveryCooldown,
+    0 // chainlinkStalePeriod (0 = default 3600)
   );
   await breaker.waitForDeployment();
   console.log("CircuitBreaker:", await breaker.getAddress());

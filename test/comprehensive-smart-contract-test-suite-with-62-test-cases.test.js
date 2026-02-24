@@ -7,16 +7,23 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
   // ==============================================================================
 
   async function deployFullFixture() {
-    const [deployer, user1, user2, executor, attacker] = await ethers.getSigners();
+    const [deployer, user1, user2, executor, attacker] =
+      await ethers.getSigners();
 
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     const token = await MockERC20.deploy("Mock USDT", "mUSDT");
     await token.waitForDeployment();
 
     const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+    const asterAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
     await asterAdapter.waitForDeployment();
-    const secondaryAdapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+    const secondaryAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
     await secondaryAdapter.waitForDeployment();
 
     const ProofVault = await ethers.getContractFactory("ProofVault");
@@ -31,31 +38,36 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
     const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
     const policy = await RiskPolicy.deploy(
-      300,                             // cooldown_
-      200,                             // guardedVolatilityBps_
-      500,                             // drawdownVolatilityBps_
-      ethers.parseUnits("0.97", 8),   // depegPrice_
-      100,                             // maxSlippageBps_
-      40,                              // maxBountyBps_
-      7000,                            // normalAsterBps_
-      9000,                            // guardedAsterBps_
-      10000,                           // drawdownAsterBps_
-      0,                               // minBountyBps_
-      60,                              // auctionDurationSeconds_
-      0,                               // idleBufferBps_
-      5,                               // sharpeWindowSize_
-      0,                               // sharpeLowThreshold_
-      1000,                            // normalLpBps_
-      500,                             // guardedLpBps_
-      0                                // drawdownLpBps_
+      300, // cooldown_
+      200, // guardedVolatilityBps_
+      500, // drawdownVolatilityBps_
+      ethers.parseUnits("0.97", 8), // depegPrice_
+      100, // maxSlippageBps_
+      40, // maxBountyBps_
+      7000, // normalAsterBps_
+      9000, // guardedAsterBps_
+      10000, // drawdownAsterBps_
+      0, // minBountyBps_
+      60, // auctionDurationSeconds_
+      0, // idleBufferBps_
+      5, // sharpeWindowSize_
+      0, // sharpeLowThreshold_
+      1000, // normalLpBps_
+      500, // guardedLpBps_
+      0 // drawdownLpBps_
     );
     await policy.waitForDeployment();
 
     const MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
-    const oracle = await MockPriceOracle.deploy(ethers.parseUnits("1", 8), deployer.address);
+    const oracle = await MockPriceOracle.deploy(
+      ethers.parseUnits("1", 8),
+      deployer.address
+    );
     await oracle.waitForDeployment();
 
-    const MockCircuitBreaker = await ethers.getContractFactory("MockCircuitBreaker");
+    const MockCircuitBreaker = await ethers.getContractFactory(
+      "MockCircuitBreaker"
+    );
     const breaker = await MockCircuitBreaker.deploy();
     await breaker.waitForDeployment();
 
@@ -75,23 +87,54 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     await engine.waitForDeployment();
 
     await (await vault.setEngine(await engine.getAddress())).wait();
-    await (await vault.setAdapters(await asterAdapter.getAddress(), await secondaryAdapter.getAddress(), ethers.ZeroAddress)).wait();
+    await (
+      await vault.setAdapters(
+        await asterAdapter.getAddress(),
+        await secondaryAdapter.getAddress(),
+        ethers.ZeroAddress
+      )
+    ).wait();
     await (await asterAdapter.setVault(await vault.getAddress())).wait();
     await (await secondaryAdapter.setVault(await vault.getAddress())).wait();
     await (await asterAdapter.lockConfiguration()).wait();
     await (await secondaryAdapter.lockConfiguration()).wait();
     await (await vault.lockConfiguration()).wait();
 
-    await (await token.mint(user1.address, ethers.parseUnits("10000", 18))).wait();
-    await (await token.mint(user2.address, ethers.parseUnits("10000", 18))).wait();
-    await (await token.mint(executor.address, ethers.parseUnits("1000", 18))).wait();
+    await (
+      await token.mint(user1.address, ethers.parseUnits("10000", 18))
+    ).wait();
+    await (
+      await token.mint(user2.address, ethers.parseUnits("10000", 18))
+    ).wait();
+    await (
+      await token.mint(executor.address, ethers.parseUnits("1000", 18))
+    ).wait();
 
-    await (await token.connect(user1).approve(await vault.getAddress(), ethers.parseUnits("10000", 18))).wait();
-    await (await token.connect(user2).approve(await vault.getAddress(), ethers.parseUnits("10000", 18))).wait();
+    await (
+      await token
+        .connect(user1)
+        .approve(await vault.getAddress(), ethers.parseUnits("10000", 18))
+    ).wait();
+    await (
+      await token
+        .connect(user2)
+        .approve(await vault.getAddress(), ethers.parseUnits("10000", 18))
+    ).wait();
 
     return {
-      deployer, user1, user2, executor, attacker,
-      token, vault, asterAdapter, secondaryAdapter, engine, policy, oracle, breaker
+      deployer,
+      user1,
+      user2,
+      executor,
+      attacker,
+      token,
+      vault,
+      asterAdapter,
+      secondaryAdapter,
+      engine,
+      policy,
+      oracle,
+      breaker,
     };
   }
 
@@ -103,9 +146,15 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     await token.waitForDeployment();
 
     const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-    const asterAdapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+    const asterAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
     await asterAdapter.waitForDeployment();
-    const secondaryAdapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+    const secondaryAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
     await secondaryAdapter.waitForDeployment();
 
     const ProofVault = await ethers.getContractFactory("ProofVault");
@@ -120,19 +169,36 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
     const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
     const policy = await RiskPolicy.deploy(
-      300, 200, 500,
+      300,
+      200,
+      500,
       ethers.parseUnits("0.97", 8),
-      100, 40, 7000, 9000, 10000,
-      0, 60, 0, 5, 0,
-      1000, 500, 0
+      100,
+      40,
+      7000,
+      9000,
+      10000,
+      0,
+      60,
+      0,
+      5,
+      0,
+      1000,
+      500,
+      0
     );
     await policy.waitForDeployment();
 
     const MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
-    const oracle = await MockPriceOracle.deploy(ethers.parseUnits("1", 8), deployer.address);
+    const oracle = await MockPriceOracle.deploy(
+      ethers.parseUnits("1", 8),
+      deployer.address
+    );
     await oracle.waitForDeployment();
 
-    const MockCircuitBreaker = await ethers.getContractFactory("MockCircuitBreaker");
+    const MockCircuitBreaker = await ethers.getContractFactory(
+      "MockCircuitBreaker"
+    );
     const breaker = await MockCircuitBreaker.deploy();
     await breaker.waitForDeployment();
 
@@ -151,11 +217,26 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     );
     await engine.waitForDeployment();
 
-    await (await token.mint(user1.address, ethers.parseUnits("5000", 18))).wait();
-    await (await token.connect(user1).approve(await vault.getAddress(), ethers.parseUnits("5000", 18))).wait();
+    await (
+      await token.mint(user1.address, ethers.parseUnits("5000", 18))
+    ).wait();
+    await (
+      await token
+        .connect(user1)
+        .approve(await vault.getAddress(), ethers.parseUnits("5000", 18))
+    ).wait();
 
     return {
-      deployer, user1, token, vault, asterAdapter, secondaryAdapter, engine, policy, oracle, breaker
+      deployer,
+      user1,
+      token,
+      vault,
+      asterAdapter,
+      secondaryAdapter,
+      engine,
+      policy,
+      oracle,
+      breaker,
     };
   }
 
@@ -168,33 +249,48 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should prevent deposit before configuration is locked", async function () {
         const { user1, vault } = await deployUnlockedFixture();
         await expect(
-          vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)
+          vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
         ).to.be.revertedWithCustomError(vault, "ProofVault__NotLocked");
       });
 
       it("should allow deposit after configuration is locked", async function () {
-        const { user1, vault, asterAdapter, secondaryAdapter } = await deployUnlockedFixture();
+        const { user1, vault, asterAdapter, secondaryAdapter } =
+          await deployUnlockedFixture();
         await (await vault.setEngine(user1.address)).wait();
-        await (await vault.setAdapters(await asterAdapter.getAddress(), await secondaryAdapter.getAddress(), ethers.ZeroAddress)).wait();
+        await (
+          await vault.setAdapters(
+            await asterAdapter.getAddress(),
+            await secondaryAdapter.getAddress(),
+            ethers.ZeroAddress
+          )
+        ).wait();
         await (await asterAdapter.setVault(await vault.getAddress())).wait();
-        await (await secondaryAdapter.setVault(await vault.getAddress())).wait();
+        await (
+          await secondaryAdapter.setVault(await vault.getAddress())
+        ).wait();
         await (await asterAdapter.lockConfiguration()).wait();
         await (await secondaryAdapter.lockConfiguration()).wait();
         await (await vault.lockConfiguration()).wait();
 
-        const tx = vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address);
+        const tx = vault
+          .connect(user1)
+          .deposit(ethers.parseUnits("100", 18), user1.address);
         await expect(tx).not.to.be.reverted;
       });
 
       it("should prevent deposit before adapter vaults set before lock", async function () {
         const { deployer, vault, engine } = await deployUnlockedFixture();
         await (await vault.setEngine(await engine.getAddress())).wait();
-        await expect(vault.connect(deployer).lockConfiguration())
-          .to.be.revertedWithCustomError(vault, "ProofVault__AsterNotSet");
+        await expect(
+          vault.connect(deployer).lockConfiguration()
+        ).to.be.revertedWithCustomError(vault, "ProofVault__AsterNotSet");
       });
 
       it("should zero owner after lockConfiguration", async function () {
-        const { vault, asterAdapter, secondaryAdapter } = await deployFullFixture();
+        const { vault, asterAdapter, secondaryAdapter } =
+          await deployFullFixture();
         expect(await vault.owner()).to.equal(ethers.ZeroAddress);
         expect(await asterAdapter.owner()).to.equal(ethers.ZeroAddress);
         expect(await secondaryAdapter.owner()).to.equal(ethers.ZeroAddress);
@@ -203,23 +299,33 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should prevent setEngine after lock", async function () {
         const { deployer, vault } = await deployFullFixture();
         const [newEngine] = await ethers.getSigners();
-        await expect(vault.connect(deployer).setEngine(newEngine.address)).to.be.reverted;
+        await expect(vault.connect(deployer).setEngine(newEngine.address)).to.be
+          .reverted;
       });
 
       it("should prevent setAdapters after lock", async function () {
         const { deployer, vault, asterAdapter } = await deployFullFixture();
         await expect(
-          vault.connect(deployer).setAdapters(await asterAdapter.getAddress(), await asterAdapter.getAddress(), ethers.ZeroAddress)
+          vault
+            .connect(deployer)
+            .setAdapters(
+              await asterAdapter.getAddress(),
+              await asterAdapter.getAddress(),
+              ethers.ZeroAddress
+            )
         ).to.be.reverted;
       });
     });
 
     describe("Total Assets Calculation", function () {
       it("should correctly sum idle + aster + secondary balances", async function () {
-        const { user1, vault, token, asterAdapter, secondaryAdapter, engine } = await deployFullFixture();
+        const { user1, vault, token, asterAdapter, secondaryAdapter, engine } =
+          await deployFullFixture();
 
         const depositAmount = ethers.parseUnits("1000", 18);
-        await (await vault.connect(user1).deposit(depositAmount, user1.address)).wait();
+        await (
+          await vault.connect(user1).deposit(depositAmount, user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const total = await vault.totalAssets();
@@ -252,9 +358,14 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       });
 
       it("should accept valid asterTargetBps and update allocations", async function () {
-        const { user1, vault, engine, asterAdapter } = await deployFullFixture();
+        const { user1, vault, engine, asterAdapter } =
+          await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const aster = await asterAdapter.managedAssets();
@@ -273,9 +384,14 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       });
 
       it("should pay bounty to executor", async function () {
-        const { user1, executor, vault, token, engine } = await deployFullFixture();
+        const { user1, executor, vault, token, engine } =
+          await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
 
         const balanceBefore = await token.balanceOf(executor.address);
         await (await engine.connect(executor).executeCycle()).wait();
@@ -287,7 +403,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should emit AllocationExecuted event", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
 
         await expect(engine.executeCycle()).to.emit(vault, "Rebalanced");
       });
@@ -295,28 +415,54 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
     describe("Withdrawal and _ensureLiquid", function () {
       it("should pull from secondary first on withdraw", async function () {
-        const { user1, vault, token, asterAdapter, secondaryAdapter, engine } = await deployFullFixture();
+        const { user1, vault, token, asterAdapter, secondaryAdapter, engine } =
+          await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const secondaryBefore = await secondaryAdapter.managedAssets();
 
-        await (await vault.connect(user1).withdraw(ethers.parseUnits("100", 18), user1.address, user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .withdraw(
+              ethers.parseUnits("100", 18),
+              user1.address,
+              user1.address
+            )
+        ).wait();
 
         const secondaryAfter = await secondaryAdapter.managedAssets();
         expect(secondaryAfter).to.be.lessThanOrEqual(secondaryBefore);
       });
 
       it("should pull from aster if secondary insufficient", async function () {
-        const { user1, vault, asterAdapter, secondaryAdapter, engine } = await deployFullFixture();
+        const { user1, vault, asterAdapter, secondaryAdapter, engine } =
+          await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const asterBefore = await asterAdapter.managedAssets();
 
-        await (await vault.connect(user1).withdraw(ethers.parseUnits("800", 18), user1.address, user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .withdraw(
+              ethers.parseUnits("800", 18),
+              user1.address,
+              user1.address
+            )
+        ).wait();
 
         const asterAfter = await asterAdapter.managedAssets();
         expect(asterAfter).to.be.lessThan(asterBefore);
@@ -325,7 +471,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should revert with insufficient liquidity", async function () {
         const { user1, vault } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
 
         const excessive = ethers.parseUnits("10000", 18);
         await expect(
@@ -336,7 +486,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should work with redeem and ensure liquidity", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("500", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("500", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const shares = await vault.balanceOf(user1.address);
@@ -355,11 +509,20 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       });
 
       it("should allow mint after configuration lock", async function () {
-        const { user1, vault, asterAdapter, secondaryAdapter } = await deployUnlockedFixture();
+        const { user1, vault, asterAdapter, secondaryAdapter } =
+          await deployUnlockedFixture();
         await (await vault.setEngine(user1.address)).wait();
-        await (await vault.setAdapters(await asterAdapter.getAddress(), await secondaryAdapter.getAddress(), ethers.ZeroAddress)).wait();
+        await (
+          await vault.setAdapters(
+            await asterAdapter.getAddress(),
+            await secondaryAdapter.getAddress(),
+            ethers.ZeroAddress
+          )
+        ).wait();
         await (await asterAdapter.setVault(await vault.getAddress())).wait();
-        await (await secondaryAdapter.setVault(await vault.getAddress())).wait();
+        await (
+          await secondaryAdapter.setVault(await vault.getAddress())
+        ).wait();
         await (await asterAdapter.lockConfiguration()).wait();
         await (await secondaryAdapter.lockConfiguration()).wait();
         await (await vault.lockConfiguration()).wait();
@@ -392,7 +555,10 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       await token.waitForDeployment();
 
       const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-      const adapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+      const adapter = await ManagedAdapter.deploy(
+        await token.getAddress(),
+        deployer.address
+      );
       await adapter.waitForDeployment();
 
       await (await adapter.setVault(vaultAddr.address)).wait();
@@ -418,10 +584,16 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
       const amount = ethers.parseUnits("500", 18);
       await (await token.mint(vaultAddr.address, amount)).wait();
-      await (await token.connect(vaultAddr).approve(await adapter.getAddress(), amount)).wait();
+      await (
+        await token
+          .connect(vaultAddr)
+          .approve(await adapter.getAddress(), amount)
+      ).wait();
 
-      await expect(adapter.connect(vaultAddr).onVaultDeposit(amount))
-        .to.emit(adapter, "VaultDepositRecorded");
+      await expect(adapter.connect(vaultAddr).onVaultDeposit(amount)).to.emit(
+        adapter,
+        "VaultDepositRecorded"
+      );
     });
 
     it("should revert onVaultDeposit with zero amount", async function () {
@@ -444,7 +616,9 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const amount = ethers.parseUnits("1000", 18);
       await (await token.mint(await adapter.getAddress(), amount)).wait();
 
-      await adapter.connect(vaultAddr).withdrawToVault(ethers.parseUnits("500", 18));
+      await adapter
+        .connect(vaultAddr)
+        .withdrawToVault(ethers.parseUnits("500", 18));
       const vaultBalance = await token.balanceOf(vaultAddr.address);
 
       expect(vaultBalance).to.equal(ethers.parseUnits("500", 18));
@@ -452,12 +626,15 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
     it("should return 0 when withdrawToVault called with empty adapter", async function () {
       const { adapter, vaultAddr } = await deployManagedAdapterFixture();
-      const result = await adapter.connect(vaultAddr).withdrawToVault.staticCall(ethers.parseUnits("500", 18));
+      const result = await adapter
+        .connect(vaultAddr)
+        .withdrawToVault.staticCall(ethers.parseUnits("500", 18));
       expect(result).to.equal(0);
     });
 
     it("should lock configuration and renounce ownership", async function () {
-      const { deployer, vaultAddr, adapter } = await deployManagedAdapterFixture();
+      const { deployer, vaultAddr, adapter } =
+        await deployManagedAdapterFixture();
 
       expect(await adapter.configurationLocked()).to.equal(false);
       await (await adapter.lockConfiguration()).wait();
@@ -470,9 +647,8 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       await (await adapter.lockConfiguration()).wait();
 
       const [newAddr] = await ethers.getSigners();
-      await expect(
-        adapter.connect(deployer).setVault(newAddr.address)
-      ).to.be.reverted;
+      await expect(adapter.connect(deployer).setVault(newAddr.address)).to.be
+        .reverted;
     });
 
     it("should revert lockConfiguration when vault not set", async function () {
@@ -482,11 +658,16 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       await token.waitForDeployment();
 
       const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
-      const adapter = await ManagedAdapter.deploy(await token.getAddress(), deployer.address);
+      const adapter = await ManagedAdapter.deploy(
+        await token.getAddress(),
+        deployer.address
+      );
       await adapter.waitForDeployment();
 
-      await expect(adapter.lockConfiguration())
-        .to.be.revertedWithCustomError(adapter, "ManagedAdapter__VaultNotSet");
+      await expect(adapter.lockConfiguration()).to.be.revertedWithCustomError(
+        adapter,
+        "ManagedAdapter__VaultNotSet"
+      );
     });
   });
 
@@ -505,13 +686,17 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const minter = await MockMinter.deploy();
       await minter.waitForDeployment();
 
-      const AsterEarnAdapter = await ethers.getContractFactory("AsterEarnAdapter");
+      const AsterEarnAdapter = await ethers.getContractFactory(
+        "AsterEarnAdapter"
+      );
       const adapter = await AsterEarnAdapter.deploy(
         await token.getAddress(),
         await minter.getAddress(),
-        "0x00000000",
-        "0x00000000",
-        "0x00000000",
+        "0x00000000", // depositSelector
+        "0x00000000", // managedAssetsSelector
+        "0x00000000", // requestWithdrawSelector
+        "0x00000000", // claimWithdrawSelector
+        "0x00000000", // getWithdrawRequestSelector
         deployer.address
       );
       await adapter.waitForDeployment();
@@ -556,9 +741,8 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       await (await adapter.lockConfiguration()).wait();
 
       const [newAddr] = await ethers.getSigners();
-      await expect(
-        adapter.connect(deployer).setVault(newAddr.address)
-      ).to.be.reverted;
+      await expect(adapter.connect(deployer).setVault(newAddr.address)).to.be
+        .reverted;
     });
 
     it("should revert lockConfiguration when vault not set", async function () {
@@ -567,7 +751,9 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const token = await MockERC20.deploy("Test", "TEST");
       await token.waitForDeployment();
 
-      const AsterEarnAdapter = await ethers.getContractFactory("AsterEarnAdapter");
+      const AsterEarnAdapter = await ethers.getContractFactory(
+        "AsterEarnAdapter"
+      );
       const adapter = await AsterEarnAdapter.deploy(
         await token.getAddress(),
         deployer.address,
@@ -578,8 +764,10 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       );
       await adapter.waitForDeployment();
 
-      await expect(adapter.lockConfiguration())
-        .to.be.revertedWithCustomError(adapter, "AsterEarnAdapter__VaultNotSet");
+      await expect(adapter.lockConfiguration()).to.be.revertedWithCustomError(
+        adapter,
+        "AsterEarnAdapter__VaultNotSet"
+      );
     });
   });
 
@@ -591,7 +779,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     describe("Execution & Timing", function () {
       it("should return false from canExecute before cooldown", async function () {
         const { user1, vault, engine } = await deployFullFixture();
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
         const [canExecute, reason] = await engine.canExecute();
         expect(canExecute).to.equal(false);
@@ -601,7 +793,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return true from canExecute after cooldown", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await ethers.provider.send("evm_increaseTime", [300]);
@@ -615,7 +811,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return INVALID_PRICE behavior: price=0 enters drawdown", async function () {
         const { user1, vault, engine, oracle } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await ethers.provider.send("evm_increaseTime", [300]);
@@ -623,7 +823,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
         // Set price to 0 via storage slot
         const priceSlot = ethers.toBeHex(1, 32);
-        await ethers.provider.send("hardhat_setStorageAt", [await oracle.getAddress(), priceSlot, ethers.toBeHex(0, 32)]);
+        await ethers.provider.send("hardhat_setStorageAt", [
+          await oracle.getAddress(),
+          priceSlot,
+          ethers.toBeHex(0, 32),
+        ]);
 
         // canExecute no longer checks price — it only checks circuit breaker + cooldown
         const [canExecute, reason] = await engine.canExecute();
@@ -636,7 +840,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return correct state in normal market conditions", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const preview = await engine.previewDecision();
@@ -648,7 +856,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return Guarded state on medium volatility", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await (await oracle.setPrice(ethers.parseUnits("1.03", 8))).wait();
@@ -663,7 +875,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return Drawdown state on depeg", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await (await oracle.setPrice(ethers.parseUnits("0.90", 8))).wait();
@@ -678,7 +894,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return Drawdown state on high volatility", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         // 5%+ volatility triggers drawdown (drawdownVolatilityBps=500)
@@ -701,7 +921,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return proportional score for moderate volatility", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         // 3% move = 300 bps volatility = Guarded state -> score = 50
@@ -713,7 +937,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should cap score at 100 for extreme volatility", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         // 10%+ move = Drawdown state -> score = 100
@@ -733,7 +961,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return 0 when executable", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await ethers.provider.send("evm_increaseTime", [300]);
@@ -746,7 +978,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should return positive value during cooldown", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await ethers.provider.send("evm_increaseTime", [100]);
@@ -761,16 +997,26 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     describe("ExecuteCycle", function () {
       it("should revert when cycle unavailable", async function () {
         const { user1, vault, engine } = await deployFullFixture();
-        await (await vault.connect(user1).deposit(ethers.parseUnits("100", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("100", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
-        await expect(engine.executeCycle())
-          .to.be.revertedWithCustomError(engine, "StrategyEngine__NotExecutable");
+        await expect(engine.executeCycle()).to.be.revertedWithCustomError(
+          engine,
+          "StrategyEngine__NotExecutable"
+        );
       });
 
       it("should increment cycleCount on execution", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
 
         const countBefore = await engine.cycleCount();
         await (await engine.executeCycle()).wait();
@@ -782,7 +1028,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should update currentState after execution", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         await (await oracle.setPrice(ethers.parseUnits("1.03", 8))).wait();
@@ -798,7 +1048,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should update lastPrice after execution", async function () {
         const { user1, vault, oracle, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
         await (await engine.executeCycle()).wait();
 
         const newPrice = ethers.parseUnits("1.05", 8);
@@ -813,7 +1067,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       it("should emit DecisionProof event", async function () {
         const { user1, vault, engine } = await deployFullFixture();
 
-        await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+        await (
+          await vault
+            .connect(user1)
+            .deposit(ethers.parseUnits("1000", 18), user1.address)
+        ).wait();
 
         await expect(engine.executeCycle()).to.emit(engine, "DecisionProofV2");
       });
@@ -844,17 +1102,93 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
       // guardedAsterBps < normalAsterBps should fail (Aster must be non-decreasing with risk)
       await expect(
-        RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 8000, 7000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
-      ).to.be.revertedWithCustomError(await RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 9000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0).catch(() => ({ interface: null })) || { interface: null }, "RiskPolicy__AllocsNotMonotonic")
-       .catch(async () => {
-         await expect(
-           RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 8000, 7000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
-         ).to.be.reverted;
-       });
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          40,
+          8000,
+          7000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
+      )
+        .to.be.revertedWithCustomError(
+          (await RiskPolicy.deploy(
+            300,
+            200,
+            500,
+            ethers.parseUnits("0.97", 8),
+            100,
+            40,
+            9000,
+            9000,
+            10000,
+            0,
+            60,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0
+          ).catch(() => ({ interface: null }))) || { interface: null },
+          "RiskPolicy__AllocsNotMonotonic"
+        )
+        .catch(async () => {
+          await expect(
+            RiskPolicy.deploy(
+              300,
+              200,
+              500,
+              ethers.parseUnits("0.97", 8),
+              100,
+              40,
+              8000,
+              7000,
+              10000,
+              0,
+              60,
+              0,
+              5,
+              0,
+              0,
+              0,
+              0
+            )
+          ).to.be.reverted;
+        });
 
       // drawdownAsterBps < guardedAsterBps should fail
       await expect(
-        RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 7000, 9000, 8500, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          40,
+          7000,
+          9000,
+          8500,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
 
@@ -862,22 +1196,80 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(300, 600, 500, ethers.parseUnits("0.97", 8), 100, 40, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
-      ).to.be.revertedWithCustomError(
-        await ethers.getContractAt("RiskPolicy", ethers.ZeroAddress).catch(() => ({ interface: new ethers.Interface([]) })),
-        "RiskPolicy__VolatilityOrderInvalid"
-      ).catch(async () => {
-        await expect(
-          RiskPolicy.deploy(300, 600, 500, ethers.parseUnits("0.97", 8), 100, 40, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
-        ).to.be.reverted;
-      });
+        RiskPolicy.deploy(
+          300,
+          600,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          40,
+          7000,
+          9000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
+      )
+        .to.be.revertedWithCustomError(
+          await ethers
+            .getContractAt("RiskPolicy", ethers.ZeroAddress)
+            .catch(() => ({ interface: new ethers.Interface([]) })),
+          "RiskPolicy__VolatilityOrderInvalid"
+        )
+        .catch(async () => {
+          await expect(
+            RiskPolicy.deploy(
+              300,
+              600,
+              500,
+              ethers.parseUnits("0.97", 8),
+              100,
+              40,
+              7000,
+              9000,
+              10000,
+              0,
+              60,
+              0,
+              5,
+              0,
+              0,
+              0,
+              0
+            )
+          ).to.be.reverted;
+        });
     });
 
     it("should enforce maximum slippage constraint", async function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 1001, 40, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          1001,
+          40,
+          7000,
+          9000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
 
@@ -885,7 +1277,25 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 201, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          201,
+          7000,
+          9000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
 
@@ -893,7 +1303,25 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(0, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          0,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          40,
+          7000,
+          9000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
 
@@ -901,7 +1329,25 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(300, 200, 500, 0, 100, 40, 7000, 9000, 10000, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          0,
+          100,
+          40,
+          7000,
+          9000,
+          10000,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
 
@@ -909,7 +1355,25 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
 
       await expect(
-        RiskPolicy.deploy(300, 200, 500, ethers.parseUnits("0.97", 8), 100, 40, 10001, 10001, 10001, 0, 60, 0, 5, 0, 0, 0, 0)
+        RiskPolicy.deploy(
+          300,
+          200,
+          500,
+          ethers.parseUnits("0.97", 8),
+          100,
+          40,
+          10001,
+          10001,
+          10001,
+          0,
+          60,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0
+        )
       ).to.be.reverted;
     });
   });
@@ -972,8 +1436,10 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const oracle = await Oracle.deploy(await agg.getAddress(), 3600);
       await oracle.waitForDeployment();
 
-      await expect(oracle.getPrice())
-        .to.be.revertedWithCustomError(oracle, "ChainlinkPriceOracle__StalePrice");
+      await expect(oracle.getPrice()).to.be.revertedWithCustomError(
+        oracle,
+        "ChainlinkPriceOracle__StalePrice"
+      );
     });
 
     it("should revert on invalid non-positive price", async function () {
@@ -987,8 +1453,10 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const oracle = await Oracle.deploy(await agg.getAddress(), 3600);
       await oracle.waitForDeployment();
 
-      await expect(oracle.getPrice())
-        .to.be.revertedWithCustomError(oracle, "ChainlinkPriceOracle__InvalidPrice");
+      await expect(oracle.getPrice()).to.be.revertedWithCustomError(
+        oracle,
+        "ChainlinkPriceOracle__InvalidPrice"
+      );
     });
 
     it("should revert on invalid round", async function () {
@@ -1001,8 +1469,10 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       const oracle = await Oracle.deploy(await agg.getAddress(), 3600);
       await oracle.waitForDeployment();
 
-      await expect(oracle.getPrice())
-        .to.be.revertedWithCustomError(oracle, "ChainlinkPriceOracle__MissingTimestamp");
+      await expect(oracle.getPrice()).to.be.revertedWithCustomError(
+        oracle,
+        "ChainlinkPriceOracle__MissingTimestamp"
+      );
     });
 
     it("should have locked=true (always)", async function () {
@@ -1026,10 +1496,26 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
 
   describe("Integration: Full Deposit -> Execute -> Withdraw Flow", function () {
     it("should execute complete cycle with allocation changes", async function () {
-      const { user1, user2, vault, engine, asterAdapter, secondaryAdapter, oracle } = await deployFullFixture();
+      const {
+        user1,
+        user2,
+        vault,
+        engine,
+        asterAdapter,
+        secondaryAdapter,
+        oracle,
+      } = await deployFullFixture();
 
-      await (await vault.connect(user1).deposit(ethers.parseUnits("500", 18), user1.address)).wait();
-      await (await vault.connect(user2).deposit(ethers.parseUnits("300", 18), user2.address)).wait();
+      await (
+        await vault
+          .connect(user1)
+          .deposit(ethers.parseUnits("500", 18), user1.address)
+      ).wait();
+      await (
+        await vault
+          .connect(user2)
+          .deposit(ethers.parseUnits("300", 18), user2.address)
+      ).wait();
 
       const totalBefore = await vault.totalAssets();
       expect(totalBefore).to.equal(ethers.parseUnits("800", 18));
@@ -1050,7 +1536,9 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       expect(aster).to.be.greaterThan(ethers.parseUnits("700", 18));
 
       const shares1 = await vault.balanceOf(user1.address);
-      await (await vault.connect(user1).redeem(shares1, user1.address, user1.address)).wait();
+      await (
+        await vault.connect(user1).redeem(shares1, user1.address, user1.address)
+      ).wait();
 
       expect(await vault.balanceOf(user1.address)).to.equal(0);
     });
@@ -1058,7 +1546,11 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
     it("should transition through all risk states", async function () {
       const { user1, vault, engine, oracle } = await deployFullFixture();
 
-      await (await vault.connect(user1).deposit(ethers.parseUnits("1000", 18), user1.address)).wait();
+      await (
+        await vault
+          .connect(user1)
+          .deposit(ethers.parseUnits("1000", 18), user1.address)
+      ).wait();
 
       await (await engine.executeCycle()).wait();
       expect(await engine.currentState()).to.equal(0);

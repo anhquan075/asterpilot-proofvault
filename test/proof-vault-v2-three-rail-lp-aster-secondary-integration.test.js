@@ -341,15 +341,14 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
 
       // Set engine + adapters without lpAdapter (pass zero address via setAdapters with lp=zero)
       await vault.setEngine(engine.target);
-      // Only set aster + secondary, no LP — should fail lockConfiguration
+      // Only set aster + secondary, no LP — lpAdapter is optional so should succeed
       await vault.setAdapters(
         aster.target,
         secondary.target,
         ethers.ZeroAddress
       );
-      await expect(vault.lockConfiguration()).to.be.revertedWith(
-        "ProofVault: lp not set"
-      );
+      // lockConfiguration should succeed because lpAdapter is optional
+      await expect(vault.lockConfiguration()).to.not.be.reverted;
     });
   });
 
@@ -461,7 +460,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
   // ── RiskPolicy LP constructor validations ────────────────────────────────
 
   describe("RiskPolicy LP Param Validations", function () {
-    it("Should revert if normalLpBps + normalAsterBps > 9000", async function () {
+    it("Should revert if normalLpBps + normalAsterBps > 10000", async function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
       await expect(
         RiskPolicy.deploy(
@@ -479,14 +478,17 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
           500,
           5,
           5000,
-          7001,
+          8001,
           1500,
-          500 // 7001 + 2000 = 9001 > 9000
+          500 // 8001 + 2000 = 10001 > 10000
         )
-      ).to.be.revertedWith("normal aster+lp > 90%");
+      ).to.be.revertedWithCustomError(
+        RiskPolicy,
+        "RiskPolicy__CombinedAllocationTooHigh"
+      );
     });
 
-    it("Should revert if guardedLpBps + guardedAsterBps > 9000", async function () {
+    it("Should revert if guardedLpBps + guardedAsterBps > 10000", async function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
       await expect(
         RiskPolicy.deploy(
@@ -505,13 +507,16 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
           5,
           5000,
           2000,
-          4001,
-          500 // 4001 + 5000 = 9001 > 9000
+          5001,
+          500 // 5001 + 5000 = 10001 > 10000
         )
-      ).to.be.revertedWith("guarded aster+lp > 90%");
+      ).to.be.revertedWithCustomError(
+        RiskPolicy,
+        "RiskPolicy__CombinedAllocationTooHigh"
+      );
     });
 
-    it("Should revert if drawdownLpBps + drawdownAsterBps > 9000", async function () {
+    it("Should revert if drawdownLpBps + drawdownAsterBps > 10000", async function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
       await expect(
         RiskPolicy.deploy(
@@ -531,14 +536,17 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
           5000,
           2000,
           1500,
-          2001 // 2001 + 7000 = 9001 > 9000
+          3001 // 3001 + 7000 = 10001 > 10000
         )
-      ).to.be.revertedWith("drawdown aster+lp > 90%");
+      ).to.be.revertedWithCustomError(
+        RiskPolicy,
+        "RiskPolicy__CombinedAllocationTooHigh"
+      );
     });
 
-    it("Should accept valid LP params at boundary (9000 exact)", async function () {
+    it("Should accept valid LP params at boundary (10000 exact)", async function () {
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
-      // 2000 aster + 7000 lp = 9000 exactly — should pass
+      // 2000 aster + 7000 lp = 9000 each rail (all under 10000 limit) — should pass
       await expect(
         RiskPolicy.deploy(
           300,

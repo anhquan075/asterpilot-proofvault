@@ -1,15 +1,23 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { loadFixture, time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+const {
+  loadFixture,
+  time,
+} = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 // ─── Auction Timing Constants ────────────────────────────────────────────────
 const BID_WINDOW = 120; // 2 minutes
-const EXECUTE_WINDOW = 60;  // 1 minute
+const EXECUTE_WINDOW = 60; // 1 minute
 const MIN_BID = ethers.parseEther("1"); // 1 USDT
 const BOUNTY_AMOUNT = ethers.parseEther("0.5"); // 0.5 USDT bounty per cycle
 
 // ─── Phase enum mirrors Solidity ─────────────────────────────────────────────
-const Phase = { NotOpen: 0n, BidPhase: 1n, ExecutePhase: 2n, FallbackPhase: 3n };
+const Phase = {
+  NotOpen: 0n,
+  BidPhase: 1n,
+  ExecutePhase: 2n,
+  FallbackPhase: 3n,
+};
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
 async function deployFixture() {
@@ -43,7 +51,9 @@ async function deployFixture() {
   // Give alice, bob, carol USDT
   for (const signer of [alice, bob, carol]) {
     await usdt.mint(signer.address, ethers.parseEther("100"));
-    await usdt.connect(signer).approve(await auction.getAddress(), ethers.MaxUint256);
+    await usdt
+      .connect(signer)
+      .approve(await auction.getAddress(), ethers.MaxUint256);
   }
 
   return { auction, engine, usdt, deployer, alice, bob, carol, vaultOwner };
@@ -51,10 +61,11 @@ async function deployFixture() {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
-
   describe("Deployment", function () {
     it("stores correct immutables", async function () {
-      const { auction, engine, usdt, vaultOwner } = await loadFixture(deployFixture);
+      const { auction, engine, usdt, vaultOwner } = await loadFixture(
+        deployFixture
+      );
       expect(await auction.engine()).to.equal(await engine.getAddress());
       expect(await auction.vault()).to.equal(vaultOwner.address);
       expect(await auction.usdt()).to.equal(await usdt.getAddress());
@@ -112,21 +123,42 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
     it("rejects bid when engine is not ready", async function () {
       const { auction, engine, alice } = await loadFixture(deployFixture);
       await engine.setReady(false);
-      await expect(auction.connect(alice).bid(MIN_BID))
-        .to.be.revertedWith("EA: engine not ready");
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
+      await expect(
+        auction.connect(alice).bid(MIN_BID)
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__EngineNotReady"
+      );
     });
 
     it("rejects bid below minBid", async function () {
       const { auction, alice } = await loadFixture(deployFixture);
-      await expect(auction.connect(alice).bid(MIN_BID - 1n))
-        .to.be.revertedWith("EA: below min bid");
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
+      await expect(
+        auction.connect(alice).bid(MIN_BID - 1n)
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__BelowMinBid"
+      );
     });
 
     it("rejects bid not exceeding current winning bid", async function () {
       const { auction, alice, bob } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
-      await expect(auction.connect(bob).bid(MIN_BID))
-        .to.be.revertedWith("EA: bid too low");
+      await expect(
+        auction.connect(bob).bid(MIN_BID)
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__BidTooLow"
+      );
     });
 
     it("records highest bidder and queues refund for outbid party", async function () {
@@ -152,15 +184,24 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
       const before = await usdt.balanceOf(alice.address);
       await auction.connect(alice).bid(MIN_BID);
       expect(await usdt.balanceOf(alice.address)).to.equal(before - MIN_BID);
-      expect(await usdt.balanceOf(await auction.getAddress())).to.equal(MIN_BID);
+      expect(await usdt.balanceOf(await auction.getAddress())).to.equal(
+        MIN_BID
+      );
     });
 
     it("rejects bid after bid phase ends", async function () {
       const { auction, alice, bob } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       await time.increase(BID_WINDOW);
-      await expect(auction.connect(bob).bid(ethers.parseEther("2")))
-        .to.be.revertedWith("EA: not bid phase");
+      await expect(
+        auction.connect(bob).bid(ethers.parseEther("2"))
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotBidPhase"
+      );
     });
   });
 
@@ -168,22 +209,38 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
   describe("winnerExecute()", function () {
     it("reverts when not in execute phase", async function () {
       const { auction, alice } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       // Still in BidPhase
-      await expect(auction.connect(alice).winnerExecute())
-        .to.be.revertedWith("EA: not execute phase");
+      await expect(
+        auction.connect(alice).winnerExecute()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotExecutePhase"
+      );
     });
 
     it("reverts when called by non-winner", async function () {
       const { auction, alice, bob } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       await time.increase(BID_WINDOW);
-      await expect(auction.connect(bob).winnerExecute())
-        .to.be.revertedWith("EA: not winner");
+      await expect(
+        auction.connect(bob).winnerExecute()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotWinner"
+      );
     });
 
     it("transfers bid to vault and bounty to winner (core RRA economics)", async function () {
-      const { auction, usdt, alice, vaultOwner } = await loadFixture(deployFixture);
+      const { auction, usdt, alice, vaultOwner } = await loadFixture(
+        deployFixture
+      );
       const bidAmt = ethers.parseEther("2");
       await auction.connect(alice).bid(bidAmt);
       await time.increase(BID_WINDOW);
@@ -203,7 +260,9 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
     });
 
     it("net vault gain = bid - bounty (positive economics)", async function () {
-      const { auction, usdt, alice, vaultOwner } = await loadFixture(deployFixture);
+      const { auction, usdt, alice, vaultOwner } = await loadFixture(
+        deployFixture
+      );
       const bidAmt = ethers.parseEther("2"); // bid > bounty (0.5)
       await auction.connect(alice).bid(bidAmt);
       await time.increase(BID_WINDOW);
@@ -213,7 +272,7 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
       const vaultAfter = await usdt.balanceOf(vaultOwner.address);
 
       const netGain = vaultAfter - vaultBefore; // bid in, bounty stays in vault
-      expect(netGain).to.equal(bidAmt);         // vault keeps full bid; bounty came from engine's separate pool
+      expect(netGain).to.equal(bidAmt); // vault keeps full bid; bounty came from engine's separate pool
     });
 
     it("accumulates totalBidRevenue across rounds", async function () {
@@ -248,13 +307,20 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
 
     it("marks round as closed (no double execution)", async function () {
       const { auction, alice } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       await time.increase(BID_WINDOW);
       await auction.connect(alice).winnerExecute();
 
       // Phase is now NotOpen; cannot execute again
-      await expect(auction.connect(alice).winnerExecute())
-        .to.be.revertedWith("EA: not execute phase");
+      await expect(
+        auction.connect(alice).winnerExecute()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotExecutePhase"
+      );
     });
   });
 
@@ -262,11 +328,18 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
   describe("fallbackExecute()", function () {
     it("reverts when not in fallback phase", async function () {
       const { auction, alice, bob } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       await time.increase(BID_WINDOW);
       // Still in ExecutePhase
-      await expect(auction.connect(bob).fallbackExecute())
-        .to.be.revertedWith("EA: not fallback phase");
+      await expect(
+        auction.connect(bob).fallbackExecute()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotFallbackPhase"
+      );
     });
 
     it("refunds winner's bid and pays bounty to fallback executor", async function () {
@@ -285,7 +358,9 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
     });
 
     it("vault receives no bid in fallback (old bounty-out economics preserved)", async function () {
-      const { auction, usdt, alice, bob, vaultOwner } = await loadFixture(deployFixture);
+      const { auction, usdt, alice, bob, vaultOwner } = await loadFixture(
+        deployFixture
+      );
       await auction.connect(alice).bid(MIN_BID);
       await time.increase(BID_WINDOW + EXECUTE_WINDOW);
 
@@ -301,8 +376,15 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
       // No bid placed, no round opened → can just call engine directly
       // This tests that fallback reverts correctly when there's no active round
       const { auction, bob } = await loadFixture(deployFixture);
-      await expect(auction.connect(bob).fallbackExecute())
-        .to.be.revertedWith("EA: not fallback phase");
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
+      await expect(
+        auction.connect(bob).fallbackExecute()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NotFallbackPhase"
+      );
     });
   });
 
@@ -320,18 +402,32 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
 
     it("reverts with no pending refund", async function () {
       const { auction, alice } = await loadFixture(deployFixture);
-      await expect(auction.connect(alice).claimRefund())
-        .to.be.revertedWith("EA: no refund");
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
+      await expect(
+        auction.connect(alice).claimRefund()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NoRefund"
+      );
     });
 
     it("clears pending refund after claim (no double-claim)", async function () {
       const { auction, alice, bob } = await loadFixture(deployFixture);
+      const ExecutionAuction = await ethers.getContractFactory(
+        "ExecutionAuction"
+      );
       await auction.connect(alice).bid(MIN_BID);
       await auction.connect(bob).bid(ethers.parseEther("2"));
       await auction.connect(alice).claimRefund();
 
-      await expect(auction.connect(alice).claimRefund())
-        .to.be.revertedWith("EA: no refund");
+      await expect(
+        auction.connect(alice).claimRefund()
+      ).to.be.revertedWithCustomError(
+        ExecutionAuction,
+        "ExecutionAuction__NoRefund"
+      );
     });
 
     it("emits Refunded event", async function () {
@@ -354,8 +450,9 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
 
       // Simulate circuit breaker trip
       await engine.setShouldRevert(true);
-      await expect(auction.connect(alice).winnerExecute())
-        .to.be.revertedWith("MockEngine: breaker tripped");
+      await expect(auction.connect(alice).winnerExecute()).to.be.revertedWith(
+        "MockEngine: breaker tripped"
+      );
 
       // Round still open — alice can retry after breaker clears
       expect(await auction.phase()).to.equal(Phase.ExecutePhase);
@@ -374,7 +471,9 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
       await auction.connect(alice).bid(MIN_BID);
       const status = await auction.roundStatus();
       expect(status.bidTimeRemaining).to.be.closeTo(BigInt(BID_WINDOW), 2n);
-      expect(status.executeTimeRemaining).to.equal(BigInt(BID_WINDOW + EXECUTE_WINDOW));
+      expect(status.executeTimeRemaining).to.equal(
+        BigInt(BID_WINDOW + EXECUTE_WINDOW)
+      );
     });
 
     it("shows correct execute time remaining after bid phase", async function () {
@@ -383,7 +482,10 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
       await time.increase(BID_WINDOW);
       const status = await auction.roundStatus();
       expect(status.bidTimeRemaining).to.equal(0n);
-      expect(status.executeTimeRemaining).to.be.closeTo(BigInt(EXECUTE_WINDOW), 2n);
+      expect(status.executeTimeRemaining).to.be.closeTo(
+        BigInt(EXECUTE_WINDOW),
+        2n
+      );
     });
 
     it("stats() returns cumulative totals", async function () {

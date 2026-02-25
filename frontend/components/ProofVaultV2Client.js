@@ -180,6 +180,7 @@ export default function ProofVaultV2Client() {
   );
 
   const networkSupported = wallet.networkChainId === null || SUPPORTED_CHAIN_IDS.has(wallet.networkChainId);
+  const vaultAccountingHealthy = vaultState.totalAssetsRaw !== null;
 
   return (
     <section className="panel panel--enhanced">
@@ -189,6 +190,13 @@ export default function ProofVaultV2Client() {
         <div className="networkStrip">
           <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
           Wrong network detected. Switch to BNB Smart Chain (BSC Mainnet, Chain ID 56).
+        </div>
+      )}
+
+      {!vaultAccountingHealthy && (
+        <div className="networkStrip">
+          <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+          Vault accounting check failed (`totalAssets()` reverted). Deposits are temporarily blocked until deployment config is healthy.
         </div>
       )}
 

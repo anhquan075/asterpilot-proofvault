@@ -41,6 +41,7 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     // ── events (adapter) ──
     event ExternalCallResult(bytes4 indexed selector, bool success, bytes data);
     event SwapExecuted(uint256 usdtIn, uint256 usdfOut);
+    event ReverseSwapExecuted(uint256 usdfIn, uint256 usdtOut);
     event SwapSettingsUpdated(uint256 slippageBps);
 
     // ── errors ──
@@ -128,7 +129,9 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
             abi.encodeWithSelector(managedAssetsSelector, address(this))
         );
         uint256 minterBalance = ok && data.length >= 32 ? abi.decode(data, (uint256)) : 0;
-        return minterBalance + totalPending;
+        uint256 inputIdle = _inputAsset.balanceOf(address(this));
+        uint256 outputIdle = _outputAsset.balanceOf(address(this));
+        return minterBalance + totalPending + inputIdle + outputIdle;
     }
 
     /// @notice Called by vault after transferring USDT to this adapter
@@ -147,6 +150,7 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     function withdrawToVault(uint256 amount) external onlyVault returns (uint256) {
         // first, claim any matured requests to free liquid funds
         _claimAllMaturedInternal();
+        _swapAllOutputToInput();
 
         uint256 available = _inputAsset.balanceOf(address(this));
         uint256 actual = available < amount ? available : amount;
@@ -187,12 +191,24 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         emit WithdrawRequested(requestId, amt, maturity);
     }
 
-    function claimWithdraw(uint256 index) external onlyVault returns (uint256) {
-        return _claimAtIndex(index);
+    function claimWithdraw(uint256 index) external onlyVault returns (uint256 claimed) {
+        claimed = _claimAtIndex(index);
+        _swapAllOutputToInput();
+
+        uint256 sent = _inputAsset.balanceOf(address(this));
+        if (sent > 0) {
+            _inputAsset.safeTransfer(vault, sent);
+        }
     }
 
-    function claimAllMatured() external returns (uint256 totalClaimed) {
-        return _claimAllMaturedInternal();
+    function claimAllMatured() external onlyVault returns (uint256 totalClaimed) {
+        totalClaimed = _claimAllMaturedInternal();
+        _swapAllOutputToInput();
+
+        uint256 sent = _inputAsset.balanceOf(address(this));
+        if (sent > 0) {
+            _inputAsset.safeTransfer(vault, sent);
+        }
     }
 
     function pendingWithdrawals() external view returns (WithdrawRequest[] memory) {
@@ -244,10 +260,42 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
             address(this),
             block.timestamp + 300 // 5 min deadline
         );
+        _inputAsset.forceApprove(address(router), 0);
 
         usdfReceived = amounts[1];
         emit SwapExecuted(usdtAmount, usdfReceived);
         return usdfReceived;
+    }
+
+    function _swapUsdfToUsdt(uint256 usdfAmount) internal returns (uint256 usdtReceived) {
+        if (usdfAmount == 0) return 0;
+
+        address[] memory path = new address[](2);
+        path[0] = address(_outputAsset);
+        path[1] = address(_inputAsset);
+
+        uint256[] memory amountsOut = router.getAmountsOut(usdfAmount, path);
+        uint256 minUsdtOut = amountsOut[1] * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
+
+        _outputAsset.forceApprove(address(router), usdfAmount);
+        uint256[] memory amounts = router.swapExactTokensForTokens(
+            usdfAmount,
+            minUsdtOut,
+            path,
+            address(this),
+            block.timestamp + 300
+        );
+        _outputAsset.forceApprove(address(router), 0);
+
+        usdtReceived = amounts[1];
+        emit ReverseSwapExecuted(usdfAmount, usdtReceived);
+        return usdtReceived;
+    }
+
+    function _swapAllOutputToInput() internal {
+        uint256 outputBalance = _outputAsset.balanceOf(address(this));
+        if (outputBalance == 0) return;
+        _swapUsdfToUsdt(outputBalance);
     }
 
     function _claimAtIndex(uint256 index) internal returns (uint256) {

@@ -26,35 +26,35 @@ export function VaultDutchAuctionBountyCountdownCard({ auctionState }) {
     <div className="card card--accent">
       <h3 className="card__title">🎯 Dutch Auction Bounty</h3>
 
-      <div className="auction__current">
-        <div className="auction__bounty-value">
+      <div className="auction__current" style={{ margin: '12px 0', textAlign: 'center' }}>
+        <div className="auction__bounty-value" style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
           {fmtBps(currentBountyBps)}
         </div>
-        <div className="card__muted">Current bounty reward</div>
+        <div className="card__muted" style={{ fontSize: '0.85em' }}>Current bounty</div>
       </div>
 
-      <div className="auction__progress-bar">
+      <div className="auction__progress-bar" style={{ margin: '12px 0' }}>
         <div className="auction__progress-fill" style={{ width: `${progressPct}%` }} />
       </div>
 
-      <div className="auction__stats">
+      <div className="auction__stats" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85em', marginBottom: 4 }}>
         <div>
-          <span className="card__muted">Min: </span>
+          <span className="card__muted">Min </span>
           <span>{fmtBps(minBountyBps)}</span>
         </div>
         <div>
-          <span className="card__muted">Max: </span>
+          <span className="card__muted">Max </span>
           <span>{fmtBps(maxBountyBps)}</span>
         </div>
       </div>
 
-      <div className="auction__time">
+      <div className="auction__time" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85em' }}>
         <div>
-          <span className="card__muted">Elapsed: </span>
+          <span className="card__muted">Elapsed </span>
           <span>{formatTime(elapsed)}</span>
         </div>
         <div>
-          <span className="card__muted">Remaining: </span>
+          <span className="card__muted">Left </span>
           <span>{formatTime(Number(auctionRemaining ?? 0n))}</span>
         </div>
       </div>

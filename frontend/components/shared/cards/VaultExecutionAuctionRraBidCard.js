@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+
 import { executionAuctionAbi, erc20Abi } from "@/lib/abi";
 import { fmtUsdf } from "@/lib/vaultDisplayFormatters";
 
@@ -18,6 +19,62 @@ function fmtSeconds(secs) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+function fmtMinutes(secs) {
+  if (!secs) return "—";
+  const n = Number(secs);
+  const m = Math.floor(n / 60);
+  const s = n % 60;
+  return m > 0 ? `${m}m ${s > 0 ? ` ${s}s` : ""}` : `${s}s`;
+}
+
+/** Phase progress bar — fills left-to-right as time within window elapses */
+function PhaseProgressBar({ phase, bidTimeRemaining, executeTimeRemaining, auctionParams }) {
+  if (phase === 0 || !auctionParams) return null;
+
+  let windowSecs = 0;
+  let elapsedSecs = 0;
+  let color = "var(--text-muted)";
+
+  if (phase === 1 && auctionParams.bidWindow) {
+    windowSecs = Number(auctionParams.bidWindow);
+    elapsedSecs = windowSecs - Number(bidTimeRemaining ?? 0);
+    color = "var(--accent)";
+  } else if (phase === 2 && auctionParams.executeWindow) {
+    windowSecs = Number(auctionParams.executeWindow);
+    elapsedSecs = windowSecs - Number(executeTimeRemaining ?? 0);
+    color = "var(--success)";
+  } else if (phase === 3) {
+    // Fallback: full bar, warning color
+    windowSecs = 1;
+    elapsedSecs = 1;
+    color = "var(--warning)";
+  }
+
+  const pct = windowSecs > 0 ? Math.min(100, Math.max(0, (elapsedSecs / windowSecs) * 100)) : 0;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 10, color: "var(--text-muted)" }}>
+        <span>Phase elapsed</span>
+        <span style={{ color }}>{pct.toFixed(0)}%</span>
+      </div>
+      <div className="thresholdTrack">
+        <span className="thresholdFill" style={{ width: `${pct}%`, background: color, display: "block", height: "100%", borderRadius: 0 }} />
+      </div>
+    </div>
+  );
+}
+
+/** Small info row used in the auction params panel */
+function InfoRow({ label, value, valueColor }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+      <span style={{ color: "var(--text-muted)" }}>{label}</span>
+      <span style={{ color: valueColor ?? "var(--text)", fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
 export function VaultExecutionAuctionRraBidCard({
   executionAuctionAddress,
   tokenAddress,
@@ -31,8 +88,33 @@ export function VaultExecutionAuctionRraBidCard({
   const [roundStatus, setRoundStatus] = useState(null);
   const [auctionStats, setAuctionStats] = useState(null);
   const [pendingRefund, setPendingRefund] = useState(null);
+  const [auctionParams, setAuctionParams] = useState(null); // immutables, fetched once
   const [bidAmount, setBidAmount] = useState("");
   const [loading, setLoading] = useState(false);
+
+  /** Fetch immutable auction parameters once (they never change) */
+
+  /** Fetch immutable auction parameters once (they never change) */
+  const fetchParams = useCallback(async () => {
+    if (!executionAuctionAddress || !signer) return;
+    try {
+      const ethersLib = await import("ethers");
+      const auction = new ethersLib.Contract(
+        ethersLib.getAddress(executionAuctionAddress),
+        executionAuctionAbi,
+        signer
+      );
+      const [bidWindow, executeWindow, minBid, minBidIncrementBps] = await Promise.all([
+        auction.bidWindow().catch(() => null),
+        auction.executeWindow().catch(() => null),
+        auction.minBid().catch(() => null),
+        auction.minBidIncrementBps().catch(() => null),
+      ]);
+      setAuctionParams({ bidWindow, executeWindow, minBid, minBidIncrementBps });
+    } catch {
+      // silent
+    }
+  }, [executionAuctionAddress, signer]);
 
   const fetchState = useCallback(async () => {
     if (!executionAuctionAddress) return;
@@ -75,6 +157,12 @@ export function VaultExecutionAuctionRraBidCard({
     }
   }, [executionAuctionAddress, signer, walletAddress]);
 
+  // Fetch immutables once on mount / address change
+  useEffect(() => {
+    fetchParams();
+  }, [fetchParams]);
+
+  // Poll live state every 15s
   useEffect(() => {
     fetchState();
     const id = setInterval(fetchState, 15000);
@@ -204,13 +292,25 @@ export function VaultExecutionAuctionRraBidCard({
     phase === 3 ? "var(--warning)" :
     "var(--text-muted)";
 
+  // Minimum next bid — current winning + increment, or minBid if no bids yet
+  const minNextBid = (() => {
+    if (!auctionParams?.minBid) return null;
+    const base = roundStatus?.winningBid && roundStatus.winningBid > 0n
+      ? roundStatus.winningBid
+      : null;
+    if (!base || !auctionParams.minBidIncrementBps) return fmtUsdf(auctionParams.minBid);
+    // base * (10000 + minBidIncrementBps) / 10000
+    const inc = (base * (10000n + BigInt(auctionParams.minBidIncrementBps))) / 10000n;
+    return fmtUsdf(inc);
+  })();
+
   return (
     <div className="card">
-      <p className="eyebrow">Execution Auction (RRA)</p>
-      <h3 className="cardTitle">Keeper Bid System</h3>
-
-      {/* Phase + Round info */}
-      <div className="kpiGrid" style={{ marginTop: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+      <div>
+        <p className="eyebrow" style={{ margin: 0 }}>Execution Auction (RRA)</p>
+        <h3 className="cardTitle" style={{ margin: "2px 0 0" }}>Keeper Bid System</h3>
+      </div>
+      <div className="kpiGrid" style={{ marginTop: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
         <div className="kpi">
           <span className="kpiLabel">Round</span>
           <span className="kpiValue">#{roundStatus?.id != null ? String(roundStatus.id) : "—"}</span>
@@ -219,41 +319,83 @@ export function VaultExecutionAuctionRraBidCard({
           <span className="kpiLabel">Phase</span>
           <span className="kpiValue" style={{ color: phaseTone }}>{phaseLabel}</span>
         </div>
+        <div className="kpi">
+          <span className="kpiLabel">Total Rounds</span>
+          <span className="kpiValue">{auctionStats?.totalRounds != null ? String(auctionStats.totalRounds) : "—"}</span>
+        </div>
       </div>
 
-      {/* Bid state */}
-      <div style={{ marginTop: 12, fontSize: 11, display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ color: "var(--text-muted)" }}>Winning bid</span>
-          <span>{fmtUsdf(roundStatus?.winningBid)}</span>
+      {/* ─── Phase progress bar (only when active) ─── */}
+      <PhaseProgressBar
+        phase={phase}
+        bidTimeRemaining={roundStatus?.bidTimeRemaining}
+        executeTimeRemaining={roundStatus?.executeTimeRemaining}
+        auctionParams={auctionParams}
+      />
+      {/* ─── How it works (always visible) ─── */}
+      <div style={{ marginTop: 14, borderTop: "1px dashed rgba(255,255,255,.06)", paddingTop: 12 }}>
+        <p style={{ margin: "0 0 8px", fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--accent)", fontWeight: 700 }}>How It Works</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7, color: "rgba(240,212,168,0.7)", fontSize: 11, lineHeight: 1.6 }}>
+          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>①</span><span>Bidders compete for the right to execute the rebalance cycle.</span></div>
+          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>②</span><span>Highest bid wins. Outbid amounts are refundable immediately.</span></div>
+          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>③</span><span>Winner calls <strong style={{ color: "rgba(240,212,168,1)" }}>Execute</strong> to run the cycle and earn the bounty. Bid fee accrues to the vault.</span></div>
+          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "#C8935A", flexShrink: 0, fontWeight: 700 }}>④</span><span>If winner doesn't execute in time, anyone may <strong style={{ color: "rgba(240,212,168,1)" }}>Fallback Execute</strong>.</span></div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ color: "var(--text-muted)" }}>Winner</span>
-          <span style={{ color: isWinner ? "var(--success)" : "var(--text)" }}>
-            {shortAddr(roundStatus?.winner)}{isWinner ? " (you)" : ""}
-          </span>
-        </div>
-        {phase === 1 && roundStatus?.bidTimeRemaining != null && (
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-muted)" }}>Bid time left</span>
-            <span style={{ color: "var(--accent)" }}>{fmtSeconds(roundStatus.bidTimeRemaining)}</span>
-          </div>
-        )}
-        {phase === 2 && roundStatus?.executeTimeRemaining != null && (
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-muted)" }}>Execute time left</span>
-            <span style={{ color: "var(--success)" }}>{fmtSeconds(roundStatus.executeTimeRemaining)}</span>
-          </div>
-        )}
-        {auctionStats?.bidRevenue != null && (
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-muted)" }}>Total bid revenue</span>
-            <span>{fmtUsdf(auctionStats.bidRevenue)}</span>
-          </div>
-        )}
       </div>
 
-      {/* Bid input */}
+      {/* ─── NotOpen explainer ─── */}
+      {phase === 0 && (
+        <div style={{ marginTop: 14, borderTop: "1px dashed rgba(255,255,255,.06)", paddingTop: 12 }}>
+          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
+            No round is active. A new round opens automatically when the next{" "}
+            <span style={{ color: "var(--text)" }}>bid()</span> is placed — any address can open
+            a round by submitting a bid once the strategy engine cycle is ready.
+          </p>
+          {auctionStats?.bidRevenue != null && auctionStats.bidRevenue > 0n && (
+            <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+              <span style={{ color: "var(--text-muted)" }}>Lifetime bid revenue</span>
+              <span style={{ color: "var(--accent)", fontWeight: 600 }}>{fmtUsdf(auctionStats.bidRevenue)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Live bid state (active round) ─── */}
+      {phase > 0 && (
+        <div style={{ marginTop: 12, fontSize: 11, display: "flex", flexDirection: "column", gap: 6 }}>
+          <InfoRow label="Winning bid" value={fmtUsdf(roundStatus?.winningBid)} />
+          <InfoRow
+            label="Winner"
+            value={`${shortAddr(roundStatus?.winner)}${isWinner ? " (you)" : ""}`}
+            valueColor={isWinner ? "var(--success)" : "var(--text)"}
+          />
+          {phase === 1 && roundStatus?.bidTimeRemaining != null && (
+            <InfoRow
+              label="Bid time left"
+              value={fmtSeconds(roundStatus.bidTimeRemaining)}
+              valueColor="var(--accent)"
+            />
+          )}
+          {phase === 2 && roundStatus?.executeTimeRemaining != null && (
+            <InfoRow
+              label="Execute time left"
+              value={fmtSeconds(roundStatus.executeTimeRemaining)}
+              valueColor="var(--success)"
+            />
+          )}
+          {auctionStats?.bidRevenue != null && (
+            <InfoRow label="Lifetime bid revenue" value={fmtUsdf(auctionStats.bidRevenue)} />
+          )}
+          {minNextBid && phase === 1 && (
+            <InfoRow label="Min next bid" value={minNextBid} valueColor="var(--accent)" />
+          )}
+        </div>
+      )}
+
+
+
+
+      {/* ─── Bid input (BidPhase only) ─── */}
       {phase === 1 && (
         <div style={{ marginTop: 14, borderTop: "1px dashed rgba(255,255,255,.08)", paddingTop: 12 }}>
           <p className="eyebrow" style={{ marginBottom: 8 }}>Place Bid</p>
@@ -262,7 +404,7 @@ export function VaultExecutionAuctionRraBidCard({
               type="number"
               min="0"
               step="0.01"
-              placeholder="Bid amount"
+              placeholder={minNextBid ? `Min: ${minNextBid}` : "Bid amount"}
               value={bidAmount}
               onChange={e => setBidAmount(e.target.value)}
               disabled={isBusy || !canOperate}
@@ -278,7 +420,7 @@ export function VaultExecutionAuctionRraBidCard({
         </div>
       )}
 
-      {/* Action buttons */}
+      {/* ─── Action buttons ─── */}
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
         {phase === 2 && (
           <button

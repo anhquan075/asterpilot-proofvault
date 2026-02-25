@@ -6,7 +6,7 @@ export function VaultCircuitBreakerCard({ breakerState }) {
   const recoveryIn = paused && recoveryTimestamp > now ? recoveryTimestamp - now : 0;
 
   const signalIndicator = (label, active, description) => (
-    <div className="breaker__signal" key={label}>
+    <div className="breaker__signal" key={label} style={{ minWidth: 80, flex: '0 0 auto' }}>
       <span className={`breaker__dot ${active ? 'breaker__dot--tripped' : 'breaker__dot--clear'}`} />
       <div>
         <strong>{label}</strong>
@@ -17,7 +17,7 @@ export function VaultCircuitBreakerCard({ breakerState }) {
 
   return (
     <div className="card card--accent">
-      <h3 className="card__title" style={{ marginBottom: 10, fontSize: 11 }}>Circuit Breaker</h3>
+      <h3 className="card__title" style={{ marginBottom: 6, fontSize: 11 }}>Circuit Breaker</h3>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 10px', borderRadius: 8,
@@ -33,11 +33,12 @@ export function VaultCircuitBreakerCard({ breakerState }) {
           }
         </span>
       </div>
-      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {signalIndicator('A', signalA, 'Chainlink deviation')}
+      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {signalIndicator('A', signalA, 'Chainlink dev.')}
         {signalIndicator('B', signalB, 'Reserve ratio')}
         {signalIndicator('C', signalC, 'Virtual price')}
       </div>
+
       {lastTripTimestamp > 0 && (
         <div className="card__muted" style={{ marginTop: 8, fontSize: 9 }}>
           Last: {new Date(Number(lastTripTimestamp) * 1000).toLocaleString()}
@@ -62,7 +63,7 @@ export function VaultDutchAuctionCard({ auctionState }) {
 
   return (
     <div className="card card--accent">
-      <h3 className="card__title" style={{ marginBottom: 10, fontSize: 11 }}>Dutch Auction Bounty</h3>
+      <h3 className="card__title" style={{ marginBottom: 6, fontSize: 11 }}>Dutch Auction Bounty</h3>
       {auctionState ? (
         <>
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
@@ -82,7 +83,7 @@ export function VaultDutchAuctionCard({ auctionState }) {
           </div>
         </>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 60 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 36 }}>
           <div className="skeleton" style={{ width: '70%', height: 24, borderRadius: 6 }} />
         </div>
       )}

@@ -1,10 +1,11 @@
+import { Zap } from 'lucide-react';
 import { fmtBps } from '@/lib/vaultDisplayFormatters';
 
 export function VaultDutchAuctionBountyCountdownCard({ auctionState }) {
   if (!auctionState) {
     return (
       <div className="card card--accent">
-        <h3 className="card__title">🎯 Auction Bounty</h3>
+        <h3 className="card__title"><Zap size={13} />Dutch Auction Bounty</h3>
         <p className="card__muted">Loading auction state…</p>
       </div>
     );
@@ -24,7 +25,7 @@ export function VaultDutchAuctionBountyCountdownCard({ auctionState }) {
 
   return (
     <div className="card card--accent">
-      <h3 className="card__title">🎯 Dutch Auction Bounty</h3>
+      <h3 className="card__title"><Zap size={13} />Dutch Auction Bounty</h3>
 
       <div className="auction__current" style={{ margin: '12px 0', textAlign: 'center' }}>
         <div className="auction__bounty-value" style={{ fontSize: '1.5em', fontWeight: 'bold' }}>

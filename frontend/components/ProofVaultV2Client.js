@@ -195,8 +195,8 @@ export default function ProofVaultV2Client() {
       {/* V2 Contract address strip — 3-rail: Vault, Engine, CircuitBreaker, SharpeTracker, PegArb, Auction */}
       <div className="contractStrip contractStrip--v2">
         <div className="contractGroup contractGroup--core">
-          <ContractAddressBadge label="Vault V2" address={vaultAddress} />
-          <ContractAddressBadge label="Engine V2" address={engineAddress} />
+          <ContractAddressBadge label="Vault" address={vaultAddress} />
+          <ContractAddressBadge label="Engine" address={engineAddress} />
         </div>
         <div className="contractGroup contractGroup--advanced">
           <ContractAddressBadge label="CircuitBreaker" address={circuitBreakerAddress} icon={Shield} />

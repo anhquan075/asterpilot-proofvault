@@ -1,4 +1,4 @@
-import { fmtBps } from '@/lib/vault-display-formatters';
+import { fmtBps } from '@/lib/vaultDisplayFormatters';
 
 export function VaultDutchAuctionBountyCountdownCard({ auctionState }) {
   if (!auctionState) {

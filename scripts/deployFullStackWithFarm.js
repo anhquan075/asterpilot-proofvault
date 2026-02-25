@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 /**
- * deploy-v2-full-stack-with-farm.js
+ * deployFullStackWithFarm.js
  *
  * Deploys the full ProofVault V2 stack with farm integration:
  *   Rail 1: AsterEarnAdapterWithSwap  (USDT→USDF swap + async Aster yield)
@@ -75,7 +75,7 @@ async function main() {
   const depegPrice = hre.ethers.parseUnits(envOrDefault("V2_POLICY_DEPEG_PRICE", "0.97"), 8);
   const maxSlippageBps = Number(envOrDefault("V2_POLICY_MAX_SLIPPAGE_BPS", "100"));
   const maxBountyBps = Number(envOrDefault("V2_POLICY_MAX_BOUNTY_BPS", "100"));
-  const normalAsterBps = Number(envOrDefault("V2_POLICY_NORMAL_ASTER_BPS", "2000"));
+  const normalAsterBps = Number(envOrDefault("V2_POLICY_NORMAL_ASTER_BPS", "6000"));
   const guardedAsterBps = Number(envOrDefault("V2_POLICY_GUARDED_ASTER_BPS", "5000"));
   const drawdownAsterBps = Number(envOrDefault("V2_POLICY_DRAWDOWN_ASTER_BPS", "7000"));
   const minBountyBps = Number(envOrDefault("V2_POLICY_MIN_BOUNTY_BPS", "5"));
@@ -211,6 +211,11 @@ async function main() {
   await engine.waitForDeployment();
   console.log("StrategyEngine:", await engine.getAddress());
 
+  // Set engine on SharpeTracker (one-time)
+  await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
+  console.log("SharpeTracker engine set.");
+  console.log("StrategyEngine:", await engine.getAddress());
+
   // ── [10] PegArbExecutor ──────────────────────────────────────────────────────
   console.log("\n[10/10] Deploying PegArbExecutor...");
   const PegArbExecutor = await hre.ethers.getContractFactory("PegArbExecutor");
@@ -233,6 +238,9 @@ async function main() {
     await lpAdapter.getAddress()
   )).wait();
   console.log("Vault.setAdapters(aster, secondary, lp) done");
+
+  await (await vault.setPegArbExecutor(await pegArb.getAddress())).wait();
+  console.log("Vault.setPegArbExecutor() done (USDT approval for arb trades)");
 
   await (await asterAdapter.setVault(await vault.getAddress())).wait();
   console.log("AsterAdapter.setVault() done");

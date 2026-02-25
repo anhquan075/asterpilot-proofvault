@@ -1,4 +1,4 @@
-import { fmtBps, fmtPrice } from "@/lib/vault-display-formatters";
+import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
 import { CheckCircle2, Circle, Info, Loader, Pause, Play, Zap } from 'lucide-react';
 import { useEffect, useState } from "react";
 
@@ -147,7 +147,7 @@ export function VaultCycleExecutionStatusCard({
   ];
 
   return (
-    <div className="card" style={{ marginTop: 14 }}>
+    <div className="card">
       <p className="eyebrow">Execution Engine</p>
       <h3 className="cardTitle">Cycle Status</h3>
 

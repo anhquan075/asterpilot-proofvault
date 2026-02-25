@@ -50,7 +50,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
 
     const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
     const policy = await RiskPolicy.deploy(
-      300, 200, 500, 99000000n, 100, 100,
+      300, 200, 500, 99000000n, 200, 100,
       2000, 5000, 7000,
       5, 3600, 500, 5, 5000,
       2000, 1500, 500
@@ -88,6 +88,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
       usdt.target,
       stableSwapPool.target,
       cake.target,
+      deployer.address, // wbnb (mock placeholder for gas-gated harvest)
       stableSwapPool.target,
       masterChef.target,
       pancakeRouter.target,
@@ -106,6 +107,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
     );
 
     await vault.setEngine(engine.target);
+    await sharpeTracker.setEngine(engine.target);
     await vault.setAdapters(asterAdapter.target, secondaryAdapter.target, lpAdapter.target);
     await asterAdapter.setVault(vault.target);
     await secondaryAdapter.setVault(vault.target);
@@ -341,7 +343,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
 
       const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
       const policy2 = await RiskPolicy.deploy(
-        300, 200, 500, 99000000n, 100, 100,
+        300, 200, 500, 99000000n, 200, 100,
         2000, 5000, 7000,
         5, 3600, 500, 5, 5000,
         0, 0, 0
@@ -374,6 +376,7 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
       );
 
       await vault2.setEngine(engine2.target);
+      await sharpe2.setEngine(engine2.target);
 
       const MockAsterEarnAdapterF = await ethers.getContractFactory("MockAsterEarnAdapter");
       const adapter1 = await MockAsterEarnAdapterF.deploy(usdt.target, deployer.address);
@@ -444,8 +447,8 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
 
       const StableSwapLPYieldAdapterWithFarm = await ethers.getContractFactory("StableSwapLPYieldAdapterWithFarm");
       const adapter = await StableSwapLPYieldAdapterWithFarm.deploy(
-        usdt.target, pool.target, cake.target, pool.target,
-        chef.target, router.target, 0, deployer.address
+        usdt.target, pool.target, cake.target, deployer.address,
+        pool.target, chef.target, router.target, 0, deployer.address
       );
 
       await pool.mint(adapter.target, ethers.parseUnits("100", 18));

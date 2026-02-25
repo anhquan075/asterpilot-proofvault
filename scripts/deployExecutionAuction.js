@@ -5,7 +5,7 @@
  * Searchers bid USDT for exclusive execution rights; winning bid flows to vault as yield.
  *
  * Usage:
- *   npx hardhat run scripts/deploy-execution-auction-rra-to-bnb-mainnet.js --network bnb
+ *   npx hardhat run scripts/deployExecutionAuction.js --network bnb
  */
 
 const { ethers } = require("hardhat");
@@ -43,7 +43,8 @@ async function main() {
     V2.USDT,
     PARAMS.BID_WINDOW,
     PARAMS.EXECUTE_WINDOW,
-    PARAMS.MIN_BID
+    PARAMS.MIN_BID,
+    500 // minBidIncrementBps = 5%
   );
   await auction.waitForDeployment();
   const address = await auction.getAddress();

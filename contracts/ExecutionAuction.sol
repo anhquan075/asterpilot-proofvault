@@ -58,6 +58,7 @@ contract ExecutionAuction is ReentrancyGuard {
     error ExecutionAuction__NotWinner();
     error ExecutionAuction__NotFallbackPhase();
     error ExecutionAuction__NoRefund();
+    error BidIncrementTooLow(uint256 required, uint256 provided);
 
     /*//////////////////////////////////////////////////////////////
                              IMMUTABLES
@@ -69,6 +70,7 @@ contract ExecutionAuction is ReentrancyGuard {
     uint256         public immutable bidWindow;
     uint256         public immutable executeWindow;
     uint256         public immutable minBid;
+    uint256         public immutable minBidIncrementBps;
 
     /*//////////////////////////////////////////////////////////////
                                STATE
@@ -97,19 +99,24 @@ contract ExecutionAuction is ReentrancyGuard {
         address usdt_,
         uint256 bidWindow_,
         uint256 executeWindow_,
-        uint256 minBid_
+        uint256 minBid_,
+        uint256 minBidIncrementBps_
     ) {
         if (engine_ == address(0) || vault_ == address(0) || usdt_ == address(0)) {
             revert ExecutionAuction__ZeroAddress();
         }
         if (bidWindow_ == 0 || executeWindow_ == 0) revert ExecutionAuction__ZeroWindow();
+        if (minBidIncrementBps_ < 100 || minBidIncrementBps_ > 5000) {
+            revert BidIncrementTooLow(0, minBidIncrementBps_);
+        }
 
-        engine        = IStrategyEngine(engine_);
-        vault         = vault_;
-        usdt          = IERC20(usdt_);
-        bidWindow     = bidWindow_;
-        executeWindow = executeWindow_;
-        minBid        = minBid_;
+        engine             = IStrategyEngine(engine_);
+        vault              = vault_;
+        usdt               = IERC20(usdt_);
+        bidWindow          = bidWindow_;
+        executeWindow      = executeWindow_;
+        minBid             = minBid_;
+        minBidIncrementBps = minBidIncrementBps_;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -142,7 +149,10 @@ contract ExecutionAuction is ReentrancyGuard {
         }
         if (p != Phase.BidPhase) revert ExecutionAuction__NotBidPhase();
         if (amount < minBid) revert ExecutionAuction__BelowMinBid();
-        if (amount <= round.winningBid) revert ExecutionAuction__BidTooLow();
+        if (round.winningBid > 0) {
+            uint256 minRequired = round.winningBid + (round.winningBid * minBidIncrementBps) / 10000;
+            if (amount < minRequired) revert BidIncrementTooLow(minRequired, amount);
+        }
 
         // Queue refund for displaced winner
         address prev    = round.winner;

@@ -1,4 +1,4 @@
-import { fmtBps } from '@/lib/vault-display-formatters';
+import { fmtBps } from '@/lib/vaultDisplayFormatters';
 import { ArrowLeftRight } from 'lucide-react';
 
 export function VaultPegArbOpportunityAndHistoryCard({ arbPreview, onExecuteArb, busyAction }) {

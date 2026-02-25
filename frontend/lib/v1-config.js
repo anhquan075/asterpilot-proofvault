@@ -1,6 +1,0 @@
-// V1 Contract Addresses - BNB Mainnet (Chain ID 56)
-export const V1_MAINNET_ADDRESSES = {
-  vaultAddress: "0x721882D98194D5177F2336Bd97f50ABA44410365",
-  engineAddress: "0xd5ff531870c75FA29f495e70E0D406a207018D02",
-  tokenAddress: "0x917AF46B3C3c6e1Bb7286B9F59637Fb7C65851Fb",
-};

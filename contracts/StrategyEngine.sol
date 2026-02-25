@@ -14,6 +14,7 @@ import {ProofVault} from "./ProofVault.sol";
 /// @custom:security-contact security@asterpilot.xyz
 contract StrategyEngine {
     uint256 public constant BPS_DENOMINATOR = 10_000;
+    uint256 public constant EWMA_ALPHA = 2000; // 20% weight to new observation (0.20 in BPS)
 
     // --- Risk State ---
     enum RiskState {
@@ -76,6 +77,7 @@ contract StrategyEngine {
     uint256 public lastTotalAssets;
     RiskState public currentState;
     uint256 public cycleCount;
+    uint256 public ewmaVolatilityBps;
 
     constructor(
         address vault_,
@@ -116,7 +118,8 @@ contract StrategyEngine {
 
         // 3. Get price and compute decision
         uint256 price = priceOracle.getPrice();
-        uint256 volatility = _volatilityBps(price, lastPrice);
+        uint256 rawVol = _rawVolatilityBps(price, lastPrice);
+        uint256 volatility = _updateEwma(rawVol);
         RiskState nextState = _selectState(price, volatility);
         (uint256 asterBps, uint256 lpBps) = _selectAllocation(nextState);
         uint256 bountyBps = _auctionBountyBps();
@@ -198,7 +201,7 @@ contract StrategyEngine {
         (bool canExec, bytes32 reason) = _canExecuteInternal();
 
         uint256 price = priceOracle.getPrice();
-        uint256 volatility = _volatilityBps(price, lastPrice);
+        uint256 volatility = _previewEwma(_rawVolatilityBps(price, lastPrice));
         RiskState nextState = _selectState(price, volatility);
         (uint256 asterBps, uint256 lpBps) = _selectAllocation(nextState);
         uint256 bountyBps = _auctionBountyBps();
@@ -276,7 +279,7 @@ contract StrategyEngine {
     /// @dev Computed dynamically from live oracle price so view callers get current risk
     function riskScore() external view returns (uint256) {
         uint256 price = priceOracle.getPrice();
-        uint256 volatility = _volatilityBps(price, lastPrice);
+        uint256 volatility = _previewEwma(_rawVolatilityBps(price, lastPrice));
         RiskState liveState = _selectState(price, volatility);
 
         if (liveState == RiskState.Drawdown) return 100;
@@ -364,7 +367,7 @@ contract StrategyEngine {
         }
 
         uint256 price = priceOracle.getPrice();
-        uint256 volatility = _volatilityBps(price, lastPrice);
+        uint256 volatility = _previewEwma(_rawVolatilityBps(price, lastPrice));
         RiskState state = _selectState(price, volatility);
         (targetAsterBps_, targetLpBps_) = _selectAllocation(state);
     }
@@ -400,8 +403,8 @@ contract StrategyEngine {
         return block.timestamp - cooldownEnd;
     }
 
-    /// @dev Compute volatility as absolute % change in bps
-    function _volatilityBps(
+    /// @dev Compute raw single-period volatility as absolute % change in bps
+    function _rawVolatilityBps(
         uint256 current,
         uint256 previous
     ) internal pure returns (uint256) {
@@ -412,16 +415,61 @@ contract StrategyEngine {
         return (diff * BPS_DENOMINATOR) / previous;
     }
 
+    /// @dev Update EWMA volatility state and return smoothed value
+    function _updateEwma(uint256 rawVol) internal returns (uint256) {
+        if (ewmaVolatilityBps == 0) {
+            ewmaVolatilityBps = rawVol;
+        } else {
+            ewmaVolatilityBps = (EWMA_ALPHA * rawVol + (BPS_DENOMINATOR - EWMA_ALPHA) * ewmaVolatilityBps) / BPS_DENOMINATOR;
+        }
+        return ewmaVolatilityBps;
+    }
+
+    /// @dev Preview EWMA volatility without mutating state (for view functions)
+    function _previewEwma(uint256 rawVol) internal view returns (uint256) {
+        if (ewmaVolatilityBps == 0) return rawVol;
+        return (EWMA_ALPHA * rawVol + (BPS_DENOMINATOR - EWMA_ALPHA) * ewmaVolatilityBps) / BPS_DENOMINATOR;
+    }
+
+    /// @dev Hysteresis band (bps) to prevent regime thrashing on marginal moves.
+    ///      De-escalation requires volatility to drop below threshold minus this band.
+    uint256 private constant HYSTERESIS_BPS = 50; // 0.5%
     /// @dev Select risk state based on price and volatility
     function _selectState(
         uint256 price,
         uint256 volatility
     ) internal view returns (RiskState) {
+        // Depeg always forces Drawdown (no hysteresis)
         if (price <= policy.depegPrice()) return RiskState.Drawdown;
-        if (volatility >= policy.drawdownVolatilityBps())
-            return RiskState.Drawdown;
-        if (volatility >= policy.guardedVolatilityBps())
-            return RiskState.Guarded;
+
+        // Escalation: use raw thresholds (react quickly to danger)
+        // De-escalation: require clearing threshold minus hysteresis band
+        uint256 drawdownThreshold = policy.drawdownVolatilityBps();
+        uint256 guardedThreshold  = policy.guardedVolatilityBps();
+
+        if (currentState == RiskState.Drawdown) {
+            // Stay in Drawdown unless vol drops well below drawdown threshold
+            if (volatility >= (drawdownThreshold > HYSTERESIS_BPS ? drawdownThreshold - HYSTERESIS_BPS : 0))
+                return RiskState.Drawdown;
+            // Dropped enough — check if still Guarded
+            if (volatility >= guardedThreshold)
+                return RiskState.Guarded;
+            return RiskState.Normal;
+        }
+
+        if (currentState == RiskState.Guarded) {
+            // Escalate to Drawdown at normal threshold
+            if (volatility >= drawdownThreshold)
+                return RiskState.Drawdown;
+            // Stay Guarded unless vol drops well below guarded threshold
+            if (volatility >= (guardedThreshold > HYSTERESIS_BPS ? guardedThreshold - HYSTERESIS_BPS : 0))
+                return RiskState.Guarded;
+            return RiskState.Normal;
+        }
+
+        // Normal state: escalate at normal thresholds
+        if (volatility >= drawdownThreshold) return RiskState.Drawdown;
+        if (volatility >= guardedThreshold)  return RiskState.Guarded;
         return RiskState.Normal;
     }
 

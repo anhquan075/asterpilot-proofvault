@@ -39,7 +39,8 @@ async function deployFixture() {
     await usdt.getAddress(),
     BID_WINDOW,
     EXECUTE_WINDOW,
-    MIN_BID
+    MIN_BID,
+    500 // minBidIncrementBps = 5%
   );
 
   // Fund engine with USDT for bounty payments
@@ -157,7 +158,7 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
         auction.connect(bob).bid(MIN_BID)
       ).to.be.revertedWithCustomError(
         ExecutionAuction,
-        "ExecutionAuction__BidTooLow"
+        "BidIncrementTooLow"
       );
     });
 

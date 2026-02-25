@@ -152,7 +152,7 @@ export function VaultTvlStatsDepositWithdrawCard({
       </div>
 
       {!isConnected && (
-        <p className="vaultConnectHint">Connect wallet to deposit or withdraw</p>
+        <p className="vaultConnectHint" style={{ color: 'rgba(200,147,90,.7)', fontSize: 13, textAlign: 'center', marginTop: 12 }}>Connect wallet to deposit or withdraw</p>
       )}
     </div>
   );

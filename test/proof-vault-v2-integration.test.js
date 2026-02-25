@@ -85,6 +85,7 @@ describe("ProofVault V2 Integration", function () {
       vault.target, policy.target, oracle.target, breaker.target, sharpeTracker.target, 100000000n
     );
 
+    await sharpeTracker.setEngine(engine.target);
     // Deploy PegArbExecutor
     const PegArbExecutor = await ethers.getContractFactory("PegArbExecutor");
     const pegArb = await PegArbExecutor.deploy(
@@ -302,30 +303,43 @@ describe("ProofVault V2 Integration", function () {
 
   describe("Sharpe Tracker", function () {
     it("Should record yield observations", async function () {
-      const { sharpeTracker } = await loadFixture(deployV2Fixture);
-      await sharpeTracker.recordYield(150);
+      const { sharpeTracker, engine } = await loadFixture(deployV2Fixture);
+      // recordYield is onlyEngine — impersonate engine
+      await ethers.provider.send("hardhat_impersonateAccount", [engine.target]);
+      await ethers.provider.send("hardhat_setBalance", [engine.target, "0x56BC75E2D63100000"]);
+      const engineSigner = await ethers.getSigner(engine.target);
+      await sharpeTracker.connect(engineSigner).recordYield(150);
       const [obs, len] = await sharpeTracker.getObservations();
       expect(len).to.equal(1);
       expect(obs[0]).to.equal(150);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [engine.target]);
     });
 
     it("Should return zero Sharpe for < 3 observations", async function () {
-      const { sharpeTracker } = await loadFixture(deployV2Fixture);
-      await sharpeTracker.recordYield(100);
-      await sharpeTracker.recordYield(120);
+      const { sharpeTracker, engine } = await loadFixture(deployV2Fixture);
+      await ethers.provider.send("hardhat_impersonateAccount", [engine.target]);
+      await ethers.provider.send("hardhat_setBalance", [engine.target, "0x56BC75E2D63100000"]);
+      const engineSigner = await ethers.getSigner(engine.target);
+      await sharpeTracker.connect(engineSigner).recordYield(100);
+      await sharpeTracker.connect(engineSigner).recordYield(120);
       const result = await sharpeTracker.computeSharpe();
       expect(result.sharpe).to.equal(0);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [engine.target]);
     });
 
     it("Should compute correct Sharpe after multiple observations", async function () {
-      const { sharpeTracker } = await loadFixture(deployV2Fixture);
-      await sharpeTracker.recordYield(100);
-      await sharpeTracker.recordYield(120);
-      await sharpeTracker.recordYield(110);
-      await sharpeTracker.recordYield(130);
+      const { sharpeTracker, engine } = await loadFixture(deployV2Fixture);
+      await ethers.provider.send("hardhat_impersonateAccount", [engine.target]);
+      await ethers.provider.send("hardhat_setBalance", [engine.target, "0x56BC75E2D63100000"]);
+      const engineSigner = await ethers.getSigner(engine.target);
+      await sharpeTracker.connect(engineSigner).recordYield(100);
+      await sharpeTracker.connect(engineSigner).recordYield(120);
+      await sharpeTracker.connect(engineSigner).recordYield(110);
+      await sharpeTracker.connect(engineSigner).recordYield(130);
       const result = await sharpeTracker.computeSharpe();
       expect(result.mean).to.be.gt(0);
       expect(result.volatility).to.be.gt(0);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [engine.target]);
     });
 
     it("Should match previewSharpe view", async function () {

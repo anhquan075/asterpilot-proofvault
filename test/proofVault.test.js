@@ -82,6 +82,8 @@ describe("AsterPilot ProofVault", function () {
     );
     await engine.waitForDeployment();
 
+    await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
+
     await (await vault.setEngine(await engine.getAddress())).wait();
     await (
       await vault.setAdapters(
@@ -199,6 +201,8 @@ describe("AsterPilot ProofVault", function () {
       ethers.parseUnits("1", 8)
     );
     await engine.waitForDeployment();
+
+    await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
 
     await (await vault.setEngine(await engine.getAddress())).wait();
     await (

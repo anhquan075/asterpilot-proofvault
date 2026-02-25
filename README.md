@@ -110,22 +110,22 @@ sequenceDiagram
 
 | Contract | Address |
 | --- | --- |
-| `ProofVault` | `0x380068C20898bbEc6151A0CA543Cbac5f7406D94` |
-| `StrategyEngine` | `0x1525E262Cb5bDFC7b51802c36a1141bA94405F76` |
-| `RiskPolicy` | `0xebeaf58f2529c4841C0A94d9B5c08E1fdEc81156` |
-| `ChainlinkPriceOracle` | `0x891F37d9aC4534a77A1C2501E193d4e66D109045` |
-| `CircuitBreaker` | `0x0b2AaF882E89F36F5594cfe9b561f4436ca281Fd` |
-| `SharpeTracker` | `0x119f05215A8f46f6bDCc3112b6dA2B8B2871fDa2` |
+| `ProofVault` | `0xA784CD190DAB318a65D12CF426e37bb0f90A83C7` |
+| `StrategyEngine` | `0x3138f4157f15EFF0A76F8F610062bC82c13C5dbd` |
+| `RiskPolicy` | `0x9179d50fFCBEC37e0C2c6F31cC569444F167c39D` |
+| `ChainlinkPriceOracle` | `0xDcCC5d7a2A5d8fdd9b6dca2a2138e54925671d7A` |
+| `CircuitBreaker` | `0xCfd177b13e470B213B45D74Ae4d44C2FDFedDF50` |
+| `SharpeTracker` | `0x7c5EF5d9055d7f40A253133fBA86edE4ED4230A3` |
 
 ### Adapters and Executors
 
 | Contract | Address |
 | --- | --- |
-| `AsterEarnAdapterWithSwap` | `0x61e5e3e0C124a2F1BD7b6D34A6182f42190Cb2FB` |
-| `ManagedAdapter` | `0xC4B3e9EAded16eF7F594D7C8932Ef67Ff0d9bd72` |
-| `StableSwapLPYieldAdapterWithFarm` | `0x6e72AeF9701Bf5DeDF4Fc0E680a0d90cA631Ed73` |
-| `PegArbExecutor` | `0xd4ebdCEB7B622B2d1D22E8634F1Ff9168e27D00C` |
-| `ExecutionAuction` | `0x61AA075D27EE215d31eC9ff3d04699DBb084F55C` |
+| `AsterEarnAdapterWithSwap` | `0xA131bD4Ac6e1c619a73C981E23fD9322BeB8e7DB` |
+| `ManagedAdapter` | `0xf5B7bF143045B0e59E2D854726424A8C77CE2250` |
+| `StableSwapLPYieldAdapterWithFarm` | `0x951C62Cdf99628BFa7d036F3C53D6ddD9a9E592b` |
+| `PegArbExecutor` | `0x80F78eC503b487950b48DF45598d48aa0E1BfCa4` |
+| `ExecutionAuction` | `0x0bA114a1f999C4d1B81a4F89f93A804CBcBFcBF7` |
 
 ### Key Integration Addresses
 

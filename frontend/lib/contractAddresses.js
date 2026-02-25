@@ -3,17 +3,17 @@
 // All contracts verified on BscScan
 
 export const V2_MAINNET_ADDRESSES = {
-  vaultAddress: "0xaB4F67AfCb9B9C390049705022A0237E81465C00",
-  engineAddress: "0x39085f39f1f55Aefdea8C35864dba460aCbC4c18",
+  vaultAddress: "0xC6C1A0920a175714Ceb8f5D3dB6b177B0e5db222",
+  engineAddress: "0x261464a2126be9E0283D575E10e13108cbeB7FaE",
   tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // USDT (BSC)
-  circuitBreakerAddress: "0xDAA5E51EEaF01895476CB2088d4093c0894079Cd",
-  sharpeTrackerAddress: "0x04247373A4d6cB929b3d81a227Bc3e45396481bB",
-  pegArbExecutorAddress: "0x1c2A74Ec3bE210a8104fc61403C613513881B0bc",
-  riskPolicyAddress: "0x1CD27035829a59fEB026D986726f0Db7E110a1f1",
-  asterAdapterAddress: "0x5De1fEcBB3f1F8c935Ad44F5894aF24e3a2a4e24",
-  secondaryAdapterAddress: "0xD60543EdDbee67dfD56Cbb5a35482dc77e9a24F1",
-  lpAdapterAddress: "0x198E9ECfaA22d8385c386038e810788c9a358c74", // LP farm not deployed yet
-  executionAuctionAddress: "0xD37210566698310F3620aE97151B1134bE4d352E",
+  circuitBreakerAddress: "0xfEBEbC027B544cF6195d6E709E28c4A6F138C69b",
+  sharpeTrackerAddress: "0x318940C7745d87Eb75BEf09dA08d474c38f15992",
+  pegArbExecutorAddress: "0x85CadC723dc6CF1654DA3C15Ffaf07e1851753BA",
+  riskPolicyAddress: "0x74C3A9FCC2CC02280a448F6A922BE45CD68297Ec",
+  asterAdapterAddress: "0x4695ef4ADE0D065C8901870876e75fE7b13210E3",
+  secondaryAdapterAddress: "0x76505B830098302e94906Bd5a77B89569bCc7498",
+  lpAdapterAddress: "0x198E9ECfaA22d8385c386038e810788c9a358c74",
+  executionAuctionAddress: "0xbC3D99421A93e4f2E5bB868DAEC2a03aE96aFD33",
 };
 
 // Environment-based configuration (fallback to mainnet if not set)

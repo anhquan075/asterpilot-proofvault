@@ -6,6 +6,15 @@ function assertAddress(addr, label) {
   if (!addr || addr.trim() === ZERO_ADDR) throw new Error(`${label} not configured. Set the contract address in .env`);
 }
 
+function normalizeWriteError(error) {
+  const raw = error?.shortMessage || error?.message || "Transaction failed";
+  const missingRevert = raw.includes("missing revert data") || raw.includes("reason=null") || raw.includes("execution reverted (no data present)");
+  if (error?.code === "CALL_EXCEPTION" && missingRevert) {
+    return "Deposit rejected by contract simulation. Vault accounting is reverting (totalAssets/managedAssets). This is a deployment configuration issue, not a wallet balance issue.";
+  }
+  return raw;
+}
+
 /// V2 write actions: deposit, withdraw, executeCycle with tx history
 export function useVaultV2WriteActions({ refresh }) {
   const [txHistory, setTxHistory] = useState([]);
@@ -36,25 +45,50 @@ export function useVaultV2WriteActions({ refresh }) {
       assertAddress(vaultAddress, "Vault");
 
       const vault = new ethersLib.Contract(ethersLib.getAddress(vaultAddress.trim()), vaultV2Abi, signer);
+      const signerAddress = await signer.getAddress();
+      const vaultContractAddress = await vault.getAddress();
 
       const rawTokenAddr = tokenAddress ? tokenAddress.trim() : (await vault.asset());
       const token = new ethersLib.Contract(ethersLib.getAddress(rawTokenAddr), erc20Abi, signer);
       const amount = ethersLib.parseUnits(depositAmount || "0", decimals);
       if (amount <= 0n) throw new Error("Invalid deposit amount");
 
-      setStatus("Approving token...");
-      const approveTx = await token.approve(await vault.getAddress(), amount);
-      await approveTx.wait();
+      setStatus("Checking vault health...");
+      try {
+        await vault.totalAssets();
+      } catch {
+        throw new Error("Deposit blocked: vault totalAssets() currently reverts. One or more adapters are misconfigured in this deployment.");
+      }
+
+      const allowance = await token.allowance(signerAddress, vaultContractAddress).catch(() => 0n);
+
+      if (allowance < amount) {
+        setStatus("Approving token...");
+        if (allowance > 0n) {
+          const resetTx = await token.approve(vaultContractAddress, 0n);
+          await resetTx.wait();
+        }
+        const approveTx = await token.approve(vaultContractAddress, amount);
+        await approveTx.wait();
+      }
+
+      setStatus("Simulating deposit...");
+      try {
+        await vault.deposit.staticCall(amount, signerAddress);
+      } catch {
+        throw new Error("Deposit simulation failed. This vault deployment currently rejects deposits due to adapter/accounting configuration.");
+      }
 
       setStatus("Depositing...");
-      const tx = await vault.deposit(amount, await signer.getAddress());
+      const tx = await vault.deposit(amount, signerAddress);
       await tx.wait();
       appendTx("Deposit", tx.hash, "success", "Deposit mined");
       await refresh(refreshArgs);
       setStatus("Deposit complete");
     } catch (error) {
-      appendTx("Deposit", null, "failed", error.message);
-      setStatus(error.message);
+      const msg = normalizeWriteError(error);
+      appendTx("Deposit", null, "failed", msg);
+      setStatus(msg);
     } finally {
       setBusyAction(null);
     }

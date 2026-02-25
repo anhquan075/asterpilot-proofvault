@@ -30,11 +30,13 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
     error StableSwapLP__VaultNotSet();
     error StableSwapLP__ZeroAmount();
     error StableSwapLP__SlippageTooHigh();
+    error StableSwapLP__HarvestNotProfitable();
 
     // ── Immutables ──────────────────────────────────────────────────────────
     IERC20 public immutable usdt;
     IERC20 public immutable lpToken;
     IERC20 public immutable cake;
+    address public immutable wbnb;
     IStableSwapPool public immutable pool;
     IMasterChef public immutable masterChef;
     IPancakeRouter public immutable router;
@@ -46,6 +48,8 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
 
     uint256 public minCakeHarvestAmount;
     uint256 public harvestSlippageBps;
+    uint256 public harvestGasEstimate;    // estimated gas units for harvest tx (default 350_000)
+    uint256 public harvestGasMultiplier;  // reward must be >= multiplier × gas cost (default 3)
 
     // ── Constants ───────────────────────────────────────────────────────────
     uint256 private constant USDT_INDEX = 1;
@@ -60,12 +64,14 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
     event LPUnstaked(uint256 lpAmount);
     event RewardsHarvested(uint256 cakeHarvested, uint256 usdtReceived);
     event ConfigurationLocked();
-    event HarvestSettingsUpdated(uint256 minCakeAmount, uint256 slippageBps);
+    event HarvestSettingsUpdated(uint256 minCakeAmount, uint256 slippageBps, uint256 gasEstimate, uint256 gasMultiplier);
+    event HarvestSkippedUnprofitable(uint256 cakeValue, uint256 gasCost);
 
     constructor(
         address usdt_,
         address lpToken_,
         address cake_,
+        address wbnb_,
         address pool_,
         address masterChef_,
         address router_,
@@ -75,6 +81,7 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         if (usdt_ == address(0)) revert StableSwapLP__ZeroAddress();
         if (lpToken_ == address(0)) revert StableSwapLP__ZeroAddress();
         if (cake_ == address(0)) revert StableSwapLP__ZeroAddress();
+        if (wbnb_ == address(0)) revert StableSwapLP__ZeroAddress();
         if (pool_ == address(0)) revert StableSwapLP__ZeroAddress();
         if (masterChef_ == address(0)) revert StableSwapLP__ZeroAddress();
         if (router_ == address(0)) revert StableSwapLP__ZeroAddress();
@@ -82,12 +89,17 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         usdt = IERC20(usdt_);
         lpToken = IERC20(lpToken_);
         cake = IERC20(cake_);
+        wbnb = wbnb_;
         pool = IStableSwapPool(pool_);
         masterChef = IMasterChef(masterChef_);
         router = IPancakeRouter(router_);
         poolId = poolId_;
 
         // Default harvest settings (can be updated before lock)
+        minCakeHarvestAmount  = 1e18;   // 1 CAKE minimum
+        harvestSlippageBps    = 100;    // 1% max slippage
+        harvestGasEstimate    = 350_000; // estimated gas for harvest
+        harvestGasMultiplier  = 3;       // reward must be >= 3× gas cost
         minCakeHarvestAmount = 1e18; // 1 CAKE minimum
         harvestSlippageBps   = 100;  // 1% max slippage
     }
@@ -206,7 +218,30 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         // 2. Check harvested CAKE balance
         uint256 cakeBalance = cake.balanceOf(address(this));
         if (cakeBalance < minCakeHarvestAmount) {
-            return 0; // Not enough CAKE to justify gas cost
+            return 0; // Below absolute minimum
+        }
+
+        // 2b. Gas-gated profitability check
+        if (harvestGasEstimate > 0 && harvestGasMultiplier > 0 && tx.gasprice > 0) {
+            uint256 gasCostBnb = harvestGasEstimate * tx.gasprice;
+            // Convert gas cost (BNB) → USDT via router
+            address[] memory gasPath = new address[](2);
+            gasPath[0] = wbnb;
+            gasPath[1] = address(usdt);
+            try router.getAmountsOut(gasCostBnb, gasPath) returns (uint256[] memory gasAmounts) {
+                uint256 gasCostUsdt = gasAmounts[1] * harvestGasMultiplier;
+                // Preview CAKE → USDT value
+                address[] memory cakePath = new address[](2);
+                cakePath[0] = address(cake);
+                cakePath[1] = address(usdt);
+                uint256[] memory cakeAmounts = router.getAmountsOut(cakeBalance, cakePath);
+                if (cakeAmounts[1] < gasCostUsdt) {
+                    emit HarvestSkippedUnprofitable(cakeAmounts[1], gasCostUsdt);
+                    return 0; // Not profitable after gas
+                }
+            } catch {
+                // If gas estimation fails, fall through to harvest (conservative)
+            }
         }
 
         // 3. Swap CAKE → USDT via PancakeSwap router
@@ -261,12 +296,19 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         emit VaultUpdated(vault_);
     }
 
-    function setHarvestSettings(uint256 minCakeAmount_, uint256 slippageBps_) external onlyOwner {
+    function setHarvestSettings(
+        uint256 minCakeAmount_,
+        uint256 slippageBps_,
+        uint256 gasEstimate_,
+        uint256 gasMultiplier_
+    ) external onlyOwner {
         if (configurationLocked) revert StableSwapLP__ConfigurationLocked();
         if (slippageBps_ > 1000) revert StableSwapLP__SlippageTooHigh();
-        minCakeHarvestAmount = minCakeAmount_;
-        harvestSlippageBps = slippageBps_;
-        emit HarvestSettingsUpdated(minCakeAmount_, slippageBps_);
+        minCakeHarvestAmount  = minCakeAmount_;
+        harvestSlippageBps    = slippageBps_;
+        harvestGasEstimate    = gasEstimate_;
+        harvestGasMultiplier  = gasMultiplier_;
+        emit HarvestSettingsUpdated(minCakeAmount_, slippageBps_, gasEstimate_, gasMultiplier_);
     }
 
     function lockConfiguration() external onlyOwner {

@@ -21,6 +21,9 @@ export const farmAdapterAbi = [
   "function stakingInfo() view returns (uint256 staked, uint256 unstaked, uint256 pending)",
   "function pendingRewards() view returns (uint256)",
   "function harvestRewards() returns (uint256)",
+  "function harvestGasEstimate() view returns (uint256)",
+  "function harvestGasMultiplier() view returns (uint256)",
+  "event HarvestSkippedUnprofitable(uint256 cakeValue, uint256 gasCost)",
 ];
 
 export const engineAbi = [
@@ -64,6 +67,8 @@ export const vaultV2Abi = [
   // Contract returns (target, current, utilizationBps) — named to match contract
   "function bufferStatus() view returns (uint256 bufferTarget, uint256 idleBalance, uint256 utilizationBps)",
   "function pendingAsterWithdrawals() view returns (uint256 count, uint256 totalAmount)",
+  "function pegArbExecutor() view returns (address)",
+  "event AutoHarvestTriggered(uint256 harvested)",
 ];
 
 export const engineV2Abi = [

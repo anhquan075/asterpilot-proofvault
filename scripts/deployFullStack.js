@@ -43,7 +43,7 @@ async function main() {
   const depegPrice = hre.ethers.parseUnits(envOrDefault("V2_POLICY_DEPEG_PRICE", "0.97"), 8);
   const maxSlippageBps = Number(envOrDefault("V2_POLICY_MAX_SLIPPAGE_BPS", "100"));
   const maxBountyBps = Number(envOrDefault("V2_POLICY_MAX_BOUNTY_BPS", "100"));
-  const normalAsterBps = Number(envOrDefault("V2_POLICY_NORMAL_ASTER_BPS", "2000"));
+  const normalAsterBps = Number(envOrDefault("V2_POLICY_NORMAL_ASTER_BPS", "6000"));
   const guardedAsterBps = Number(envOrDefault("V2_POLICY_GUARDED_ASTER_BPS", "5000"));
   const drawdownAsterBps = Number(envOrDefault("V2_POLICY_DRAWDOWN_ASTER_BPS", "7000"));
 
@@ -182,6 +182,11 @@ async function main() {
   await engine.waitForDeployment();
   console.log("StrategyEngine:", await engine.getAddress());
 
+  // Set engine on SharpeTracker (one-time)
+  await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
+  console.log("SharpeTracker engine set.");
+  console.log("StrategyEngine:", await engine.getAddress());
+
   // 9. PegArbExecutor
   console.log("\n[9/9] Deploying PegArbExecutor...");
   const PegArbExecutor = await hre.ethers.getContractFactory("PegArbExecutor");
@@ -206,6 +211,9 @@ async function main() {
 
   await (await vault.setAdapters(await asterAdapter.getAddress(), await secondaryAdapter.getAddress())).wait();
   console.log("Vault.setAdapters() ✓");
+
+  await (await vault.setPegArbExecutor(await pegArb.getAddress())).wait();
+  console.log("Vault.setPegArbExecutor() ✓ (USDT approval for arb trades)");
 
   await (await asterAdapter.setVault(await vault.getAddress())).wait();
   console.log("AsterAdapter.setVault() ✓");

@@ -49,6 +49,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
       usdt.target,
       pool.target, // lpToken_ = pool (MockStableSwapPoolWithLPSupport is ERC20)
       cake.target,
+      deployer.address, // wbnb_ (mock placeholder for gas-gated harvest)
       pool.target, // pool_
       masterChef.target,
       router.target,
@@ -114,6 +115,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
           ethers.ZeroAddress,
           pool.target,
           cake.target,
+          deployer.address, // wbnb
           pool.target,
           masterChef.target,
           router.target,
@@ -134,6 +136,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
           usdt.target,
           ethers.ZeroAddress,
           cake.target,
+          deployer.address, // wbnb
           pool.target,
           masterChef.target,
           router.target,
@@ -154,6 +157,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
           usdt.target,
           pool.target,
           cake.target,
+          deployer.address, // wbnb
           ethers.ZeroAddress,
           masterChef.target,
           router.target,
@@ -336,6 +340,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
         usdt.target,
         pool.target,
         cake.target,
+        deployer.address, // wbnb
         pool.target,
         masterChef.target,
         router.target,
@@ -404,6 +409,7 @@ describe("StableSwapLPYieldAdapterWithFarm", function () {
         usdt.target,
         pool.target,
         cake.target,
+        deployer.address, // wbnb
         pool.target,
         masterChef.target,
         router.target,

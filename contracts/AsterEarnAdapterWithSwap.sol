@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
 import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
 
@@ -11,7 +12,7 @@ import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
 /// @notice Wraps AsterDEX Earn minter with selector-based calls.
 ///         Supports async withdrawal request tracking with batch-claim support.
 ///         Swaps USDT → USDF before depositing into AsterDEX Earn (robot route compliance)
-contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
+contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_CLAIM_BATCH = 50;
@@ -42,9 +43,25 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
     event SwapExecuted(uint256 usdtIn, uint256 usdfOut);
     event SwapSettingsUpdated(uint256 slippageBps);
 
+    // ── errors ──
+    error AsterEarnAdapterWithSwap__CallerNotVault();
+    error AsterEarnAdapterWithSwap__ConfigurationLocked();
+    error AsterEarnAdapterWithSwap__ZeroAddress();
+    error AsterEarnAdapterWithSwap__VaultNotSet();
+    error AsterEarnAdapterWithSwap__ZeroAmount();
+    error AsterEarnAdapterWithSwap__SlippageTooHigh();
+    error AsterEarnAdapterWithSwap__InvalidIndex();
+    error AsterEarnAdapterWithSwap__AlreadyClaimed();
+    error AsterEarnAdapterWithSwap__NotMatured();
+    error AsterEarnAdapterWithSwap__RequestFailed();
+    error AsterEarnAdapterWithSwap__QueryFailed();
+    error AsterEarnAdapterWithSwap__ClaimFailed();
+    error AsterEarnAdapterWithSwap__CallFailed();
+    error AsterEarnAdapterWithSwap__CallReturnedFalse();
+
     // ── modifiers ──
     modifier onlyVault() {
-        require(msg.sender == vault, "only vault");
+        if (msg.sender != vault) revert AsterEarnAdapterWithSwap__CallerNotVault();
         _;
     }
 
@@ -60,10 +77,10 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
         address _router,
         address _initialOwner
     ) Ownable(_initialOwner) {
-        require(_inputAssetAddr != address(0), "zero input asset");
-        require(_outputAssetAddr != address(0), "zero output asset");
-        require(_asterMinter != address(0), "zero minter");
-        require(_router != address(0), "zero router");
+        if (_inputAssetAddr == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
+        if (_outputAssetAddr == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
+        if (_asterMinter == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
+        if (_router == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
 
         _inputAsset               = IERC20(_inputAssetAddr);
         _outputAsset              = IERC20(_outputAssetAddr);
@@ -74,7 +91,7 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
         claimWithdrawSelector     = _claimWithdrawSel;
         getWithdrawRequestSelector = _getWithdrawRequestSel;
         router                    = IPancakeRouter(_router);
-        
+
         // Default: 1% max slippage for USDT→USDF swap
         swapSlippageBps = 100;
     }
@@ -82,20 +99,20 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
     // ── configuration (owner-only, one-shot) ──
 
     function setVault(address _vault) external onlyOwner {
-        require(!configurationLocked, "locked");
-        require(_vault != address(0), "zero vault");
+        if (configurationLocked) revert AsterEarnAdapterWithSwap__ConfigurationLocked();
+        if (_vault == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
         vault = _vault;
     }
 
     function setSwapSlippage(uint256 slippageBps_) external onlyOwner {
-        require(!configurationLocked, "locked");
-        require(slippageBps_ <= 1000, "slippage > 10%");
+        if (configurationLocked) revert AsterEarnAdapterWithSwap__ConfigurationLocked();
+        if (slippageBps_ > 1000) revert AsterEarnAdapterWithSwap__SlippageTooHigh();
         swapSlippageBps = slippageBps_;
         emit SwapSettingsUpdated(slippageBps_);
     }
 
     function lockConfiguration() external onlyOwner {
-        require(vault != address(0), "vault not set");
+        if (vault == address(0)) revert AsterEarnAdapterWithSwap__VaultNotSet();
         configurationLocked = true;
         renounceOwnership();
     }
@@ -142,21 +159,21 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
     // ── async withdraw (IAsterEarnAdapter) ──
 
     function requestWithdraw(uint256 amount) external onlyVault returns (uint256 requestId) {
-        require(amount > 0, "zero amount");
+        if (amount == 0) revert AsterEarnAdapterWithSwap__ZeroAmount();
 
         // call minter requestWithdraw
         (bool ok, bytes memory data) = asterMinter.call(
             abi.encodeWithSelector(requestWithdrawSelector, amount)
         );
         emit ExternalCallResult(requestWithdrawSelector, ok, data);
-        require(ok && data.length >= 32, "request failed");
+        if (!ok || data.length < 32) revert AsterEarnAdapterWithSwap__RequestFailed();
         requestId = abi.decode(data, (uint256));
 
         // query maturity from minter
         (bool ok2, bytes memory data2) = asterMinter.staticcall(
             abi.encodeWithSelector(getWithdrawRequestSelector, requestId)
         );
-        require(ok2 && data2.length >= 96, "query failed");
+        if (!ok2 || data2.length < 96) revert AsterEarnAdapterWithSwap__QueryFailed();
         (uint256 amt, uint256 maturity, ) = abi.decode(data2, (uint256, uint256, bool));
 
         _withdrawRequests.push(WithdrawRequest({
@@ -207,17 +224,17 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
 
     /// @dev Swap USDT → USDF via PancakeSwap router
     function _swapUsdtToUsdf(uint256 usdtAmount) internal returns (uint256 usdfReceived) {
-        require(usdtAmount > 0, "zero amount");
-        
+        if (usdtAmount == 0) revert AsterEarnAdapterWithSwap__ZeroAmount();
+
         // Build swap path: USDT → USDF
         address[] memory path = new address[](2);
         path[0] = address(_inputAsset);  // USDT
         path[1] = address(_outputAsset); // USDF
-        
+
         // Get expected output
         uint256[] memory amountsOut = router.getAmountsOut(usdtAmount, path);
         uint256 minUsdfOut = amountsOut[1] * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
-        
+
         // Execute swap
         _inputAsset.forceApprove(address(router), usdtAmount);
         uint256[] memory amounts = router.swapExactTokensForTokens(
@@ -227,23 +244,23 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
             address(this),
             block.timestamp + 300 // 5 min deadline
         );
-        
+
         usdfReceived = amounts[1];
         emit SwapExecuted(usdtAmount, usdfReceived);
         return usdfReceived;
     }
 
     function _claimAtIndex(uint256 index) internal returns (uint256) {
-        require(index < _withdrawRequests.length, "bad index");
+        if (index >= _withdrawRequests.length) revert AsterEarnAdapterWithSwap__InvalidIndex();
         WithdrawRequest storage req = _withdrawRequests[index];
-        require(!req.claimed, "already claimed");
-        require(block.timestamp >= req.maturityTimestamp, "not matured");
+        if (req.claimed) revert AsterEarnAdapterWithSwap__AlreadyClaimed();
+        if (block.timestamp < req.maturityTimestamp) revert AsterEarnAdapterWithSwap__NotMatured();
 
         (bool ok, bytes memory data) = asterMinter.call(
             abi.encodeWithSelector(claimWithdrawSelector, req.requestId)
         );
         emit ExternalCallResult(claimWithdrawSelector, ok, data);
-        require(ok, "claim failed");
+        if (!ok) revert AsterEarnAdapterWithSwap__ClaimFailed();
 
         req.claimed = true;
         totalPending -= req.amount;
@@ -276,10 +293,10 @@ contract AsterEarnAdapterWithSwap is Ownable, IAsterEarnAdapter {
             abi.encodeWithSelector(selector, amount)
         );
         emit ExternalCallResult(selector, ok, data);
-        require(ok, "call failed");
+        if (!ok) revert AsterEarnAdapterWithSwap__CallFailed();
         if (data.length >= 32) {
             bool result = abi.decode(data, (bool));
-            require(result, "call returned false");
+            if (!result) revert AsterEarnAdapterWithSwap__CallReturnedFalse();
         }
     }
 }

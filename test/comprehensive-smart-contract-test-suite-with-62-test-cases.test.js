@@ -86,6 +86,7 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       ethers.parseUnits("1", 8)
     );
     await engine.waitForDeployment();
+    await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
 
     await (await vault.setEngine(await engine.getAddress())).wait();
     await (
@@ -218,6 +219,7 @@ describe("Comprehensive Smart Contracts Test Suite", function () {
       ethers.parseUnits("1", 8)
     );
     await engine.waitForDeployment();
+    await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
 
     await (
       await token.mint(user1.address, ethers.parseUnits("5000", 18))

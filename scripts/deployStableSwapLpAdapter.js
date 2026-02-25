@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * deploy-stable-swap-lp-adapter-to-bnb-mainnet.js
+ * deployStableSwapLpAdapter.js
  *
  * Deploys StableSwapLPYieldAdapter as the 3rd yield rail for ProofVault V2.
  *

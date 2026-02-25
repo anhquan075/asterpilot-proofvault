@@ -1,18 +1,18 @@
 
-import { VaultCircuitBreakerThreeSignalStatusCard } from "@/components/shared/cards/vault-circuit-breaker-three-signal-status-card";
-import { VaultCycleExecutionStatusCard } from "@/components/shared/cards/vault-cycle-countdown-risk-score-and-execute-button-card";
-import { VaultExecutionAuctionRraBidCard } from "@/components/shared/cards/vault-execution-auction-rra-bid-and-winner-execute-card";
-import { VaultOraclePolicyMetricsCard } from "@/components/shared/cards/vault-oracle-price-volatility-and-depeg-policy-metrics-card";
-import { VaultPegArbOpportunityAndHistoryCard } from "@/components/shared/cards/vault-peg-arb-opportunity-and-history-card";
-import { VaultSharpeRatioYieldTrackerCard } from "@/components/shared/cards/vault-sharpe-ratio-yield-tracker-card";
-import { VaultStrategyAllocationBarCard } from "@/components/shared/cards/vault-strategy-allocation-bar-and-target-bps-card";
-import { VaultTransactionHistoryCard } from "@/components/shared/cards/vault-transaction-history-with-bscscan-links-card";
-import { VaultTvlStatsDepositWithdrawCard } from "@/components/shared/cards/vault-tvl-stats-deposit-withdraw-card";
-import { VaultTopNavbar } from "@/components/shared/ui/vault-top-navbar-connect-wallet-and-branding-bar";
-import { useRainbowKitWallet } from "@/hooks/shared/use-rainbowkit-wallet";
-import { useVaultV2ReadState } from "@/hooks/v2/use-vault-v2-read-state";
-import { useVaultV2WriteActions } from "@/hooks/v2/use-vault-v2-write-actions";
-import { V2_MAINNET_ADDRESSES } from "@/lib/v2-contract-addresses";
+import { VaultCircuitBreakerCard, VaultDutchAuctionCard } from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
+import { VaultCycleExecutionStatusCard } from "@/components/shared/cards/VaultCycleExecutionStatusCard";
+import { VaultExecutionAuctionRraBidCard } from "@/components/shared/cards/VaultExecutionAuctionRraBidCard";
+import { VaultOraclePolicyMetricsCard } from "@/components/shared/cards/VaultOraclePolicyMetricsCard";
+import { VaultPegArbOpportunityAndHistoryCard } from "@/components/shared/cards/VaultPegArbOpportunityAndHistoryCard";
+import { VaultSharpeRatioYieldTrackerCard } from "@/components/shared/cards/VaultSharpeRatioYieldTrackerCard";
+import { VaultStrategyAllocationBarCard } from "@/components/shared/cards/VaultStrategyAllocationBarCard";
+import { VaultTransactionHistoryCard } from "@/components/shared/cards/VaultTransactionHistoryCard";
+import { VaultTvlStatsDepositWithdrawCard } from "@/components/shared/cards/VaultTvlStatsDepositWithdrawCard";
+import { VaultTopNavbar } from "@/components/shared/ui/VaultTopNavbar";
+import { useRainbowKitWallet } from "@/hooks/useRainbowKitWallet";
+import { useVaultV2ReadState } from "@/hooks/useVaultV2ReadState";
+import { useVaultV2WriteActions } from "@/hooks/useVaultV2WriteActions";
+import { V2_MAINNET_ADDRESSES } from "@/lib/contractAddresses";
 import { AlertTriangle, ExternalLink, Shield, TrendingUp, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -206,11 +206,15 @@ export default function ProofVaultV2Client() {
         </div>
       </div>
 
-      {/* V2 Dashboard: Enhanced layout with new V2-specific cards */}
+      {/* V2 Dashboard: Bento grid layout */}
       <div className="v2-dash-layout">
 
-        {/* LEFT COLUMN — primary wide cards */}
-        <div className="v2-dash-main">
+        {/* ── Row 1: Hero TVL + Status ── */}
+        <div className="bento-section-header bento-full">
+          <span className="bento-section-label">Vault Overview</span>
+          <span className="bento-section-line" />
+        </div>
+        <div className="bento-hero">
           <VaultTvlStatsDepositWithdrawCard
             assets={vaultState.assets}
             shares={vaultState.shares}
@@ -234,7 +238,25 @@ export default function ProofVaultV2Client() {
             asterManagedAssets={vaultState.asterManagedAssets}
             userTokenBalance={vaultState.userTokenBalance}
           />
+        </div>
+        <div className="bento-sidebar-stack">
+          <VaultCircuitBreakerCard
+            breakerState={vaultState.breakerStatus}
+          />
+          <VaultDutchAuctionCard
+            auctionState={vaultState.auctionMetrics}
+          />
+          <VaultSharpeRatioYieldTrackerCard
+            sharpeState={vaultState.sharpeMetrics}
+          />
+        </div>
 
+        {/* ── Row 2: Execution + Arbitrage ── */}
+        <div className="bento-section-header bento-full">
+          <span className="bento-section-label">Execution Engine</span>
+          <span className="bento-section-line" />
+        </div>
+        <div className="bento-wide">
           <VaultCycleExecutionStatusCard
             lastExec={vaultState.lastExec}
             canExecute={vaultState.canExecute}
@@ -250,55 +272,54 @@ export default function ProofVaultV2Client() {
             vaultHealthScore={vaultState.vaultHealthScore}
             vaultHealthLabel={vaultState.vaultHealthLabel}
           />
-
         </div>
+        <VaultPegArbOpportunityAndHistoryCard
+          arbPreview={vaultState.arbPreview}
+          onExecuteArb={handleExecuteArb}
+          busyAction={busyAction}
+        />
 
-        {/* RIGHT COLUMN — compact metric panels (V2 extended) */}
-        <div className="v2-dash-sidebar">
-          <VaultCircuitBreakerThreeSignalStatusCard
-            breakerState={vaultState.breakerStatus}
-            auctionState={vaultState.auctionMetrics}
-          />
+        {/* ── Row 3: Strategy + Auction + Oracle ── */}
+        <div className="bento-section-header bento-full">
+          <span className="bento-section-label">Strategy &amp; Analytics</span>
+          <span className="bento-section-line" />
+        </div>
+        <VaultStrategyAllocationBarCard
+          asterManagedAssets={vaultState.asterManagedAssets}
+          secondaryManagedAssets={vaultState.secondaryManagedAssets}
+          lpManagedAssets={vaultState.lpManagedAssets}
+          lpStakingInfo={vaultState.lpStakingInfo}
+          totalAssetsRaw={vaultState.totalAssetsRaw}
+          algoMetrics={vaultState.algoMetrics}
+          harvestGasEstimate={vaultState.harvestGasEstimate}
+          harvestGasMultiplier={vaultState.harvestGasMultiplier}
+        />
+        <VaultExecutionAuctionRraBidCard
+          executionAuctionAddress={executionAuctionAddress}
+          tokenAddress={tokenAddress}
+          signer={wallet.signer}
+          walletAddress={wallet.wallet}
+          canOperate={!!wallet.signer && !isBusy}
+          busyAction={busyAction}
+          onBusyChange={setBusyAction}
+          onStatus={setStatus}
+        />
+        <VaultOraclePolicyMetricsCard
+          algoMetrics={vaultState.algoMetrics}
+          harvestGasEstimate={vaultState.harvestGasEstimate}
+          harvestGasMultiplier={vaultState.harvestGasMultiplier}
+        />
 
-          <VaultSharpeRatioYieldTrackerCard
-            sharpeState={vaultState.sharpeMetrics}
-          />
-
-          <VaultPegArbOpportunityAndHistoryCard
-            arbPreview={vaultState.arbPreview}
-            onExecuteArb={handleExecuteArb}
-            busyAction={busyAction}
-          />
-
-          <VaultStrategyAllocationBarCard
-            asterManagedAssets={vaultState.asterManagedAssets}
-            secondaryManagedAssets={vaultState.secondaryManagedAssets}
-            lpManagedAssets={vaultState.lpManagedAssets}
-            lpStakingInfo={vaultState.lpStakingInfo}
-            totalAssetsRaw={vaultState.totalAssetsRaw}
-            algoMetrics={vaultState.algoMetrics}
-          />
-
-          <VaultExecutionAuctionRraBidCard
-            executionAuctionAddress={executionAuctionAddress}
-            tokenAddress={tokenAddress}
-            signer={wallet.signer}
-            walletAddress={wallet.wallet}
-            canOperate={!!wallet.signer && !isBusy}
-            busyAction={busyAction}
-            onBusyChange={setBusyAction}
-            onStatus={setStatus}
-          />
-
-          <VaultOraclePolicyMetricsCard
-            algoMetrics={vaultState.algoMetrics}
-          />
-
+        {/* ── Row 4: History ── */}
+        <div className="bento-section-header bento-full">
+          <span className="bento-section-label">Activity</span>
+          <span className="bento-section-line" />
+        </div>
+        <div className="bento-full">
           <VaultTransactionHistoryCard
             txHistory={actions.txHistory}
           />
         </div>
-
       </div>
     </section>
   );

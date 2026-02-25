@@ -1,7 +1,7 @@
-import { toSafeNumber, fmtBps, fmtUsdf } from "@/lib/vault-display-formatters";
+import { toSafeNumber, fmtBps, fmtUsdf } from "@/lib/vaultDisplayFormatters";
 import { formatUnits } from "ethers";
 
-export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryManagedAssets, lpManagedAssets, lpStakingInfo, totalAssetsRaw, algoMetrics }) {
+export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryManagedAssets, lpManagedAssets, lpStakingInfo, totalAssetsRaw, algoMetrics, harvestGasEstimate, harvestGasMultiplier }) {
   const total = toSafeNumber(totalAssetsRaw) ?? 0;
   const aster = toSafeNumber(asterManagedAssets) ?? 0;
   const lp = toSafeNumber(lpManagedAssets) ?? 0;
@@ -104,6 +104,16 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
             </tr>
           </tbody>
         </table>
+      )}
+
+      {/* Gas-gated harvest status row — shows when farm adapter has gas params configured */}
+      {(harvestGasEstimate != null || harvestGasMultiplier != null) && (
+        <div style={{ marginTop: 12, padding: '8px 10px', background: 'rgba(74,222,128,.05)', borderRadius: 6, border: '1px solid rgba(74,222,128,.10)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>Auto-Harvest</span>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+            Gas-gated at {harvestGasEstimate != null ? harvestGasEstimate.toLocaleString() : '?'} gas × {harvestGasMultiplier ?? '?'}× multiplier
+          </span>
+        </div>
       )}
     </div>
   );

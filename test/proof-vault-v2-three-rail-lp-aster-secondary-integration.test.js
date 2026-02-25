@@ -132,6 +132,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       usdt.target,
       stableSwapPool.target, // lpToken = pool itself (ERC20)
       cake.target,
+      deployer.address, // wbnb (mock placeholder for gas-gated harvest)
       stableSwapPool.target, // pool
       masterChef.target,
       router.target,
@@ -160,6 +161,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       100000000n
     );
 
+    await sharpeTracker.setEngine(engine.target);
     // Wire
     await vault.setEngine(engine.target);
     await vault.setAdapters(
@@ -341,6 +343,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
         100000000n
       );
 
+      await sharpeT.setEngine(engine.target);
       // Set engine + adapters without lpAdapter (pass zero address via setAdapters with lp=zero)
       await vault.setEngine(engine.target);
       // Only set aster + secondary, no LP — lpAdapter is optional so should succeed

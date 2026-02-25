@@ -6,7 +6,7 @@ import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import "./globals.css";
 import App from "./App.jsx";
-import { wagmiConfig } from "../lib/wagmi-config.js";
+import { wagmiConfig } from "../lib/wagmiConfig.js";
 
 const queryClient = new QueryClient();
 

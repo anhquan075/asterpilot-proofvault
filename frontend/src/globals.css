@@ -51,7 +51,7 @@
 
 /* ── Reset ── */
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; }
+html, body { margin: 0; height: 100%; overflow-x: hidden; }
 
 /* ── Body — matrix background with scanlines ── */
 body {
@@ -74,90 +74,100 @@ body {
 }
 
 /* Scanline overlay */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image: repeating-linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.04) 0px,
-    rgba(0, 0, 0, 0.04) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  z-index: 9998;
-}
+/* Scanline overlay — disabled for clean demo look */
+body::before { display: none; }
 
-/* ── Shell — fills full viewport, no page scroll on desktop ── */
+/* ── Shell — scrollable viewport container ── */
 .shell {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 16px 24px;
-  overflow: hidden;
+  padding: 20px 28px 48px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* ── V2 Two-column dashboard layout — fills remaining panel height ── */
+/* ── V2 Bento Dashboard — 3-column responsive grid ── */
 .v2-dash-layout {
   display: grid;
-  grid-template-columns: 7fr 3fr;
-  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding-bottom: 56px;
+}
+
+/* ── Bento grid spanning utilities ── */
+.bento-hero { grid-column: span 2; }
+.bento-wide { grid-column: span 2; }
+.bento-full { grid-column: 1 / -1; }
+
+.bento-sidebar-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+/* Cards in bento grid — stretch to fill row height */
+.v2-dash-layout {
   align-items: stretch;
-  margin-top: 10px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+}
+/* ── Max Button ── */
+.vaultMaxBtn {
+  background: rgba(200,147,90,.10);
+  border: 1px solid rgba(200,147,90,.25);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  min-height: unset;
+  line-height: 1.4;
+}
+.vaultMaxBtn:hover:not(:disabled) {
+  background: rgba(200,147,90,.18);
+  border-color: rgba(200,147,90,.4);
+}
+.vaultMaxBtn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
 }
 
-/* Left — wide primary cards, scrollable column */
-.v2-dash-main {
+/* ── Card accent variant ── */
+.card--accent {
+  border-color: rgba(200,147,90,.15);
+}
+.card--danger {
+  border-color: rgba(239,68,68,.25);
+  box-shadow: 0 4px 24px rgba(239,68,68,.08), inset 0 1px 0 rgba(239,68,68,.05);
+}
+
+/* ── Bento Section Headers ── */
+.bento-section-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  overflow: hidden;
-  min-height: 0;
+  padding: 0;
+  margin-top: 4px;
 }
-
-/* Right — sidebar scrolls independently */
-.v2-dash-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: calc(100vh - 80px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  height: 100%;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent-dim) transparent;
-}
-
-/* Each card in sidebar takes its natural height */
-.v2-dash-sidebar .card {
+.bento-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: rgba(200,147,90,.45);
+  white-space: nowrap;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
 }
-
-/* TX history card - scrollable content, capped height */
-.v2-dash-sidebar .card:last-child {
-  flex-shrink: 0;
-  max-height: 320px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* TX list - scrollable, no horizontal overflow */
-.v2-dash-sidebar .card:last-child .txList {
+.bento-section-line {
   flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(200,147,90,.15), transparent);
 }
-
 /* TX item - auto height, no width overflow */
 
 
@@ -225,7 +235,7 @@ body::before {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-radius: 4px;
+  border-radius: 12px;
   padding: 20px 24px;
   border: 1px solid var(--glass-border);
   background: var(--panel);
@@ -258,7 +268,7 @@ body::before {
   gap: 12px;
   padding: 10px 14px;
   margin-bottom: 14px;
-  border-radius: 4px;
+  border-radius: 12px;
   border: 1px solid rgba(200, 147, 90, 0.2);
   background: rgba(8, 6, 4, 0.96);
 }
@@ -638,24 +648,16 @@ body::before {
 }
 .stack { display: grid; gap: 12px; }
 
-/* ── Card ── */
+/* ── Card — glassmorphism ── */
 .card {
-  border-radius: 4px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  background: var(--panel-solid);
-}
-
-/* Cycle Status card — scrollable; TVL card stays fixed above */
-.v2-dash-main .card:nth-child(2) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent-dim) transparent;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(200, 147, 90, 0.12);
+  background: rgba(13, 11, 9, 0.9);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(200, 147, 90, 0.05);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .card--interactive { transition: border-color .22s ease, box-shadow .22s ease; cursor: pointer; }
@@ -855,7 +857,7 @@ body::before {
 input, button {
   width: 100%;
   min-height: 44px;
-  border-radius: 2px;
+  border-radius: 8px;
   padding: 12px;
   font-size: 14px;
   font-family: 'JetBrains Mono', monospace;
@@ -885,10 +887,15 @@ button {
   letter-spacing: .08em;
 }
 button.alt {
-  background: rgba(79,70,229,.15);
-  border-color: rgba(99,102,241,.5);
-  color: #818cf8;
+  background: transparent;
+  border-color: var(--accent);
+  color: var(--accent);
   box-shadow: none;
+}
+button.alt:hover:not(:disabled) {
+  background: rgba(200,147,90,.08);
+  box-shadow: 0 0 20px rgba(200,147,90,.2);
+  filter: brightness(1);
 }
 button:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 24px rgba(200, 147, 90,.4); }
 button:disabled { cursor: not-allowed; opacity: .4; }
@@ -1241,13 +1248,19 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(200, 147, 90,.3
 /* ── Vault Main Card ── */
 .vaultMainCard { padding: 24px; }
 .vaultTvl {
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-weight: 900;
   letter-spacing: .02em;
   color: var(--accent);
-  text-shadow: 0 0 30px rgba(200, 147, 90,.5), 0 0 60px rgba(200, 147, 90,.2);
+  background: linear-gradient(90deg, #C8935A, #F0D4A8 30%, #C8935A 50%, #F0D4A8 70%, #C8935A);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: goldShimmer 3s ease-in-out infinite;
   line-height: 1;
   font-family: 'JetBrains Mono', monospace;
+  filter: drop-shadow(0 0 18px rgba(200,147,90,.25));
 }
 .vaultTvlLabel { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: var(--text-muted); font-weight: 600; margin: 6px 0 20px; font-family: 'JetBrains Mono', monospace; }
 
@@ -1839,4 +1852,46 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(200, 147, 90,.3
     grid-row: auto;
     min-height: 120px;
   }
+}
+
+/* ═══════════════════════════════════════════════════════
+   BENTO LAYOUT ENHANCEMENTS
+═══════════════════════════════════════════════════════ */
+
+@keyframes goldShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* Card hover lift effect */
+.v2-dash-layout .card:hover {
+  border-color: rgba(200, 147, 90, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(200, 147, 90, 0.06), inset 0 1px 0 rgba(200, 147, 90, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Global radius upgrade — badges, pills, buttons, inputs */
+.contractBadge, .topNavBadge, .badge, .pillarBadge, .pillarCard { border-radius: 10px; }
+.statePill { border-radius: 8px; }
+input, button { border-radius: 8px; }
+.contractStrip { border-radius: 10px; gap: 10px; }
+.networkStrip { border-radius: 10px; }
+.allocationBar { border-radius: 6px; }
+.allocationSegment:first-child { border-radius: 5px 0 0 5px; }
+.allocationSegment:last-child  { border-radius: 0 5px 5px 0; }
+
+/* Responsive: tablet → 2 cols */
+@media (max-width: 1100px) {
+  .v2-dash-layout { grid-template-columns: repeat(2, 1fr); }
+  .bento-hero { grid-column: span 2; }
+  .bento-full { grid-column: 1 / -1; }
+  .bento-wide { grid-column: span 2; }
+}
+
+/* Responsive: mobile → 1 col */
+@media (max-width: 680px) {
+  .v2-dash-layout { grid-template-columns: 1fr; }
+  .bento-hero, .bento-wide, .bento-full { grid-column: span 1; }
+  .shell { padding: 12px 14px 32px; }
+  .topNav { flex-direction: column; gap: 10px; }
 }

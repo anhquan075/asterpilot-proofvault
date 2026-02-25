@@ -35,6 +35,8 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     IManagedAdapter public secondaryAdapter;
     IManagedAdapter public lpAdapter;
     bool public configurationLocked;
+    mapping(address => uint256) private _lastDepositBlock;
+    address public pegArbExecutor;
 
     // --- Events ---
     event Rebalanced(
@@ -46,7 +48,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     );
     event BountyPaid(address indexed executor, uint256 amount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
+    event AutoHarvestTriggered(uint256 harvested);
     event EngineSet(address indexed engine);
+    event PegArbExecutorSet(address indexed pegArbExecutor);
     event AdaptersSet(
         address indexed aster,
         address indexed secondary,
@@ -64,6 +68,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     error ProofVault__SecondaryNotSet();
     error ProofVault__LpNotSet();
     error ProofVault__InsufficientLiquidity();
+    error ProofVault__PegArbNotApproved();
+    error ProofVault__SlippageExceeded(uint256 expected, uint256 actual, uint256 maxSlippageBps);
+    error ProofVault__FlashLoanBlocked();
 
     // --- Modifiers ---
     modifier onlyEngine() {
@@ -105,6 +112,13 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         emit AdaptersSet(address(aster_), address(secondary_), address(lp_));
     }
 
+    function setPegArbExecutor(address pegArb_) external onlyOwner {
+        if (configurationLocked) revert ProofVault__ConfigurationLocked();
+        if (pegArb_ == address(0)) revert ProofVault__ZeroAddress();
+        pegArbExecutor = pegArb_;
+        emit PegArbExecutorSet(pegArb_);
+    }
+
     function lockConfiguration() external onlyOwner {
         if (engine == address(0)) revert ProofVault__EngineNotSet();
         if (address(asterAdapter) == address(0))
@@ -113,6 +127,12 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             revert ProofVault__SecondaryNotSet();
         // lpAdapter is optional: some deployments use only 2 yield rails
         configurationLocked = true;
+
+        // Approve PegArbExecutor to pull USDT for arb trades (optional)
+        if (pegArbExecutor != address(0)) {
+            IERC20(asset()).forceApprove(pegArbExecutor, type(uint256).max);
+        }
+
         renounceOwnership();
     }
 
@@ -137,6 +157,8 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address receiver
     ) public override nonReentrant returns (uint256) {
         if (!configurationLocked) revert ProofVault__NotLocked();
+        _lastDepositBlock[receiver] = block.number;
+        _maybeHarvest();
         return super.deposit(assets, receiver);
     }
 
@@ -145,6 +167,8 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address receiver
     ) public override nonReentrant returns (uint256) {
         if (!configurationLocked) revert ProofVault__NotLocked();
+        _lastDepositBlock[receiver] = block.number;
+        _maybeHarvest();
         return super.mint(shares, receiver);
     }
 
@@ -153,6 +177,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address receiver,
         address owner_
     ) public override nonReentrant returns (uint256) {
+        if (_lastDepositBlock[owner_] == block.number) revert ProofVault__FlashLoanBlocked();
         _ensureLiquid(assets);
         return super.withdraw(assets, receiver, owner_);
     }
@@ -162,6 +187,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address receiver,
         address owner_
     ) public override nonReentrant returns (uint256) {
+        if (_lastDepositBlock[owner_] == block.number) revert ProofVault__FlashLoanBlocked();
         uint256 assets = previewRedeem(shares);
         _ensureLiquid(assets);
         return super.redeem(shares, receiver, owner_);
@@ -179,7 +205,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     /// @notice Rebalance assets between idle buffer, aster, secondary, and LP
     function rebalance(
         uint256 asterTargetBps,
-        uint256 /* maxSlippageBps */,
+        uint256 maxSlippageBps,
         address executor,
         uint256 bountyBps,
         uint256 lpTargetBps
@@ -221,6 +247,16 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
         // Secondary rail: absorb remaining idle excess
         _rebalanceSecondary(buffer);
+
+
+        // Slippage check: verify totalAssets didn't drop beyond acceptable threshold
+        {
+            uint256 postTotal = totalAssets();
+            uint256 minAcceptable = (total * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+            if (postTotal < minAcceptable) {
+                revert ProofVault__SlippageExceeded(total, postTotal, maxSlippageBps);
+            }
+        }
 
         uint256 idle = IERC20(asset()).balanceOf(address(this));
         uint256 lpManaged = address(lpAdapter) != address(0)
@@ -286,13 +322,22 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             if (idle >= needed) return;
         }
 
-        // Tier 2.5: Pull from LP adapter — withdraw full balance to absorb fee slippage
+        // Tier 2.5: Pull from LP adapter — pull only what's needed, not full balance
         if (address(lpAdapter) != address(0)) {
             uint256 lpAvail = lpAdapter.managedAssets();
             if (lpAvail > 0) {
-                lpAdapter.withdrawToVault(lpAvail);
+                uint256 still = needed - IERC20(asset()).balanceOf(address(this));
+                uint256 lpPull = still < lpAvail ? still : lpAvail;
+                lpAdapter.withdrawToVault(lpPull);
                 idle = IERC20(asset()).balanceOf(address(this));
                 if (idle >= needed) return;
+                // Slippage shortfall — pull remaining LP if available
+                uint256 lpRemaining = lpAdapter.managedAssets();
+                if (lpRemaining > 0) {
+                    lpAdapter.withdrawToVault(lpRemaining);
+                    idle = IERC20(asset()).balanceOf(address(this));
+                    if (idle >= needed) return;
+                }
             }
         }
 
@@ -354,5 +399,21 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             IERC20(asset()).safeTransfer(executor, bounty);
             emit BountyPaid(executor, bounty);
         }
+    }
+
+    /// @dev Opportunistic harvest on LP adapter — silent no-op if unavailable or unprofitable
+    function _maybeHarvest() internal {
+        if (address(lpAdapter) == address(0)) return;
+        // Low-level call: adapter's gas-gated harvestRewards() returns 0 if unprofitable
+        (bool ok, bytes memory data) = address(lpAdapter).call(
+            abi.encodeWithSignature("harvestRewards()")
+        );
+        if (ok && data.length >= 32) {
+            uint256 harvested = abi.decode(data, (uint256));
+            if (harvested > 0) {
+                emit AutoHarvestTriggered(harvested);
+            }
+        }
+        // Silently ignore failures — never block user deposit/withdraw
     }
 }

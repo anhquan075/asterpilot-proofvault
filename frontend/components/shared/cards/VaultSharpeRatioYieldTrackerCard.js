@@ -3,9 +3,10 @@ import { TrendingUp } from 'lucide-react';
 export function VaultSharpeRatioYieldTrackerCard({ sharpeState }) {
   if (!sharpeState) {
     return (
-      <div className="card card--accent">
-        <h3 className="card__title"><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
-        <p className="card__muted">Loading Sharpe data…</p>
+      <div className="card card--accent" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:140 }}>
+        <h3 className="card__title" style={{ marginBottom: 12 }}><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
+        <div className="skeleton" style={{ width: '60%', height: 32, borderRadius: 6, marginBottom: 8 }} />
+        <div className="skeleton" style={{ width: '80%', height: 12, borderRadius: 4 }} />
       </div>
     );
   }

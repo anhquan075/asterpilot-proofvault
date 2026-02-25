@@ -10,11 +10,9 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy:testnet": "hardhat run scripts/deploy.js --network bnbTestnet",
-    "deploy:aster:adapter": "hardhat run scripts/deploy-aster-adapter.js --network bnb",
-    "deploy:aster:stack": "hardhat run scripts/deploy-aster-stack.js --network bnb",
-    "derive:aster:envs": "node scripts/derive-aster-envs.js",
-    "derive:aster:envs:rust": "sh -c '. \"$HOME/.cargo/env\" && cargo run --release --manifest-path scripts/aster-env-rs/Cargo.toml'",
+    "deploy:aster:adapter": "hardhat run scripts/deployAsterAdapter.js --network bnb",
+    "deploy:aster:stack": "hardhat run scripts/deployAsterStack.js --network bnb",
+    "derive:aster:envs": "node scripts/deriveAsterEnvs.js",
     "node": "hardhat node"
   },
   "keywords": [],

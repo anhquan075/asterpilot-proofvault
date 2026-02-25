@@ -1,10 +1,11 @@
 import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
+import { Activity } from 'lucide-react';
 
 export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, harvestGasMultiplier }) {
   return (
     <div className="card">
       <p className="eyebrow">Oracle &amp; Policy</p>
-      <h3 className="cardTitle">Live Metrics</h3>
+      <h3 className="cardTitle"><Activity size={13} style={{ marginRight: 6, opacity: 0.7 }} />Live Metrics</h3>
 
       <div className="kpiGrid" style={{ marginTop: 12 }}>
         <div className="kpi">

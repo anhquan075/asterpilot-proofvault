@@ -1,3 +1,4 @@
+import { PieChart } from 'lucide-react';
 import { toSafeNumber, fmtBps, fmtUsdf } from "@/lib/vaultDisplayFormatters";
 import { formatUnits } from "ethers";
 
@@ -13,7 +14,7 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
   return (
     <div className="card">
       <p className="eyebrow">Strategy Allocation</p>
-      <h3 className="cardTitle">Capital Distribution</h3>
+      <h3 className="cardTitle"><PieChart size={13} style={{ marginRight: 6, opacity: 0.7 }} />Capital Distribution</h3>
 
       <div className="allocationBar">
         <div
@@ -105,6 +106,22 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
           </tbody>
         </table>
       )}
+      {/* ─── Distribution Summary ─── */}
+      <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(200,147,90,.04)', borderRadius: 6, border: '1px solid rgba(200,147,90,.10)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={{ margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--accent)', fontWeight: 700 }}>Distribution Summary</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+          <span style={{ color: 'var(--text-muted)' }}>Total AUM</span>
+          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{total > 0 ? `$${(total / 1e18).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+          <span style={{ color: 'var(--text-muted)' }}>Active Protocols</span>
+          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{[asterPct > 0 && 'AsterDEX', lpPct > 0 && 'StableSwap LP', secondaryPct > 0 && 'Buffer'].filter(Boolean).join(', ') || '—'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+          <span style={{ color: 'var(--text-muted)' }}>Buffer Ratio</span>
+          <span style={{ color: secondaryPct > 50 ? 'var(--warning)' : 'var(--success)', fontWeight: 600 }}>{secondaryPct}%</span>
+        </div>
+      </div>
 
       {/* Gas-gated harvest status row — shows when farm adapter has gas params configured */}
       {(harvestGasEstimate != null || harvestGasMultiplier != null) && (

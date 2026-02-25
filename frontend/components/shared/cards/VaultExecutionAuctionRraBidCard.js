@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Gavel } from 'lucide-react';
 
 import { executionAuctionAbi, erc20Abi } from "@/lib/abi";
 import { fmtUsdf } from "@/lib/vaultDisplayFormatters";
@@ -308,7 +309,7 @@ export function VaultExecutionAuctionRraBidCard({
     <div className="card">
       <div>
         <p className="eyebrow" style={{ margin: 0 }}>Execution Auction (RRA)</p>
-        <h3 className="cardTitle" style={{ margin: "2px 0 0" }}>Keeper Bid System</h3>
+        <h3 className="cardTitle" style={{ margin: "2px 0 0" }}><Gavel size={13} style={{ marginRight: 6, opacity: 0.7 }} />Keeper Bid System</h3>
       </div>
       <div className="kpiGrid" style={{ marginTop: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
         <div className="kpi">
@@ -343,6 +344,18 @@ export function VaultExecutionAuctionRraBidCard({
         </div>
       </div>
 
+      {/* ─── Auction Parameters ─── */}
+      {auctionParams && (
+        <div style={{ marginTop: 14, borderTop: '1px dashed rgba(255,255,255,.06)', paddingTop: 12 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--accent)', fontWeight: 700 }}>Auction Parameters</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <InfoRow label="Bid Window" value={fmtMinutes(auctionParams.bidWindow)} />
+            <InfoRow label="Execute Window" value={fmtMinutes(auctionParams.executeWindow)} />
+            <InfoRow label="Min Bid" value={fmtUsdf(auctionParams.minBid)} />
+            <InfoRow label="Min Bid Increment" value={auctionParams.minBidIncrementBps != null ? `${(Number(auctionParams.minBidIncrementBps) / 100).toFixed(2)}%` : '—'} />
+          </div>
+        </div>
+      )}
       {/* ─── NotOpen explainer ─── */}
       {phase === 0 && (
         <div style={{ marginTop: 14, borderTop: "1px dashed rgba(255,255,255,.06)", paddingTop: 12 }}>

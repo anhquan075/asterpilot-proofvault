@@ -1,5 +1,5 @@
 import { fmtBps } from '@/lib/vaultDisplayFormatters';
-
+import { Zap } from 'lucide-react';
 export function VaultCircuitBreakerCard({ breakerState }) {
   const { paused, signalA, signalB, signalC, lastTripTimestamp, recoveryTimestamp } = breakerState ?? {};
   const now = Math.floor(Date.now() / 1000);
@@ -63,7 +63,7 @@ export function VaultDutchAuctionCard({ auctionState }) {
 
   return (
     <div className="card card--accent" style={{ paddingBottom: 16 }}>
-      <h3 className="card__title" style={{ marginBottom: 6, fontSize: 11 }}>Dutch Auction Bounty</h3>
+      <h3 className="card__title" style={{ marginBottom: 6, fontSize: 11 }}><Zap size={13} />Dutch Auction Bounty</h3>
       {auctionState ? (
         <>
           <div style={{ textAlign: 'center', marginBottom: 6 }}>

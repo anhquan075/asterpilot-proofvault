@@ -421,6 +421,42 @@ describe("ProofVault V2 — Farm Integration Tests", function () {
       );
       expect(swapEvent).to.not.be.undefined;
     });
+
+    it("Should only allow vault to claim matured withdrawals", async function () {
+      const { user, asterAdapter } = await loadFixture(deployFarmIntegrationFixture);
+
+      await expect(
+        asterAdapter.connect(user).claimAllMatured()
+      ).to.be.revertedWithCustomError(asterAdapter, "AsterEarnAdapterWithSwap__CallerNotVault");
+    });
+
+    it("Should claim matured USDF, swap to USDT, and return funds to vault", async function () {
+      const { vault, engine, user, usdt, usdf, asterAdapter } = await loadFixture(deployFarmIntegrationFixture);
+
+      const depositAmount = ethers.parseUnits("10000", 18);
+      await vault.connect(user).deposit(depositAmount, user.address);
+
+      await time.increase(301);
+      await engine.connect(user).executeCycle();
+
+      await impersonateAccount(vault.target);
+      await setBalance(vault.target, ethers.parseEther("1"));
+      const vaultSigner = await ethers.getSigner(vault.target);
+
+      await asterAdapter.connect(vaultSigner).requestWithdraw(ethers.parseUnits("100", 18));
+      await time.increase(3601);
+
+      const vaultBalanceBefore = await usdt.balanceOf(vault.target);
+      const sentStatic = await asterAdapter.connect(vaultSigner).claimAllMatured.staticCall();
+      expect(sentStatic).to.be.gt(0);
+
+      await asterAdapter.connect(vaultSigner).claimAllMatured();
+
+      const vaultBalanceAfter = await usdt.balanceOf(vault.target);
+      expect(vaultBalanceAfter).to.be.gt(vaultBalanceBefore);
+      expect(await usdf.balanceOf(asterAdapter.target)).to.equal(0);
+      expect(await asterAdapter.totalPending()).to.equal(0);
+    });
   });
 
   describe("Emergency Unstake", function () {

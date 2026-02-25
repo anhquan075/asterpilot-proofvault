@@ -47,6 +47,7 @@ async function main() {
   const stableSwapPool = requiredEnv("V2_STABLESWAP_POOL");
   const chainlinkFeed = requiredEnv("V2_CHAINLINK_FEED");
   const usdfMinting = requiredEnv("V2_USDF_MINTING_ADDRESS");
+  const wbnb = envOrDefault("V2_WBNB_ADDRESS", "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c");
 
   // Farm-specific (REQUIRED)
   const pancakeRouter = requiredEnv("V2_PANCAKE_ROUTER");
@@ -179,6 +180,7 @@ async function main() {
     asset,           // USDT
     lpToken,         // LP token (pool address)
     cakeToken,       // NEW: CAKE reward token
+    wbnb,
     stableSwapPool,  // StableSwap pool
     masterChef,      // NEW: MasterChef V3
     pancakeRouter,   // NEW: PancakeSwap router for CAKE→USDT swap

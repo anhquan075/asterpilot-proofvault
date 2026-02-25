@@ -3,7 +3,10 @@ require("dotenv").config();
 
 const BNB_TESTNET_RPC_URL = process.env.BNB_TESTNET_RPC_URL || "";
 const BNB_MAINNET_RPC_URL = process.env.BNB_MAINNET_RPC_URL || "";
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
+const RAW_PRIVATE_KEY = (process.env.PRIVATE_KEY || "").trim();
+const PRIVATE_KEY = RAW_PRIVATE_KEY
+  ? (RAW_PRIVATE_KEY.startsWith("0x") ? RAW_PRIVATE_KEY : `0x${RAW_PRIVATE_KEY}`)
+  : "";
 
 module.exports = {
   solidity: {

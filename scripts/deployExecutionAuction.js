@@ -12,9 +12,9 @@ const { ethers } = require("hardhat");
 
 // ─── V2 Mainnet Addresses ─────────────────────────────────────────────────────
 const V2 = {
-  ENGINE: "0x39085f39f1f55Aefdea8C35864dba460aCbC4c18", // StrategyEngineV2
-  VAULT:  "0xaB4F67AfCb9B9C390049705022A0237E81465C00", // ProofVaultV2
-  USDT:   "0x55d398326f99059fF775485246999027B3197955", // BEP-20 USDT (18 decimals)
+  ENGINE: process.env.V2_ENGINE_ADDRESS || "0x39085f39f1f55Aefdea8C35864dba460aCbC4c18",
+  VAULT:  process.env.V2_VAULT_ADDRESS || "0xaB4F67AfCb9B9C390049705022A0237E81465C00",
+  USDT:   process.env.V2_ASSET_ADDRESS || "0x55d398326f99059fF775485246999027B3197955",
 };
 
 // ─── Auction Parameters ───────────────────────────────────────────────────────

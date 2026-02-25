@@ -94,6 +94,10 @@ export const executionAuctionAbi = [
   "function roundStatus() external view returns (uint256 id, uint8 currentPhase, address winner, uint256 winningBid, uint256 bidTimeRemaining, uint256 executeTimeRemaining)",
   "function stats() external view returns (uint256 totalRounds, uint256 bidRevenue, uint8 currentPhase_)",
   "function pendingRefunds(address) external view returns (uint256)",
+  "function bidWindow() external view returns (uint256)",
+  "function executeWindow() external view returns (uint256)",
+  "function minBid() external view returns (uint256)",
+  "function minBidIncrementBps() external view returns (uint256)",
 ];
 
 export const policyV2Abi = [

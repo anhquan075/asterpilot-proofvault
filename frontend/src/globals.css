@@ -89,31 +89,149 @@ body::before { display: none; }
   overflow-x: hidden;
 }
 
-/* ── V2 Bento Dashboard — 3-column responsive grid ── */
+/* ── V2 Bento Dashboard — full width layout ── */
 .v2-dash-layout {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-  padding-bottom: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 0 12px 16px;
+  width: 100%;
+  max-width: none;
 }
 
+.v2-dash-layout > .bento-section-header {
+  margin-top: 8px;
+}
+
+.v2-dash-layout > .bento-section-header:first-child {
+  margin-top: 0;
+}
+
+/* ── Row flex containers ── */
+.bento-row-flex {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.bento-row-main {
+  flex: 0 0 70%;
+  width: 70%;
+  min-width: 0;
+}
+
+.bento-row-side {
+  flex: 0 0 calc(30% - 8px);
+  width: calc(30% - 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bento-row-side > .card { flex: 1; min-height: 0; }
+
+.bento-row-third {
+  flex: 1;
+  min-width: 0;
+}
+
+.bento-row-thirds {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.bento-row-thirds > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Status Cards Row ── */
+.status-cards-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.status-cards-row > .card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Responsive: Stack status cards on mobile */
+@media (max-width: 768px) {
+  .status-cards-row {
+    flex-direction: column;
+  }
+}
+
+/* ── Responsive: Tablet and up ── */
+@media (min-width: 768px) {
+  .v2-dash-layout {
+    gap: 8px;
+    padding: 0 16px 16px;
+  }
+  
+  .bento-row-flex {
+    gap: 10px;
+  }
+  
+  .bento-row-side {
+    flex: 0 0 calc(30% - 10px);
+    width: calc(30% - 10px);
+  }
+}
+
+/* ── Responsive: Large screens ── */
+@media (min-width: 1200px) {
+  .v2-dash-layout {
+    padding: 0 20px 20px;
+  }
+  
+  .bento-row-flex {
+    gap: 12px;
+  }
+  
+  .bento-row-side {
+    flex: 0 0 calc(30% - 12px);
+    width: calc(30% - 12px);
+  }
+}
+
+/* ── Responsive: Extra large screens ── */
+@media (min-width: 1400px) {
+  .v2-dash-layout {
+    padding: 0 24px 24px;
+    gap: 10px;
+  }
+  
+  .bento-row-side {
+    flex: 0 0 calc(30% - 10px);
+    width: calc(30% - 10px);
+  }
+}
+
+/* ── Responsive: Ultra wide screens ── */
+@media (min-width: 1600px) {
+  .v2-dash-layout {
+    padding: 0 32px 32px;
+  }
+  
+  .bento-row-flex {
+    gap: 16px;
+  }
+  
+  .bento-row-side {
+    flex: 0 0 calc(30% - 16px);
+    width: calc(30% - 16px);
+  }
+}
 /* ── Bento grid spanning utilities ── */
 .bento-hero { grid-column: span 2; }
 .bento-wide { grid-column: span 2; }
 .bento-full { grid-column: 1 / -1; }
-
-.bento-sidebar-stack {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 14px;
-}
-
-/* Cards in bento grid — stretch to fill row height */
-.v2-dash-layout {
-  align-items: stretch;
-}
 /* ── Max Button ── */
 .vaultMaxBtn {
   background: rgba(200,147,90,.10);
@@ -148,6 +266,13 @@ body::before { display: none; }
 
 /* ── Bento Section Headers ── */
 .bento-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1867,7 +1992,6 @@ button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(200, 147, 90,.3
 .v2-dash-layout .card:hover {
   border-color: rgba(200, 147, 90, 0.22);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(200, 147, 90, 0.06), inset 0 1px 0 rgba(200, 147, 90, 0.08);
-  transform: translateY(-2px);
 }
 
 /* Global radius upgrade — badges, pills, buttons, inputs */
@@ -1894,4 +2018,12 @@ input, button { border-radius: 8px; }
   .bento-hero, .bento-wide, .bento-full { grid-column: span 1; }
   .shell { padding: 12px 14px 32px; }
   .topNav { flex-direction: column; gap: 10px; }
+}
+/* Tippy.js custom theme for RRA card */
+.tippy-box[data-theme~='rra'] {
+  background: rgba(18,14,10,0.97);
+  border: 1px solid rgba(200,147,90,.22);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.55);
+  color: var(--text);
 }

@@ -3,8 +3,8 @@ import { TrendingUp } from 'lucide-react';
 export function VaultSharpeRatioYieldTrackerCard({ sharpeState }) {
   if (!sharpeState) {
     return (
-      <div className="card card--accent" style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:140 }}>
-        <h3 className="card__title" style={{ marginBottom: 12 }}><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
+      <div className="card card--accent" style={{ display:'flex', flexDirection:'column' }}>
+        <h3 className="card__title" style={{ marginBottom: 8 }}><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
         <div className="skeleton" style={{ width: '60%', height: 32, borderRadius: 6, marginBottom: 8 }} />
         <div className="skeleton" style={{ width: '80%', height: 12, borderRadius: 4 }} />
       </div>
@@ -29,27 +29,27 @@ export function VaultSharpeRatioYieldTrackerCard({ sharpeState }) {
     <div className="card card--accent">
       <h3 className="card__title"><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
 
-      <div className={`sharpe__value ${sharpeColor}`}>
+      <div className={`sharpe__value ${sharpeColor}`} style={{ textAlign: 'center', margin: '20px 0 10px', fontSize: '1.5em', fontWeight: 'bold' }}>
         {observationCount >= 3 ? sharpeDisplay : '—'}
       </div>
-      <div className="card__muted" style={{ textAlign: 'center', marginBottom: 12 }}>
+      <div className="card__muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '0.85em', wordBreak: 'break-word', whiteSpace: 'normal' }}>
         {observationCount >= 3
           ? `Risk-adjusted return (${observationCount} cycles)`
-          : `Need ${3 - Number(observationCount)} more cycles for Sharpe calculation`}
+          : `Need ${3 - Number(observationCount)} more cycles`}
       </div>
 
-      <div className="sharpe__stats">
-        <div className="sharpe__stat">
-          <div className="card__muted">Mean Yield</div>
-          <div>{observationCount >= 3 ? `${meanDisplay}%` : '—'}</div>
+      <div className="sharpe__stats" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, fontSize: '0.85em' }}>
+        <div className="sharpe__stat" style={{ flex: 1, minWidth: 60 }}>
+          <div className="card__muted" style={{ marginBottom: 4 }}>Mean Yield</div>
+          <div style={{ fontWeight: 'bold' }}>{observationCount >= 3 ? `${meanDisplay}%` : '—'}</div>
         </div>
-        <div className="sharpe__stat">
-          <div className="card__muted">Volatility</div>
-          <div>{observationCount >= 3 ? `${volDisplay}%` : '—'}</div>
+        <div className="sharpe__stat" style={{ flex: 1, minWidth: 60 }}>
+          <div className="card__muted" style={{ marginBottom: 4 }}>Volatility</div>
+          <div style={{ fontWeight: 'bold' }}>{observationCount >= 3 ? `${volDisplay}%` : '—'}</div>
         </div>
-        <div className="sharpe__stat">
-          <div className="card__muted">Observations</div>
-          <div>{String(observationCount)}</div>
+        <div className="sharpe__stat" style={{ flex: 1, minWidth: 40, textAlign: 'right' }}>
+          <div className="card__muted" style={{ marginBottom: 4 }}>Obs.</div>
+          <div style={{ fontWeight: 'bold' }}>{String(observationCount)}</div>
         </div>
       </div>
     </div>

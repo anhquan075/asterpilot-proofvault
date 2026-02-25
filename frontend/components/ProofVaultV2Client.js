@@ -206,120 +206,118 @@ export default function ProofVaultV2Client() {
         </div>
       </div>
 
-      {/* V2 Dashboard: Bento grid layout */}
+      {/* V2 Dashboard */}
       <div className="v2-dash-layout">
 
-        {/* ── Row 1: Hero TVL + Status ── */}
-        <div className="bento-section-header bento-full">
+        {/* ── Row 1: Hero TVL & Status ── */}
+        <div className="bento-section-header">
           <span className="bento-section-label">Vault Overview</span>
           <span className="bento-section-line" />
         </div>
-        <div className="bento-hero">
-          <VaultTvlStatsDepositWithdrawCard
-            assets={vaultState.assets}
-            shares={vaultState.shares}
-            riskState={vaultState.riskState}
-            cycleCountVal={vaultState.cycleCountVal}
-            decimals={decimals}
-            shareDecimals={shareDecimals}
-            configLocked={vaultState.configLocked}
-            walletAddress={wallet.wallet}
-            isConnected={isConnected}
-            canOperate={!!wallet.signer && !isBusy}
-            depositAmount={depositAmount}
-            setDepositAmount={setDepositAmount}
-            withdrawAmount={withdrawAmount}
-            setWithdrawAmount={setWithdrawAmount}
-            onDeposit={handleDeposit}
-            onWithdraw={handleWithdraw}
-            isBusy={isBusy}
-            busyAction={busyAction}
-            totalAssetsRaw={vaultState.totalAssetsRaw}
-            asterManagedAssets={vaultState.asterManagedAssets}
-            userTokenBalance={vaultState.userTokenBalance}
-          />
+        <div className="bento-row-flex">
+          <div className="bento-row-main" style={{ flex: 7 }}>
+            <VaultTvlStatsDepositWithdrawCard
+              assets={vaultState.assets}
+              shares={vaultState.shares}
+              riskState={vaultState.riskState}
+              cycleCountVal={vaultState.cycleCountVal}
+              decimals={decimals}
+              shareDecimals={shareDecimals}
+              configLocked={vaultState.configLocked}
+              walletAddress={wallet.wallet}
+              isConnected={isConnected}
+              canOperate={!!wallet.signer && !isBusy}
+              depositAmount={depositAmount}
+              setDepositAmount={setDepositAmount}
+              withdrawAmount={withdrawAmount}
+              setWithdrawAmount={setWithdrawAmount}
+              onDeposit={handleDeposit}
+              onWithdraw={handleWithdraw}
+              isBusy={isBusy}
+              busyAction={busyAction}
+              totalAssetsRaw={vaultState.totalAssetsRaw}
+              asterManagedAssets={vaultState.asterManagedAssets}
+              userTokenBalance={vaultState.userTokenBalance}
+            />
+          </div>
+          <div className="bento-row-side" style={{ flex: 3 }}>
+            <VaultDutchAuctionCard auctionState={vaultState.auctionMetrics} />
+            <VaultSharpeRatioYieldTrackerCard sharpeState={vaultState.sharpeMetrics} />
+          </div>
         </div>
-        <div className="bento-sidebar-stack">
-          <VaultCircuitBreakerCard
-            breakerState={vaultState.breakerStatus}
-          />
-          <VaultDutchAuctionCard
-            auctionState={vaultState.auctionMetrics}
-          />
-          <VaultSharpeRatioYieldTrackerCard
-            sharpeState={vaultState.sharpeMetrics}
-          />
-        </div>
-
         {/* ── Row 2: Execution + Arbitrage ── */}
-        <div className="bento-section-header bento-full">
+        <div className="bento-section-header">
           <span className="bento-section-label">Execution Engine</span>
           <span className="bento-section-line" />
         </div>
-        <div className="bento-wide">
-          <VaultCycleExecutionStatusCard
-            lastExec={vaultState.lastExec}
-            canExecute={vaultState.canExecute}
-            canExecuteReason={vaultState.canExecuteReason}
-            riskState={vaultState.riskState}
-            riskScoreVal={vaultState.riskScoreVal}
-            timeUntilNext={vaultState.timeUntilNext}
-            cycleCountVal={vaultState.cycleCountVal}
-            canOperate={!!wallet.signer && !isBusy}
-            busyAction={busyAction}
-            onExecuteCycle={handleExecuteCycle}
-            previewDecision={vaultState.previewDecision}
-            vaultHealthScore={vaultState.vaultHealthScore}
-            vaultHealthLabel={vaultState.vaultHealthLabel}
-          />
+        <div className="bento-row-flex">
+          <div className="bento-row-main">
+            <VaultCycleExecutionStatusCard
+              lastExec={vaultState.lastExec}
+              canExecute={vaultState.canExecute}
+              canExecuteReason={vaultState.canExecuteReason}
+              riskState={vaultState.riskState}
+              riskScoreVal={vaultState.riskScoreVal}
+              timeUntilNext={vaultState.timeUntilNext}
+              cycleCountVal={vaultState.cycleCountVal}
+              canOperate={!!wallet.signer && !isBusy}
+              busyAction={busyAction}
+              onExecuteCycle={handleExecuteCycle}
+              previewDecision={vaultState.previewDecision}
+              vaultHealthScore={vaultState.vaultHealthScore}
+              vaultHealthLabel={vaultState.vaultHealthLabel}
+            />
+          </div>
+          <div className="bento-row-third">
+            <VaultPegArbOpportunityAndHistoryCard
+              arbPreview={vaultState.arbPreview}
+              onExecuteArb={handleExecuteArb}
+              busyAction={busyAction}
+            />
+          </div>
         </div>
-        <VaultPegArbOpportunityAndHistoryCard
-          arbPreview={vaultState.arbPreview}
-          onExecuteArb={handleExecuteArb}
-          busyAction={busyAction}
-        />
 
         {/* ── Row 3: Strategy + Auction + Oracle ── */}
-        <div className="bento-section-header bento-full">
+        <div className="bento-section-header">
           <span className="bento-section-label">Strategy &amp; Analytics</span>
           <span className="bento-section-line" />
         </div>
-        <VaultStrategyAllocationBarCard
-          asterManagedAssets={vaultState.asterManagedAssets}
-          secondaryManagedAssets={vaultState.secondaryManagedAssets}
-          lpManagedAssets={vaultState.lpManagedAssets}
-          lpStakingInfo={vaultState.lpStakingInfo}
-          totalAssetsRaw={vaultState.totalAssetsRaw}
-          algoMetrics={vaultState.algoMetrics}
-          harvestGasEstimate={vaultState.harvestGasEstimate}
-          harvestGasMultiplier={vaultState.harvestGasMultiplier}
-        />
-        <VaultExecutionAuctionRraBidCard
-          executionAuctionAddress={executionAuctionAddress}
-          tokenAddress={tokenAddress}
-          signer={wallet.signer}
-          walletAddress={wallet.wallet}
-          canOperate={!!wallet.signer && !isBusy}
-          busyAction={busyAction}
-          onBusyChange={setBusyAction}
-          onStatus={setStatus}
-        />
-        <VaultOraclePolicyMetricsCard
-          algoMetrics={vaultState.algoMetrics}
-          harvestGasEstimate={vaultState.harvestGasEstimate}
-          harvestGasMultiplier={vaultState.harvestGasMultiplier}
-        />
+        <div className="bento-row-thirds">
+          <VaultStrategyAllocationBarCard
+            asterManagedAssets={vaultState.asterManagedAssets}
+            secondaryManagedAssets={vaultState.secondaryManagedAssets}
+            lpManagedAssets={vaultState.lpManagedAssets}
+            lpStakingInfo={vaultState.lpStakingInfo}
+            totalAssetsRaw={vaultState.totalAssetsRaw}
+            algoMetrics={vaultState.algoMetrics}
+            harvestGasEstimate={vaultState.harvestGasEstimate}
+            harvestGasMultiplier={vaultState.harvestGasMultiplier}
+          />
+          <VaultExecutionAuctionRraBidCard
+            executionAuctionAddress={executionAuctionAddress}
+            tokenAddress={tokenAddress}
+            signer={wallet.signer}
+            walletAddress={wallet.wallet}
+            canOperate={!!wallet.signer && !isBusy}
+            busyAction={busyAction}
+            onBusyChange={setBusyAction}
+            onStatus={setStatus}
+          />
+          <VaultOraclePolicyMetricsCard
+            algoMetrics={vaultState.algoMetrics}
+            harvestGasEstimate={vaultState.harvestGasEstimate}
+            harvestGasMultiplier={vaultState.harvestGasMultiplier}
+          />
+        </div>
 
         {/* ── Row 4: History ── */}
-        <div className="bento-section-header bento-full">
+        <div className="bento-section-header">
           <span className="bento-section-label">Activity</span>
           <span className="bento-section-line" />
         </div>
-        <div className="bento-full">
-          <VaultTransactionHistoryCard
-            txHistory={actions.txHistory}
-          />
-        </div>
+        <VaultTransactionHistoryCard
+          txHistory={actions.txHistory}
+        />
       </div>
     </section>
   );

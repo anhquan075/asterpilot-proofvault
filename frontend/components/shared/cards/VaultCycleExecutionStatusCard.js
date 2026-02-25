@@ -151,7 +151,7 @@ export function VaultCycleExecutionStatusCard({
       <p className="eyebrow">Execution Engine</p>
       <h3 className="cardTitle">Cycle Status</h3>
 
-      <div className="kpiGrid" style={{ marginTop: 12, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+      <div className="kpiGrid" style={{ marginTop: 8, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <div className="kpi">
           <span className="kpiLabel">Cycle #</span>
           <span className="kpiValue">{cycleCountVal ?? "—"}</span>
@@ -167,7 +167,7 @@ export function VaultCycleExecutionStatusCard({
         <span className="execCountdownValue">{fmtSeconds(countdown)}</span>
       </div>
 
-      <div className="riskGaugeWrap" style={{ marginTop: 14 }}>
+      <div className="riskGaugeWrap" style={{ marginTop: 8 }}>
         <div className="riskGaugeLabel" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           Risk Score
           <div title="30/100 is the default score for new vaults with insufficient yield history (Sharpe Ratio < 0.5). Score will improve as positive returns are generated.">
@@ -185,7 +185,7 @@ export function VaultCycleExecutionStatusCard({
 
       {/* Vault Health Score — composite 0-100 signal from StrategyEngineV2.vaultHealthScore() */}
       {(vaultHealthScore != null || vaultHealthLabel) && (
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>Vault Health</span>
           <span style={{
             fontSize: 11, fontWeight: 700, letterSpacing: ".06em",
@@ -200,8 +200,8 @@ export function VaultCycleExecutionStatusCard({
       )}
 
       {/* Algorithm decision proof — 6 steps from previewDecision() on-chain call */}
-      <div style={{ marginTop: 16, borderTop: "1px dashed rgba(255,255,255,.08)", paddingTop: 14 }}>
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Algorithm Decision Proof</p>
+      <div style={{ marginTop: 10, borderTop: "1px dashed rgba(255,255,255,.08)", paddingTop: 8 }}>
+        <p className="eyebrow" style={{ marginBottom: 4 }}>Algorithm Decision Proof</p>
         <AlgoSummary pd={previewDecision} />
       </div>
 
@@ -229,7 +229,7 @@ export function VaultCycleExecutionStatusCard({
       )}
 
       {/* Execute button */}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 8 }}>
         <button
           onClick={onExecuteCycle}
           disabled={!canOperate || !canExecute || isExecuting}

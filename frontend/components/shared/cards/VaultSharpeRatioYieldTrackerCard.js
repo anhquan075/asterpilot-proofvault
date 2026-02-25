@@ -26,30 +26,30 @@ export function VaultSharpeRatioYieldTrackerCard({ sharpeState }) {
   }
 
   return (
-    <div className="card card--accent" style={{ display: 'flex', flexDirection: 'column', paddingBottom: 28 }}>
+    <div className="card card--accent" style={{ display: 'flex', flexDirection: 'column', paddingBottom: 16 }}>
       <h3 className="card__title"><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
 
       <div className={`sharpe__value ${sharpeColor}`} style={{ flexShrink: 0 }}>
         {observationCount >= 3 ? sharpeDisplay : '—'}
       </div>
-      <div className="card__muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '0.85em', wordBreak: 'break-word', whiteSpace: 'normal', flexShrink: 0 }}>
+      <div className="card__muted" style={{ textAlign: 'center', marginBottom: 4, fontSize: '0.75em', wordBreak: 'break-word', whiteSpace: 'normal', flexShrink: 0 }}>
         {observationCount >= 3
           ? `Risk-adjusted return (${observationCount} cycles)`
           : `Need ${3 - Number(observationCount)} more cycles`}
       </div>
 
-      <div className="sharpe__stats" style={{ marginTop: 'auto', paddingTop: 12, marginBottom: 4 }}>
+      <div className="sharpe__stats" style={{ marginTop: 'auto', paddingTop: 4 }}>
         <div className="sharpe__stat">
-          <div className="card__muted" style={{ marginBottom: 4 }}>Mean Yield</div>
-          <div style={{ fontWeight: 'bold' }}>{observationCount >= 3 ? `${meanDisplay}%` : '—'}</div>
+          <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Mean Yield</div>
+          <div>{observationCount >= 3 ? `${meanDisplay}%` : '—'}</div>
         </div>
         <div className="sharpe__stat">
-          <div className="card__muted" style={{ marginBottom: 4 }}>Volatility</div>
-          <div style={{ fontWeight: 'bold' }}>{observationCount >= 3 ? `${volDisplay}%` : '—'}</div>
+          <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Volatility</div>
+          <div>{observationCount >= 3 ? `${volDisplay}%` : '—'}</div>
         </div>
         <div className="sharpe__stat">
-          <div className="card__muted" style={{ marginBottom: 4 }}>Obs.</div>
-          <div style={{ fontWeight: 'bold' }}>{String(observationCount)}</div>
+          <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Obs.</div>
+          <div>{String(observationCount)}</div>
         </div>
       </div>
     </div>

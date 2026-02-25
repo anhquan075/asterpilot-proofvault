@@ -62,22 +62,22 @@ export function VaultDutchAuctionCard({ auctionState }) {
   };
 
   return (
-    <div className="card card--accent">
+    <div className="card card--accent" style={{ paddingBottom: 16 }}>
       <h3 className="card__title" style={{ marginBottom: 6, fontSize: 11 }}>Dutch Auction Bounty</h3>
       {auctionState ? (
         <>
-          <div style={{ textAlign: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)' }}>{fmtBps(currentBountyBps)}</div>
+          <div style={{ textAlign: 'center', marginBottom: 6 }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent)', margin: '2px 0' }}>{fmtBps(currentBountyBps)}</div>
             <div className="card__muted" style={{ fontSize: 9 }}>Current bounty</div>
           </div>
-          <div className="auction__progress-bar" style={{ marginBottom: 8 }}>
+          <div className="auction__progress-bar" style={{ marginBottom: 6, height: 4 }}>
             <div className="auction__progress-fill" style={{ width: `${progressPct}%` }} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9 }}>
             <span className="card__muted">Min {fmtBps(minBountyBps)}</span>
             <span className="card__muted">Max {fmtBps(maxBountyBps)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginTop: 4 }}>
             <span className="card__muted">Elapsed {formatTime(elapsed)}</span>
             <span className="card__muted">Left {formatTime(Number(auctionRemaining ?? 0n))}</span>
           </div>

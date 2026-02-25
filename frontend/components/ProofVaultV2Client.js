@@ -251,7 +251,7 @@ export default function ProofVaultV2Client() {
           <span className="bento-section-line" />
         </div>
         <div className="bento-row-flex">
-          <div className="bento-row-main">
+          <div className="bento-row-main" style={{ flex: 7 }}>
             <VaultCycleExecutionStatusCard
               lastExec={vaultState.lastExec}
               canExecute={vaultState.canExecute}
@@ -268,7 +268,7 @@ export default function ProofVaultV2Client() {
               vaultHealthLabel={vaultState.vaultHealthLabel}
             />
           </div>
-          <div className="bento-row-third">
+          <div className="bento-row-side" style={{ flex: 3 }}>
             <VaultPegArbOpportunityAndHistoryCard
               arbPreview={vaultState.arbPreview}
               onExecuteArb={handleExecuteArb}

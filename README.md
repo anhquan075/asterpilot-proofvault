@@ -126,22 +126,22 @@ sequenceDiagram
 
 | Contract | Address |
 | --- | --- |
-| `ProofVault` | [`0x69FA0e6bc9b412EB5c90516c4E684EF596c2424d`](https://bscscan.com/address/0x69FA0e6bc9b412EB5c90516c4E684EF596c2424d) |
-| `StrategyEngine` | [`0x2414959E51E4f3459A114DEA7b3f4Da83c9849aa`](https://bscscan.com/address/0x2414959E51E4f3459A114DEA7b3f4Da83c9849aa) |
-| `RiskPolicy` | [`0xE37AAAc34307A3EF7F38e019b28018e720E037Dc`](https://bscscan.com/address/0xE37AAAc34307A3EF7F38e019b28018e720E037Dc) |
-| `ChainlinkPriceOracle` | [`0xFC0b07a4C06b72db57297eEC11c79e658EFE3A5a`](https://bscscan.com/address/0xFC0b07a4C06b72db57297eEC11c79e658EFE3A5a) |
-| `CircuitBreaker` | [`0x74bda872E528c58D66d5DBd9Bb9072b06d99f510`](https://bscscan.com/address/0x74bda872E528c58D66d5DBd9Bb9072b06d99f510) |
-| `SharpeTracker` | [`0x61b8f2BbF3863b1c07f42Ac76fB899B7eF483bD6`](https://bscscan.com/address/0x61b8f2BbF3863b1c07f42Ac76fB899B7eF483bD6) |
+| `ProofVault` | [`0x532495CaaAC982C406a68DFa30E12c67642F1BEA`](https://bscscan.com/address/0x532495CaaAC982C406a68DFa30E12c67642F1BEA) |
+| `StrategyEngine` | [`0x421824207F1c0872c16a9994d6e7313a03E80097`](https://bscscan.com/address/0x421824207F1c0872c16a9994d6e7313a03E80097) |
+| `RiskPolicy` | [`0x6518CFAf53C39D6127723D67402e63E636Dd1c3E`](https://bscscan.com/address/0x6518CFAf53C39D6127723D67402e63E636Dd1c3E) |
+| `ChainlinkPriceOracle` | [`0x7B4F1b838F7D373777a373D686D5936190338431`](https://bscscan.com/address/0x7B4F1b838F7D373777a373D686D5936190338431) |
+| `CircuitBreaker` | [`0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c`](https://bscscan.com/address/0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c) |
+| `SharpeTracker` | [`0x9e5763A7C11DB894A6aA1164cFDc849F9243751B`](https://bscscan.com/address/0x9e5763A7C11DB894A6aA1164cFDc849F9243751B) |
 
 ### Adapters and Executors
 
 | Contract | Address |
 | --- | --- |
-| `AsterEarnAdapterWithSwap` | [`0x05CF9BC006f21fe7e87d1058f606aF876E52f95E`](https://bscscan.com/address/0x05CF9BC006f21fe7e87d1058f606aF876E52f95E) |
-| `ManagedAdapter` | [`0x5FdeED968470602328d896b4db6b7C0F5BA867E5`](https://bscscan.com/address/0x5FdeED968470602328d896b4db6b7C0F5BA867E5) |
-| `StableSwapLPYieldAdapterWithFarm` | [`0xA6974768f90d579573faaE512e6a613464e4963c`](https://bscscan.com/address/0xA6974768f90d579573faaE512e6a613464e4963c) |
-| `PegArbExecutor` | [`0x5036cA3FB2Ff95A813c262831A6023CB527666d3`](https://bscscan.com/address/0x5036cA3FB2Ff95A813c262831A6023CB527666d3) |
-| `ExecutionAuction` | [`0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D`](https://bscscan.com/address/0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D) |
+| `AsterEarnAdapterWithSwap` | [`0x742E46B3643c1C7AF6045950bA6Ad82707852712`](https://bscscan.com/address/0x742E46B3643c1C7AF6045950bA6Ad82707852712) |
+| `ManagedAdapter` | [`0x15B98DB1eC4e5caEa516bfEe4f37edf1e84D1339`](https://bscscan.com/address/0x15B98DB1eC4e5caEa516bfEe4f37edf1e84D1339) |
+| `StableSwapLPYieldAdapterWithFarm` | [`0xD7b76ef3556F7934C1b7Aea1AB3c5f3d20c2DE0a`](https://bscscan.com/address/0xD7b76ef3556F7934C1b7Aea1AB3c5f3d20c2DE0a) |
+| `PegArbExecutor` | [`0xeC4E3466391df9627fD5FD62f18048Bb9007C3F6`](https://bscscan.com/address/0xeC4E3466391df9627fD5FD62f18048Bb9007C3F6) |
+| `ExecutionAuction` | [`0x1da5Da9270345d6EcF1F29e3C674Bee2D414626b`](https://bscscan.com/address/0x1da5Da9270345d6EcF1F29e3C674Bee2D414626b) |
 
 ### Key Integration Addresses
 

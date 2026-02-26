@@ -198,38 +198,44 @@ export function useVaultV2ReadState() {
       // Sharpe tracker metrics
       if (sharpeTrackerAddress) {
         const sharpeTracker = new ethersLib.Contract(ethersLib.getAddress(sharpeTrackerAddress.trim()), [
-          "function computeSharpe() view returns (int256)",
+          "function computeSharpe() view returns (int256,uint256,int256)",
           "function getObservations() view returns (int128[])",
           "function count() view returns (uint256)",
           "function windowSize() view returns (uint256)",
         ], runner);
         
         try {
-          const [sharpeRatio, obs, obsCount] = await Promise.all([
-            sharpeTracker.computeSharpe().catch(() => 0n),
-            sharpeTracker.getObservations().catch(() => []),
-            sharpeTracker.count().catch(() => 0n),
-          ]);
+          // computeSharpe returns (mean, vol, sharpe) if enough obs exist, otherwise reverts
+          let meanYieldBps = 0n, volatility = 0n, sharpeRatio = 0n;
+          let obsCount = 0n;
+          let obs = [];
+          
+          try {
+            obsCount = await sharpeTracker.count();
+          } catch {}
+
+          if (obsCount > 1n) {
+            try {
+              const sharpeResult = await sharpeTracker.computeSharpe();
+              meanYieldBps = sharpeResult[0] ?? 0n;
+              volatility = sharpeResult[1] ?? 0n;
+              sharpeRatio = sharpeResult[2] ?? 0n;
+            } catch {}
+          }
+          
+          try {
+            obs = await sharpeTracker.getObservations();
+          } catch {}
+
           setSharpeMetrics({
-            meanYieldBps: 0n, // Derivable from obs if needed, but primary is sharpeRatio
-            volatility: 0n,
+            meanYieldBps,
+            volatility,
             sharpe: sharpeRatio,
             observationCount: obsCount,
             observations: obs,
           });
         } catch (e) {
           // ignore tracking error
-        }
-      }
-      if (sharpeTrackerAddress) {
-        const sharpePreview = await engine.previewSharpe().catch(() => null);
-        if (sharpePreview) {
-          setSharpeMetrics({
-            meanYieldBps: sharpePreview.mean ?? 0n,
-            volatility: sharpePreview.volatility ?? 0n,
-            sharpe: sharpePreview.sharpe ?? 0n,
-            observationCount: sharpePreview.observationCount ?? 0n,
-          });
         }
       }
 

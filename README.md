@@ -9,7 +9,7 @@
 
 Autonomous, non-custodial yield routing stack on BNB Chain.
 
-This README is updated to the current deployed V3 institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
+This README reflects the current deployed institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
 
 ## What This System Is
 
@@ -215,7 +215,7 @@ npx hardhat run scripts/deployExecutionAuction.js --network bnb
 
 ### Frontend Address Source
 
-`frontend/lib/contractAddresses.js` is the canonical frontend mapping for V2 addresses.
+`frontend/lib/contractAddresses.js` is the canonical frontend mapping for deployed addresses.
 
 ## Security Posture
 

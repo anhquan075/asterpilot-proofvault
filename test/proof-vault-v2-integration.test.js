@@ -259,7 +259,7 @@ describe("ProofVault V2 Integration", function () {
       await chainlinkFeed.setRound(99000000n, Math.floor(Date.now() / 1000));
       await time.increase(301);
       await expect(engine.connect(executor).executeCycle())
-        .to.be.revertedWith("StrategyEngine: breaker paused");
+        .to.be.revertedWithCustomError(engine, "StrategyEngine__BreakerPaused");
     });
 
     it("Should increase bounty with elapsed time (Dutch auction)", async function () {

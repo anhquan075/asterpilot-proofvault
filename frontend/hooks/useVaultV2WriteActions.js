@@ -2,6 +2,36 @@ import { useCallback, useState } from "react";
 import { engineV2Abi, erc20Abi, vaultV2Abi, pegArbAbi } from "@/lib/abi";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+const TX_HISTORY_STORAGE_KEY = "proofvault:v2:tx-history";
+
+function readPersistedTxHistory() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(TX_HISTORY_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistTxHistory(next) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(TX_HISTORY_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+  }
+}
+
+function clearPersistedTxHistory() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(TX_HISTORY_STORAGE_KEY);
+  } catch {
+  }
+}
+
 function assertAddress(addr, label) {
   if (!addr || addr.trim() === ZERO_ADDR) throw new Error(`${label} not configured. Set the contract address in .env`);
 }
@@ -15,9 +45,14 @@ function normalizeWriteError(error) {
   return raw;
 }
 
+function decodeReasonSafe(ethersLib, maybeBytes32, fallback = "-") {
+  if (!maybeBytes32) return fallback;
+  try { return ethersLib.decodeBytes32String(maybeBytes32); } catch { return fallback; }
+}
+
 /// V2 write actions: deposit, withdraw, executeCycle with tx history
 export function useVaultV2WriteActions({ refresh }) {
-  const [txHistory, setTxHistory] = useState([]);
+  const [txHistory, setTxHistory] = useState(readPersistedTxHistory);
 
   const appendTx = useCallback((action, hash, outcome, note) => {
     setTxHistory((prev) => {
@@ -29,8 +64,15 @@ export function useVaultV2WriteActions({ refresh }) {
         },
         ...prev,
       ];
-      return next.slice(0, 8);
+      const trimmed = next.slice(0, 8);
+      persistTxHistory(trimmed);
+      return trimmed;
     });
+  }, []);
+
+  const clearTxHistory = useCallback(() => {
+    clearPersistedTxHistory();
+    setTxHistory([]);
   }, []);
 
   const deposit = useCallback(async ({
@@ -138,7 +180,7 @@ export function useVaultV2WriteActions({ refresh }) {
   }, [appendTx, refresh]);
 
   const executeCycle = useCallback(async ({
-    signer, engineAddress, canExecute, canExecuteReason,
+    signer, engineAddress, circuitBreakerAddress, canExecute, canExecuteReason,
     setBusyAction, setStatus, refreshArgs,
   }) => {
     setBusyAction("execute");
@@ -153,12 +195,33 @@ export function useVaultV2WriteActions({ refresh }) {
 
       const engine = new ethersLib.Contract(ethersLib.getAddress(engineAddress.trim()), engineV2Abi, signer);
 
-      const [ok, reasonBytes32] = await engine.canExecute();
+      const [[ok, reasonBytes32], breakerPreview, decisionPreview] = await Promise.all([
+        engine.canExecute(),
+        engine.previewBreaker().catch(() => null),
+        engine.previewDecision().catch(() => null),
+      ]);
+
+      const breaker = breakerPreview?.status ?? breakerPreview;
+      const decision = decisionPreview?.preview ?? decisionPreview;
+      const activeSignals = [breaker?.signalA ? "A" : null, breaker?.signalB ? "B" : null, breaker?.signalC ? "C" : null]
+        .filter(Boolean)
+        .join(", ");
+      if (breaker?.paused || activeSignals) {
+        const signalText = activeSignals ? ` (signals: ${activeSignals})` : "";
+        throw new Error(`Circuit breaker paused${signalText}. Wait for recovery or signal normalization.`);
+      }
+
+      if (decision && decision.executable === false) {
+        const decisionReason = decodeReasonSafe(ethersLib, decision.reason, canExecuteReason || "not ready");
+        throw new Error(`Execution rejected by algorithm: ${decisionReason}`);
+      }
+
       if (!ok) {
-        let reason = canExecuteReason || "-";
-        try { reason = ethersLib.decodeBytes32String(reasonBytes32); } catch { /* keep fallback */ }
+        const reason = decodeReasonSafe(ethersLib, reasonBytes32, canExecuteReason || "not ready");
         throw new Error(`Not ready: ${reason}`);
       }
+
+      await engine.executeCycle.staticCall();
 
       setStatus("Executing cycle...");
       const tx = await engine.executeCycle();
@@ -167,9 +230,96 @@ export function useVaultV2WriteActions({ refresh }) {
       await refresh(refreshArgs);
       setStatus("Cycle executed");
     } catch (error) {
-      const msg = error.code === "CALL_EXCEPTION"
-        ? "Circuit breaker paused or execution rejected. Check breaker status and algorithm decision."
-        : error.message;
+      let msg = error.message;
+      if (error.code === "CALL_EXCEPTION") {
+        try {
+          const ethersLib = await import("ethers");
+          const engine = new ethersLib.Contract(ethersLib.getAddress(engineAddress.trim()), engineV2Abi, signer);
+          const [breakerPreview, decisionPreview, canExec] = await Promise.all([
+            engine.previewBreaker().catch(() => null),
+            engine.previewDecision().catch(() => null),
+            engine.canExecute().catch(() => null),
+          ]);
+          const breaker = breakerPreview?.status ?? breakerPreview;
+          const decision = decisionPreview?.preview ?? decisionPreview;
+          const activeSignals = [breaker?.signalA ? "A" : null, breaker?.signalB ? "B" : null, breaker?.signalC ? "C" : null]
+            .filter(Boolean)
+            .join(", ");
+          if (breaker?.paused || activeSignals) {
+            msg = `Circuit breaker paused${activeSignals ? ` (signals: ${activeSignals})` : ""}.`;
+          } else if (decision && decision.executable === false) {
+            msg = `Execution rejected by algorithm: ${decodeReasonSafe(ethersLib, decision.reason, "not ready")}`;
+          } else if (canExec && canExec[0] === false) {
+            msg = `Not ready: ${decodeReasonSafe(ethersLib, canExec[1], "not ready")}`;
+          } else if (canExec && canExec[0] === true) {
+            msg = "Execution simulation reverted even though canExecute=READY.";
+            try {
+              const probeEngine = new ethersLib.Contract(
+                ethersLib.getAddress(engineAddress.trim()),
+                ["function vault() view returns(address)"],
+                signer
+              );
+              const vaultAddr = await probeEngine.vault().catch(() => null);
+              if (vaultAddr) {
+                const probeVault = new ethersLib.Contract(
+                  ethersLib.getAddress(vaultAddr),
+                  [
+                    "function totalAssets() view returns(uint256)",
+                    "function asterAdapter() view returns(address)",
+                  ],
+                  signer
+                );
+                const [totalAssets, asterAdapterAddr] = await Promise.all([
+                  probeVault.totalAssets().catch(() => 0n),
+                  probeVault.asterAdapter().catch(() => null),
+                ]);
+                const targetAsterBps = decision?.targetAsterBps ?? decision?.[6] ?? 0n;
+                if (totalAssets > 0n && targetAsterBps > 0n && asterAdapterAddr) {
+                  const probeIface = new ethersLib.Interface(["function onVaultDeposit(uint256)"]);
+                  const probeData = probeIface.encodeFunctionData("onVaultDeposit", [1n]);
+                  await signer.provider.call({
+                    to: ethersLib.getAddress(asterAdapterAddr),
+                    from: ethersLib.getAddress(vaultAddr),
+                    data: probeData,
+                  });
+                }
+                msg = "Execution reverted at runtime. Retry once; if it persists, inspect adapter runtime state.";
+              }
+            } catch {
+              msg = "Execution reverted at runtime. Likely adapter path failure (commonly Aster swap route) while canExecute remains READY.";
+            }
+          } else {
+            msg = "Execution rejected. Check breaker status and algorithm decision.";
+          }
+
+          if (msg.includes("Check breaker status") && circuitBreakerAddress) {
+            try {
+              const breaker = new ethersLib.Contract(
+                ethersLib.getAddress(circuitBreakerAddress.trim()),
+                [
+                  "function isPaused() view returns (bool)",
+                  "function previewBreaker() view returns (tuple(bool paused,bool signalA,bool signalB,bool signalC,uint256 lastTripTimestamp,uint256 recoveryTimestamp) status)",
+                ],
+                signer
+              );
+              const [paused, preview] = await Promise.all([
+                breaker.isPaused().catch(() => null),
+                breaker.previewBreaker().catch(() => null),
+              ]);
+              const s = preview?.status ?? preview;
+              const activeSignals = [s?.signalA ? "A" : null, s?.signalB ? "B" : null, s?.signalC ? "C" : null]
+                .filter(Boolean)
+                .join(", ");
+              if (paused === true || s?.paused === true) {
+                msg = `Circuit breaker paused${activeSignals ? ` (signals: ${activeSignals})` : ""}.`;
+              }
+            } catch {
+            }
+          }
+        } catch {
+          msg = "Execution rejected. Check breaker status and algorithm decision.";
+        }
+      }
       appendTx("Execute Cycle", null, "failed", msg);
       setStatus(msg);
     } finally {
@@ -205,5 +355,5 @@ export function useVaultV2WriteActions({ refresh }) {
     }
   }, [appendTx, refresh]);
 
-  return { txHistory, deposit, withdraw, executeCycle, executeArbitrage };
+  return { txHistory, clearTxHistory, deposit, withdraw, executeCycle, executeArbitrage };
 }

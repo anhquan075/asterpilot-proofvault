@@ -6,57 +6,66 @@
 
 Autonomous, non-custodial yield routing stack on BNB Chain.
 
-This README is updated to the current deployed V2 architecture (3-rail vault + risk engine + execution auction).
+This README is updated to the current deployed V3 institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
 
 ## What This System Is
 
 AsterPilot ProofVault is an ERC-4626 vault that routes USDT across three rails under a permissionless execution model:
 
 1. Primary rail: `AsterEarnAdapterWithSwap` (USDT -> USDF swap, then async Aster minter integration).
-2. Secondary rail: `ManagedAdapter` (simple managed balance rail).
+2. Secondary rail (Buffer): `VenusYieldAdapter` (Idle USDT is routed to Venus Protocol vUSDT for 100% capital efficiency).
 3. LP rail: `StableSwapLPYieldAdapterWithFarm` (StableSwap LP + MasterChef farm + CAKE harvest).
 
 Core policy and safety are on-chain:
 
-- `StrategyEngine` computes state and target allocations.
+- `StrategyEngine` computes state and target allocations, utilizing `StrategyEngineFlashLoan` to execute atomic regime shifts via PancakeSwap V3 flash callbacks (eliminating idle capital and double-slippage).
 - `RiskPolicy` stores immutable thresholds/targets.
 - `CircuitBreaker` auto-trips/recovers from three market signals.
 - `SharpeTracker` records rolling risk-adjusted performance observations.
+- `ZKRiskOracle` accepts cryptographically verified off-chain Monte Carlo simulations from ZK-Coprocessors (like Brevis or Axiom) to dynamically adjust Hysteresis bands.
 - `ExecutionAuction` auctions rebalance rights and forwards bid revenue/bounties.
-
+- `OmnichainZapReceiver` allows users on any Layer 2 (Arbitrum, Base, Optimism) to bridge and deposit into the BNB Chain vault in a single transaction via LayerZero/Stargate.
 ## Contract Architecture (Current)
 
 | Contract | Role |
 | --- | --- |
 | `ProofVault` | ERC-4626 vault, liquidity manager, and rebalance executor (`onlyEngine`) |
 | `StrategyEngine` | Permissionless `executeCycle()` decision engine |
+| `StrategyEngineFlashLoan` | PancakeSwap V3 flash callback for atomic capital shifts between adapters |
 | `AsterEarnAdapterWithSwap` | Primary Aster rail with USDT/USDF swap and async withdraw claims |
-| `ManagedAdapter` | Secondary rail adapter |
+| `VenusYieldAdapter` | Secondary rail buffer adapter integrating Venus Protocol (`vUSDT`) |
 | `StableSwapLPYieldAdapterWithFarm` | LP + farm rail, permissionless CAKE harvest path |
 | `RiskPolicy` | Immutable risk and allocation parameters |
 | `ChainlinkPriceOracle` | Chainlink wrapper with staleness/validity checks |
+| `ZKRiskOracle` | ZK-Coprocessor endpoint for off-chain verified Monte Carlo risk bounds |
 | `CircuitBreaker` | Triple-signal breaker (price deviation, reserve ratio, virtual price drawdown) |
 | `SharpeTracker` | Rolling yield observations + Sharpe/Sortino calculations |
 | `PegArbExecutor` | Permissionless peg-arb executor returning net profit to vault |
 | `ExecutionAuction` | Rebalance Rights Auction overlay for `executeCycle()` |
-
+| `OmnichainZapReceiver` | Cross-chain intent gateway via Stargate/LayerZero |
 ## Mermaid: System Topology
 
 ```mermaid
 graph LR
-    User[Users / Searchers] --> Vault[ProofVault]
+    L2User[Omnichain Users] --> Zap[OmnichainZapReceiver]
+    Zap --> Vault[ProofVault]
+    User[BNB Chain Users] --> Vault
     Searcher[Executors] --> Engine[StrategyEngine.executeCycle]
     Searcher --> Auction[ExecutionAuction]
 
     Auction --> Engine
+    Engine --> Flash[StrategyEngineFlashLoan]
     Engine --> Breaker[CircuitBreaker]
     Engine --> Oracle[ChainlinkPriceOracle]
     Engine --> Policy[RiskPolicy]
     Engine --> Sharpe[SharpeTracker]
     Engine --> Vault
 
+    ZKCoprocessor[ZK Coprocessor / Brevis] -.-> ZKOracle[ZKRiskOracle]
+    ZKOracle --> Policy
+
     Vault --> Aster[AsterEarnAdapterWithSwap]
-    Vault --> Secondary[ManagedAdapter]
+    Vault --> Secondary[VenusYieldAdapter]
     Vault --> LP[StableSwapLPYieldAdapterWithFarm]
     Vault --> Arb[PegArbExecutor]
 
@@ -64,6 +73,8 @@ graph LR
     Aster --> Minter[Aster Minter]
     LP --> Pool[StableSwap Pool]
     LP --> Chef[MasterChef]
+    Secondary --> Venus[Venus Protocol vUSDT]
+    Flash --> PCSv3[PancakeSwap V3 Pool]
 ```
 
 ## Mermaid: Rebalance Execution Flow
@@ -110,22 +121,22 @@ sequenceDiagram
 
 | Contract | Address |
 | --- | --- |
-| `ProofVault` | `0xA784CD190DAB318a65D12CF426e37bb0f90A83C7` |
-| `StrategyEngine` | `0x3138f4157f15EFF0A76F8F610062bC82c13C5dbd` |
-| `RiskPolicy` | `0x9179d50fFCBEC37e0C2c6F31cC569444F167c39D` |
-| `ChainlinkPriceOracle` | `0xDcCC5d7a2A5d8fdd9b6dca2a2138e54925671d7A` |
-| `CircuitBreaker` | `0xCfd177b13e470B213B45D74Ae4d44C2FDFedDF50` |
-| `SharpeTracker` | `0x7c5EF5d9055d7f40A253133fBA86edE4ED4230A3` |
+| `ProofVault` | `0xdE1FBFc6a334e848152c4F938A2Ac2eeB0f6590b` |
+| `StrategyEngine` | `0x6570E79bC9dbe8e7EfbF929f3D877065293cd891` |
+| `RiskPolicy` | `0xE5675Db6eb5806F2c32FE905D8bbD609F5C417e1` |
+| `ChainlinkPriceOracle` | `0xFE5A18b7a330205dA6778cEa4536D642b4e772fF` |
+| `CircuitBreaker` | `0x65079A226a23f3F7786aa7FB231f84FB81CB43B3` |
+| `SharpeTracker` | `0x9953510D913e1D844a175404C9E7c49A8C163bEc` |
 
 ### Adapters and Executors
 
 | Contract | Address |
 | --- | --- |
-| `AsterEarnAdapterWithSwap` | `0xA131bD4Ac6e1c619a73C981E23fD9322BeB8e7DB` |
-| `ManagedAdapter` | `0xf5B7bF143045B0e59E2D854726424A8C77CE2250` |
-| `StableSwapLPYieldAdapterWithFarm` | `0x951C62Cdf99628BFa7d036F3C53D6ddD9a9E592b` |
-| `PegArbExecutor` | `0x80F78eC503b487950b48DF45598d48aa0E1BfCa4` |
-| `ExecutionAuction` | `0x0bA114a1f999C4d1B81a4F89f93A804CBcBFcBF7` |
+| `AsterEarnAdapterWithSwap` | `0x2E96DA33D701cAAEfb34d491A2c4D42f39C2529F` |
+| `ManagedAdapter` | `0x5B752e0D04A8C7e7ca26290EA2dEFA61be814C51` |
+| `StableSwapLPYieldAdapterWithFarm` | `0x084Ad2C0D1254Cdd955FaFd9eC5b16D079D71df9` |
+| `PegArbExecutor` | `0xA624EB4aC7A70eFf7DBADe603fb9d6bbd345954B` |
+| `ExecutionAuction` | `0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6` |
 
 ### Key Integration Addresses
 

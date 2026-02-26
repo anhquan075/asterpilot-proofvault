@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 import {ICircuitBreaker} from "./interfaces/ICircuitBreaker.sol";
 import {IManagedAdapter} from "./interfaces/IManagedAdapter.sol";
+import {IPancakeV3Pool} from "./interfaces/IPancakeV3Pool.sol";
 import {RiskPolicy} from "./RiskPolicy.sol";
 import {SharpeTracker} from "./SharpeTracker.sol";
 import {ProofVault} from "./ProofVault.sol";
@@ -42,6 +43,13 @@ contract StrategyEngine {
         uint256 bufferUtilizationBps;
     }
 
+    struct FlashRebalanceData {
+        address flashPool;
+        address fromAdapter;
+        address toAdapter;
+        uint256 amount;
+    }
+
     // --- Events ---
     event DecisionProofV2(
         address indexed executor,
@@ -57,12 +65,31 @@ contract StrategyEngine {
         uint256 auctionElapsed,
         uint256 bufferUtilizationBps
     );
+    event FlashRebalanceRequested(
+        address indexed flashPool,
+        address indexed fromAdapter,
+        address indexed toAdapter,
+        uint256 principal
+    );
+    event FlashRebalanceSettled(
+        address indexed flashPool,
+        address indexed fromAdapter,
+        address indexed toAdapter,
+        uint256 principal,
+        uint256 fee
+    );
 
     // --- Errors ---
     error StrategyEngine__ZeroAddress();
     error StrategyEngine__ZeroPrice();
     error StrategyEngine__BreakerPaused();
     error StrategyEngine__NotExecutable(bytes32 reason);
+    error StrategyEngine__InvalidFlashPool();
+    error StrategyEngine__InvalidFlashAmount();
+    error StrategyEngine__InvalidFlashCaller();
+    error StrategyEngine__InvalidFlashData();
+    error StrategyEngine__InvalidFlashAsset();
+    error StrategyEngine__NoActiveFlash();
 
     // --- Immutables ---
     ProofVault public immutable vault;
@@ -78,6 +105,7 @@ contract StrategyEngine {
     RiskState public currentState;
     uint256 public cycleCount;
     uint256 public ewmaVolatilityBps;
+    bytes32 private activeFlashContextHash;
 
     constructor(
         address vault_,
@@ -108,75 +136,43 @@ contract StrategyEngine {
 
     /// @notice Execute a vault rebalance cycle. Permissionless — anyone can call if canExecute() is true.
     function executeCycle() external {
-        // 1. Check circuit breaker (updates breaker state)
-        bool breakerPaused = circuitBreaker.checkBreaker();
-        if (breakerPaused) revert("StrategyEngine: breaker paused");
+        _executeCycleInternal(msg.sender, false, FlashRebalanceData(address(0), address(0), address(0), 0));
+    }
 
-        // 2. Check cooldown
-        (bool canExec, bytes32 reason) = _canExecuteInternal();
-        if (!canExec) revert StrategyEngine__NotExecutable(reason);
+    /// @notice Execute cycle with Pancake/Uniswap V3 flash-loan assisted adapter shift.
+    /// @dev Use this path for regime-shift rebalances when you want deposit->withdraw->repay atomicity.
+    function executeCycleWithFlashRebalance(
+        address flashPool,
+        address fromAdapter,
+        address toAdapter,
+        uint256 flashAmount
+    ) external {
+        if (flashPool == address(0)) revert StrategyEngine__InvalidFlashPool();
+        if (flashAmount == 0) revert StrategyEngine__InvalidFlashAmount();
 
-        // 3. Get price and compute decision
-        uint256 price = priceOracle.getPrice();
-        uint256 rawVol = _rawVolatilityBps(price, lastPrice);
-        uint256 volatility = _updateEwma(rawVol);
-        RiskState nextState = _selectState(price, volatility);
-        (uint256 asterBps, uint256 lpBps) = _selectAllocation(nextState);
-        uint256 bountyBps = _auctionBountyBps();
-
-        // 4. Record Sharpe yield observation
-        _recordSharpeYield();
-
-        // 5. Harvest LP farm rewards if farm adapter is deployed
-        //    Uses low-level call to avoid reverting if adapter doesn't support harvest.
-        //    msg.sender is this contract, so adapter must allow engine OR be permissionless.
-        address lpAddr = address(vault.lpAdapter());
-        if (lpAddr != address(0)) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = lpAddr.call(
-                abi.encodeWithSignature("harvestRewards()")
-            );
-            // Silently ignore — not all adapters implement harvest
-            (success); // suppress unused variable warning
-        }
-
-        // 6. Execute rebalance on vault with all 3 rails
-        vault.rebalance(
-            asterBps,
-            policy.maxSlippageBps(),
+        _executeCycleInternal(
             msg.sender,
-            bountyBps,
-            lpBps
+            true,
+            FlashRebalanceData(flashPool, fromAdapter, toAdapter, flashAmount)
         );
+    }
 
-        // 7. Get buffer utilization for event
-        (, , uint256 bufferUtil) = vault.bufferStatus();
+    /// @notice Pancake V3 flash callback.
+    function pancakeV3FlashCallback(
+        uint256 fee0,
+        uint256 fee1,
+        bytes calldata data
+    ) external {
+        _handleFlashCallback(fee0, fee1, data);
+    }
 
-        // 8. Get Sharpe data for event
-        (, , int256 sharpe) = sharpeTracker.computeSharpe();
-
-        // 9. Emit proof event
-        emit DecisionProofV2(
-            msg.sender,
-            nextState,
-            price,
-            lastPrice,
-            volatility,
-            asterBps,
-            lpBps,
-            bountyBps,
-            false, // not paused (we passed the check)
-            sharpe,
-            _auctionElapsed(),
-            bufferUtil
-        );
-
-        // 10. Update state
-        lastPrice = price;
-        lastTotalAssets = vault.totalAssets();
-        lastExecution = block.timestamp;
-        currentState = nextState;
-        cycleCount++;
+    /// @notice Uniswap V3-compatible callback alias.
+    function uniswapV3FlashCallback(
+        uint256 fee0,
+        uint256 fee1,
+        bytes calldata data
+    ) external {
+        _handleFlashCallback(fee0, fee1, data);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -375,6 +371,158 @@ contract StrategyEngine {
     /*//////////////////////////////////////////////////////////////
                             INTERNAL LOGIC
     //////////////////////////////////////////////////////////////*/
+
+    function _executeCycleInternal(
+        address executor,
+        bool useFlash,
+        FlashRebalanceData memory flashData
+    ) internal {
+        bool breakerPaused = circuitBreaker.checkBreaker();
+        if (breakerPaused) revert StrategyEngine__BreakerPaused();
+
+        (bool canExec, bytes32 reason) = _canExecuteInternal();
+        if (!canExec) revert StrategyEngine__NotExecutable(reason);
+
+        uint256 price = priceOracle.getPrice();
+        uint256 rawVol = _rawVolatilityBps(price, lastPrice);
+        uint256 volatility = _updateEwma(rawVol);
+        RiskState nextState = _selectState(price, volatility);
+        (uint256 asterBps, uint256 lpBps) = _selectAllocation(nextState);
+        uint256 bountyBps = _auctionBountyBps();
+
+        _recordSharpeYield();
+        _harvestLpRewards();
+
+        if (useFlash) {
+            if (nextState == currentState) {
+                revert StrategyEngine__NotExecutable("NO_REGIME_SHIFT");
+            }
+            _requestFlashLoan(flashData);
+        }
+
+        vault.rebalance(
+            asterBps,
+            policy.maxSlippageBps(),
+            executor,
+            bountyBps,
+            lpBps
+        );
+
+        (, , uint256 bufferUtil) = vault.bufferStatus();
+        (, , int256 sharpe) = sharpeTracker.computeSharpe();
+
+        emit DecisionProofV2(
+            executor,
+            nextState,
+            price,
+            lastPrice,
+            volatility,
+            asterBps,
+            lpBps,
+            bountyBps,
+            false,
+            sharpe,
+            _auctionElapsed(),
+            bufferUtil
+        );
+
+        lastPrice = price;
+        lastTotalAssets = vault.totalAssets();
+        lastExecution = block.timestamp;
+        currentState = nextState;
+        cycleCount++;
+    }
+
+    function _requestFlashLoan(FlashRebalanceData memory flashData) internal {
+        if (flashData.amount == 0) revert StrategyEngine__InvalidFlashAmount();
+        if (flashData.flashPool == address(0)) revert StrategyEngine__InvalidFlashPool();
+
+        bytes memory callbackData = abi.encode(
+            flashData.flashPool,
+            flashData.fromAdapter,
+            flashData.toAdapter,
+            flashData.amount
+        );
+        activeFlashContextHash = keccak256(callbackData);
+
+        IPancakeV3Pool pool = IPancakeV3Pool(flashData.flashPool);
+        address assetToken = vault.asset();
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        uint256 amount0;
+        uint256 amount1;
+
+        if (token0 == assetToken) {
+            amount0 = flashData.amount;
+        } else if (token1 == assetToken) {
+            amount1 = flashData.amount;
+        } else {
+            revert StrategyEngine__InvalidFlashAsset();
+        }
+
+        emit FlashRebalanceRequested(
+            flashData.flashPool,
+            flashData.fromAdapter,
+            flashData.toAdapter,
+            flashData.amount
+        );
+
+        pool.flash(address(vault), amount0, amount1, callbackData);
+
+        if (activeFlashContextHash != bytes32(0)) {
+            revert StrategyEngine__InvalidFlashData();
+        }
+    }
+
+    function _handleFlashCallback(
+        uint256 fee0,
+        uint256 fee1,
+        bytes calldata data
+    ) internal {
+        bytes32 expectedHash = activeFlashContextHash;
+        if (expectedHash == bytes32(0)) revert StrategyEngine__NoActiveFlash();
+        if (keccak256(data) != expectedHash) {
+            revert StrategyEngine__InvalidFlashData();
+        }
+
+        (
+            address flashPool,
+            address fromAdapter,
+            address toAdapter,
+            uint256 amount
+        ) = abi.decode(data, (address, address, address, uint256));
+
+        if (msg.sender != flashPool) revert StrategyEngine__InvalidFlashCaller();
+
+        activeFlashContextHash = bytes32(0);
+
+        uint256 fee = fee0 + fee1;
+        vault.executeFlashRebalanceStep(
+            fromAdapter,
+            toAdapter,
+            amount,
+            amount + fee,
+            flashPool
+        );
+
+        emit FlashRebalanceSettled(
+            flashPool,
+            fromAdapter,
+            toAdapter,
+            amount,
+            fee
+        );
+    }
+
+    function _harvestLpRewards() internal {
+        address lpAddr = address(vault.lpAdapter());
+        if (lpAddr != address(0)) {
+            (bool success, ) = lpAddr.call(
+                abi.encodeWithSignature("harvestRewards()")
+            );
+            (success);
+        }
+    }
 
     function _canExecuteInternal() internal view returns (bool, bytes32) {
         if (lastExecution == 0) return (true, "READY");

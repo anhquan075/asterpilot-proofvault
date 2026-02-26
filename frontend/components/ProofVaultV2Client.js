@@ -116,6 +116,13 @@ export default function ProofVaultV2Client() {
     shareDecimals
   ]);
 
+  // Clear transaction history when wallet disconnects
+  useEffect(() => {
+    if (!wallet.isConnected) {
+      actions.clearTxHistory();
+    }
+  }, [wallet.isConnected, actions]);
+
   useEffect(() => {
     import("ethers").then(({ JsonRpcProvider }) => {
       setPublicProvider(new JsonRpcProvider(BNB_PUBLIC_RPC));

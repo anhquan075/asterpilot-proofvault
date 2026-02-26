@@ -1,7 +1,7 @@
 {
   "name": "asterpilot-proofvault",
   "version": "1.0.0",
-  "description": "",
+  "description": "Autonomous, non-custodial yield routing stack on BNB Chain.",
   "main": "index.js",
   "directories": {
     "doc": "docs",

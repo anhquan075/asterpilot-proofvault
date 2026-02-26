@@ -1,32 +1,34 @@
-// V2 Contract Addresses - BNB Mainnet (Chain ID 56)
-// Deploy date: 2025 — 3-rail update with RRA ExecutionAuction
-// All contracts verified on BscScan
+// Hardcoded address presets for ProofVault V2.
+// These are the canonical deployed addresses used as fallbacks
+// when environment variables are not set.
+// networkConfig.js imports these as fallback values.
 
-export const V2_MAINNET_ADDRESSES = {
-  vaultAddress: "0x532495CaaAC982C406a68DFa30E12c67642F1BEA",
-  engineAddress: "0x421824207F1c0872c16a9994d6e7313a03E80097",
-  tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // USDT (BSC)
-  circuitBreakerAddress: "0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c",
-  sharpeTrackerAddress: "0x9e5763A7C11DB894A6aA1164cFDc849F9243751B",
-  pegArbExecutorAddress: "0xeC4E3466391df9627fD5FD62f18048Bb9007C3F6",
-  riskPolicyAddress: "0x6518CFAf53C39D6127723D67402e63E636Dd1c3E",
-  asterAdapterAddress: "0x742E46B3643c1C7AF6045950bA6Ad82707852712",
-  secondaryAdapterAddress: "0x15B98DB1eC4e5caEa516bfEe4f37edf1e84D1339",
-  lpAdapterAddress: "0xD7b76ef3556F7934C1b7Aea1AB3c5f3d20c2DE0a",
-  executionAuctionAddress: "0x1da5Da9270345d6EcF1F29e3C674Bee2D414626b",
+// BNB Chain Mainnet (Chain ID 56)
+export const V2_MAINNET_PRESET = {
+  vaultAddress: "0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644",
+  engineAddress: "0xb621062d6651E1D975e3134c86FA9db1fab909B7",
+  tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // BSC USDT
+  circuitBreakerAddress: "0x0000000000000000000000000000000000000000",
+  sharpeTrackerAddress: "0x0000000000000000000000000000000000000000",
+  pegArbExecutorAddress: "0x0000000000000000000000000000000000000000",
+  riskPolicyAddress: "0x0000000000000000000000000000000000000000",
+  asterAdapterAddress: "0x0000000000000000000000000000000000000000",
+  secondaryAdapterAddress: "0x0000000000000000000000000000000000000000",
+  executionAuctionAddress: "0x147a91205d5eb67CFEEAd48a0e8b3443DE4B1e27",
 };
 
-// Environment-based configuration (fallback to mainnet if not set)
-export const V2_ADDRESSES = {
-  vaultAddress: import.meta.env.VITE_V2_VAULT_ADDRESS ?? V2_MAINNET_ADDRESSES.vaultAddress,
-  engineAddress: import.meta.env.VITE_V2_ENGINE_ADDRESS ?? V2_MAINNET_ADDRESSES.engineAddress,
-  tokenAddress: import.meta.env.VITE_V2_TOKEN_ADDRESS ?? V2_MAINNET_ADDRESSES.tokenAddress,
-  circuitBreakerAddress: import.meta.env.VITE_V2_CIRCUIT_BREAKER_ADDRESS ?? V2_MAINNET_ADDRESSES.circuitBreakerAddress,
-  sharpeTrackerAddress: import.meta.env.VITE_V2_SHARPE_TRACKER_ADDRESS ?? V2_MAINNET_ADDRESSES.sharpeTrackerAddress,
-  pegArbExecutorAddress: import.meta.env.VITE_V2_PEG_ARB_ADDRESS ?? V2_MAINNET_ADDRESSES.pegArbExecutorAddress,
-  riskPolicyAddress: import.meta.env.VITE_V2_RISK_POLICY_ADDRESS ?? V2_MAINNET_ADDRESSES.riskPolicyAddress,
-  asterAdapterAddress: import.meta.env.VITE_V2_ASTER_ADAPTER_ADDRESS ?? V2_MAINNET_ADDRESSES.asterAdapterAddress,
-  secondaryAdapterAddress: import.meta.env.VITE_V2_SECONDARY_ADAPTER_ADDRESS ?? V2_MAINNET_ADDRESSES.secondaryAdapterAddress,
-  lpAdapterAddress: import.meta.env.VITE_V2_LP_ADAPTER_ADDRESS ?? V2_MAINNET_ADDRESSES.lpAdapterAddress,
-  executionAuctionAddress: import.meta.env.VITE_V2_EXECUTION_AUCTION_ADDRESS ?? V2_MAINNET_ADDRESSES.executionAuctionAddress,
+// BNB Chain Testnet (Chain ID 97)
+// Deployed: 2026-02-27 via scripts/deploy-testnet-full-stack-with-mocks.js
+// chainlinkStalePeriod = 259200 (3 days)
+export const V2_TESTNET_PRESET = {
+  vaultAddress: "0xFF500c8efFf28F71F7167F7d3c3b92724fFEaB50",
+  engineAddress: "0x264aaAbe5a7C13556fDcf7d01e25d162EB80B846",
+  tokenAddress: "0x07413d9320Ca0804070d787021EbE5440896BC44", // mock USDT
+  circuitBreakerAddress: "0x1E63C0F23D89eC3b58b696d7c17Bb0159A25DEF5",
+  sharpeTrackerAddress: "0xfcCfE943563E3C46B01eeFE601E8C7826e0219dB",
+  pegArbExecutorAddress: "0x9e334c02a4fb0f4Ba642066E418BD1De6B0072d0",
+  riskPolicyAddress: "0x372cd31121C139da2f78173dfc6D5edbd066Fa9D",
+  asterAdapterAddress: "0xF4CA93D2d2195Aa84f987ED74A7c7Dd94DbB19E2",
+  secondaryAdapterAddress: "0x9188Ce2D130A9b5dE17Ff2f5Cb5D0adC17Ce9530",
+  executionAuctionAddress: "0xa4d6685743f585820d20Fdc7200B1b29352000C3",
 };

@@ -9,6 +9,8 @@
 
 Autonomous, non-custodial yield routing stack on BNB Chain.
 
+**🚀 Live dApp:** [https://asterpilot-proofvault.vercel.app](https://asterpilot-proofvault.vercel.app)
+
 This README reflects the current deployed institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
 
 ## What This System Is

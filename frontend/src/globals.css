@@ -402,33 +402,45 @@ body::before { display: none; }
   background: rgba(8, 6, 4, 0.96);
 }
 
-.topNavBrand { display: flex; align-items: center; gap: 12px; }
-.topNavLogo { width: 36px; height: 36px; border-radius: 4px; flex-shrink: 0; }
+.topNavBrand { display: flex; align-items: center; gap: 16px; }
+.topNavLogo { width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; filter: drop-shadow(0 0 12px rgba(200, 147, 90, 0.4)); transition: all 0.3s ease; }
+.topNavBrand:hover .topNavLogo { filter: drop-shadow(0 0 20px rgba(200, 147, 90, 0.8)); transform: scale(1.05); }
 .topNavBrandText { display: flex; flex-direction: column; gap: 2px; }
 
 .topNavTitle {
-  font-size: 16px;
-  font-weight: 300;
-  color: var(--text-dim);
-  letter-spacing: .06em;
+  font-size: 20px;
+  font-weight: 200;
+  color: var(--text);
+  letter-spacing: .12em;
   font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
   line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .topNavTitle strong {
-  font-weight: 800;
-  color: var(--accent);
-  letter-spacing: .02em;
-  text-shadow: 0 0 14px rgba(200, 147, 90, .35);
+  font-weight: 900;
+  background: linear-gradient(90deg, #F0D4A8 0%, #C8935A 40%, #FFE1AA 50%, #C8935A 60%, #F0D4A8 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: .08em;
+  filter: drop-shadow(0 0 15px rgba(200, 147, 90, 0.5));
+  animation: goldShimmer 4s linear infinite;
+  display: inline-block;
 }
 
 .topNavTagline {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: .14em;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: .2em;
   text-transform: uppercase;
   font-family: 'JetBrains Mono', monospace;
   line-height: 1;
-  opacity: 0.7;
+  opacity: 0.8;
+  margin-top: 2px;
 }
 
 .topNavWallet {

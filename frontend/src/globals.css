@@ -181,7 +181,7 @@ body::before { display: none; }
 @media (min-width: 768px) {
   .v2-dash-layout {
     gap: 8px;
-    padding: 0 16px 16px;
+    padding-bottom: 16px;
   }
   
   .bento-row-flex {
@@ -197,7 +197,7 @@ body::before { display: none; }
 /* ── Responsive: Large screens ── */
 @media (min-width: 1200px) {
   .v2-dash-layout {
-    padding: 0 20px 20px;
+    padding-bottom: 20px;
   }
   
   .bento-row-flex {
@@ -213,7 +213,7 @@ body::before { display: none; }
 /* ── Responsive: Extra large screens ── */
 @media (min-width: 1400px) {
   .v2-dash-layout {
-    padding: 0 24px 24px;
+    padding-bottom: 24px;
     gap: 10px;
   }
   
@@ -226,7 +226,7 @@ body::before { display: none; }
 /* ── Responsive: Ultra wide screens ── */
 @media (min-width: 1600px) {
   .v2-dash-layout {
-    padding: 0 32px 32px;
+    padding-bottom: 32px;
   }
   
   .bento-row-flex {
@@ -508,7 +508,7 @@ body::before { display: none; }
 .networkStrip {
   position: relative;
   z-index: 2;
-  margin-bottom: 14px;
+  margin: 0 12px 14px;
   padding: 10px 14px;
   border-radius: 2px;
   border: 1px solid rgba(212,175,55,.35);
@@ -2114,4 +2114,3 @@ input, button { border-radius: 8px; }
   box-shadow: 0 8px 24px rgba(0,0,0,.55);
   color: var(--text);
 }
-@import './spinner.css';

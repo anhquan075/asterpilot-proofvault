@@ -46,10 +46,7 @@ export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, 
         <p style={{ fontSize: 10, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6, fontWeight: 600 }}>Hysteresis Band</p>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>De-escalation Buffer</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>0.50%</span>
-          </div>
-          <div>
+
             <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Mechanism</span>
             <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginTop: 2 }}>Asymmetric — instant escalation, buffered de-escalation</span>
           </div>

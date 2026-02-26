@@ -10,7 +10,8 @@ function fmtTime(iso) {
   catch { return iso; }
 }
 
-export function VaultTransactionHistoryCard({ txHistory, onClear }) {
+export function VaultTransactionHistoryCard({ txHistory, onClear, blockExplorer }) {
+  const explorerTxBase = blockExplorer ? `${blockExplorer}/tx/` : "https://bscscan.com/tx/";
   const showClear = txHistory?.length > 0 && typeof onClear === "function";
 
   if (!txHistory?.length) {
@@ -47,8 +48,8 @@ export function VaultTransactionHistoryCard({ txHistory, onClear }) {
             <div className="txMeta">
               <span>{fmtTime(tx.at)}</span>
               {tx.hash
-                ? <a href={`${BSCSCAN}${tx.hash}`} target="_blank" rel="noopener noreferrer">
-                    {shortHash(tx.hash)} ↗ BscScan
+                ? <a href={`${explorerTxBase}${tx.hash}`} target="_blank" rel="noopener noreferrer">
+                    {shortHash(tx.hash)} ↗ Explorer
                   </a>
                 : <span style={{ color: "#ef4444", fontSize: 11 }}>no hash</span>
               }

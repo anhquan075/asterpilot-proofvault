@@ -1,10 +1,10 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { bsc } from 'wagmi/chains';
+import { bsc, bscTestnet } from 'wagmi/chains';
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'ProofVault',
   projectId: 'YOUR_PROJECT_ID', // Get from https://cloud.walletconnect.com
-  chains: [bsc],
+  chains: [bsc, bscTestnet],
   ssr: false,
   theme: {
     blurs: {

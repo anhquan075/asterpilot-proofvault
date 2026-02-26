@@ -59,11 +59,11 @@ async function main() {
   const lpToken = envOrDefault("V2_LP_TOKEN_ADDRESS", stableSwapPool);
 
   // ── AsterEarnAdapterV2 selectors ────────────────────────────────────────────
-  const depositSelector = envOrDefault("V2_DEPOSIT_SELECTOR", "0xb6b55f25");
-  const managedAssetsSelector = envOrDefault("V2_MANAGED_ASSETS_SELECTOR", "0xad1728cb");
-  const requestWithdrawSelector = envOrDefault("V2_REQUEST_WITHDRAW_SELECTOR", "0x9ee679e8");
-  const claimWithdrawSelector = envOrDefault("V2_CLAIM_WITHDRAW_SELECTOR", "0x712679e8");
-  const getWithdrawRequestSelector = envOrDefault("V2_GET_WITHDRAW_REQUEST_SELECTOR", "0x88d5b31a");
+  const depositSelector = envOrDefault("V2_DEPOSIT_SELECTOR", "0x0eb78661");
+  const managedAssetsSelector = envOrDefault("V2_MANAGED_ASSETS_SELECTOR", "0x7e1c0c09");
+  const requestWithdrawSelector = envOrDefault("V2_REQUEST_WITHDRAW_SELECTOR", "0x0f5f6c7e");
+  const claimWithdrawSelector = envOrDefault("V2_CLAIM_WITHDRAW_SELECTOR", "0xeb5188db");
+  const getWithdrawRequestSelector = envOrDefault("V2_GET_WITHDRAW_REQUEST_SELECTOR", "0x5f3f5f4a");
 
   // ── Oracle ──────────────────────────────────────────────────────────────────
   const oracleMode = envOrDefault("ORACLE_MODE", "chainlink").toLowerCase();

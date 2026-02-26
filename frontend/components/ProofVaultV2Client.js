@@ -27,13 +27,19 @@ const V2_MAINNET_PRESET = {
 };
 
 const SUPPORTED_CHAIN_IDS = new Set([56n]);
-const BNB_PUBLIC_RPC = "https://bsc-dataseed.binance.org/";
+const BNB_PUBLIC_RPC = import.meta.env.VITE_BNB_PUBLIC_RPC_URL || "https://bsc-rpc.publicnode.com";
 const BSCSCAN_ADDR = "https://bscscan.com/address/";
+const BSCSCAN_TX = "https://bscscan.com/tx/";
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 function shortAddr(addr) {
   if (!addr || addr === ZERO_ADDR) return "not set";
   return addr.slice(0, 6) + "…" + addr.slice(-4);
+}
+
+function shortHash(hash) {
+  if (!hash) return "pending";
+  return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
 
 function ContractAddressBadge({ label, address, icon: Icon }) {
@@ -70,6 +76,8 @@ export default function ProofVaultV2Client() {
   const [decimals, setDecimals] = useState(null);
   const [shareDecimals, setShareDecimals] = useState(null);
   const [publicProvider, setPublicProvider] = useState(null);
+  const [screenTxPush, setScreenTxPush] = useState(null);
+  const [lastLiveSyncAt, setLastLiveSyncAt] = useState(null);
 
   const isBusy = busyAction !== null;
   const wallet = useRainbowKitWallet();
@@ -117,6 +125,7 @@ export default function ProofVaultV2Client() {
   useEffect(() => {
     if (publicProvider && !wallet.signer) {
       vaultState.refresh({ ...refreshArgs, signer: null, provider: publicProvider });
+      setLastLiveSyncAt(Date.now());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicProvider]);
@@ -124,9 +133,44 @@ export default function ProofVaultV2Client() {
   useEffect(() => {
     if (wallet.signer) {
       vaultState.refresh(refreshArgs);
+      setLastLiveSyncAt(Date.now());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wallet.signer]);
+
+  useEffect(() => {
+    const runnerProvider = wallet.provider ?? publicProvider;
+    if (!runnerProvider) return;
+
+    let cancelled = false;
+    const runSilentRefresh = async () => {
+      await vaultState.refresh({
+        ...refreshArgs,
+        signer: wallet.signer,
+        provider: runnerProvider,
+        silent: true,
+      });
+      if (!cancelled) setLastLiveSyncAt(Date.now());
+    };
+
+    runSilentRefresh();
+    const intervalId = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        runSilentRefresh();
+      }
+    }, 8000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") runSilentRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [wallet.signer, wallet.provider, publicProvider, refreshArgs, vaultState.refresh]);
 
   const handleDeposit = useCallback(() =>
     actions.deposit({
@@ -159,13 +203,14 @@ export default function ProofVaultV2Client() {
     actions.executeCycle({
       signer: wallet.signer,
       engineAddress,
+      circuitBreakerAddress,
       canExecute: vaultState.canExecute,
       canExecuteReason: vaultState.canExecuteReason,
       setBusyAction,
       setStatus,
       refreshArgs
     }),
-    [actions, wallet.signer, engineAddress, vaultState.canExecute, vaultState.canExecuteReason, refreshArgs]
+    [actions, wallet.signer, engineAddress, circuitBreakerAddress, vaultState.canExecute, vaultState.canExecuteReason, refreshArgs]
   );
 
   const handleExecuteArb = useCallback(() =>
@@ -181,10 +226,76 @@ export default function ProofVaultV2Client() {
 
   const networkSupported = wallet.networkChainId === null || SUPPORTED_CHAIN_IDS.has(wallet.networkChainId);
   const vaultAccountingHealthy = vaultState.totalAssetsRaw !== null;
+  const latestTx = actions.txHistory?.[0] ?? null;
+  const latestTxId = latestTx?.id;
+  const liveLabel = lastLiveSyncAt
+    ? `Live data every 8s · last sync ${new Date(lastLiveSyncAt).toLocaleTimeString()}`
+    : "Live data initializing...";
+
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => {
+      setIsOffline(false);
+      // Force a sync immediately when coming back online
+      const runnerProvider = wallet.provider ?? publicProvider;
+      if (runnerProvider) {
+        vaultState.refresh({ ...refreshArgs, signer: wallet.signer, provider: runnerProvider, silent: true });
+        setLastLiveSyncAt(Date.now());
+      }
+    };
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    // Initial check
+    if (!navigator.onLine) setIsOffline(true);
+    
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [wallet.provider, publicProvider, wallet.signer, refreshArgs, vaultState]);
+
+  useEffect(() => {
+    if (!latestTxId) {
+      setScreenTxPush(null);
+      return;
+    }
+    setScreenTxPush(latestTx);
+    const timer = setTimeout(() => setScreenTxPush(null), 5000);
+    return () => clearTimeout(timer);
+  }, [latestTxId, latestTx]);
 
   return (
     <section className="panel panel--enhanced">
       <VaultTopNavbar busyAction={busyAction} />
+
+      {/* Live sync badge removed from normal flow, moved to offline push notification */ }
+
+      {isOffline && (
+        <div className={`globalTxPush globalTxPush--failed`} role="status" aria-live="polite">
+          <div className="globalTxPushTitle">CONNECTION LOST</div>
+          <div className="globalTxPushBody">
+            <span>Live data paused. Waiting for network...</span>
+          </div>
+        </div>
+      )}
+
+      {screenTxPush && !isOffline && (
+        <div className={`globalTxPush globalTxPush--${screenTxPush.outcome}`} role="status" aria-live="polite">
+          <div className="globalTxPushTitle">New Transaction</div>
+          <div className="globalTxPushBody">
+            <span>{screenTxPush.action} · {screenTxPush.outcome}</span>
+            {screenTxPush.hash ? (
+              <a href={`${BSCSCAN_TX}${screenTxPush.hash}`} target="_blank" rel="noopener noreferrer">
+                {shortHash(screenTxPush.hash)} <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
+              </a>
+            ) : (
+              <span>pending details</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {!networkSupported && (
         <div className="networkStrip">
@@ -195,7 +306,7 @@ export default function ProofVaultV2Client() {
 
       {!vaultAccountingHealthy && (
         <div className="networkStrip">
-          <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+          <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
           Vault accounting check failed (`totalAssets()` reverted). Deposits are temporarily blocked until deployment config is healthy.
         </div>
       )}
@@ -291,16 +402,18 @@ export default function ProofVaultV2Client() {
           <span className="bento-section-line" />
         </div>
         <div className="bento-row-thirds">
-          <VaultStrategyAllocationBarCard
-            asterManagedAssets={vaultState.asterManagedAssets}
-            secondaryManagedAssets={vaultState.secondaryManagedAssets}
-            lpManagedAssets={vaultState.lpManagedAssets}
-            lpStakingInfo={vaultState.lpStakingInfo}
-            totalAssetsRaw={vaultState.totalAssetsRaw}
-            algoMetrics={vaultState.algoMetrics}
-            harvestGasEstimate={vaultState.harvestGasEstimate}
-            harvestGasMultiplier={vaultState.harvestGasMultiplier}
-          />
+            <VaultStrategyAllocationBarCard
+              asterManagedAssets={vaultState.asterManagedAssets}
+              secondaryManagedAssets={vaultState.secondaryManagedAssets}
+              lpManagedAssets={vaultState.lpManagedAssets}
+              lpStakingInfo={vaultState.lpStakingInfo}
+              pendingWithdrawals={vaultState.pendingWithdrawals}
+              totalAssetsRaw={vaultState.totalAssetsRaw}
+              bufferStatus={vaultState.bufferStatus}
+              algoMetrics={vaultState.algoMetrics}
+              harvestGasEstimate={vaultState.harvestGasEstimate}
+              harvestGasMultiplier={vaultState.harvestGasMultiplier}
+            />
           <VaultExecutionAuctionRraBidCard
             executionAuctionAddress={executionAuctionAddress}
             tokenAddress={tokenAddress}
@@ -325,6 +438,7 @@ export default function ProofVaultV2Client() {
         </div>
         <VaultTransactionHistoryCard
           txHistory={actions.txHistory}
+          onClear={actions.clearTxHistory}
         />
       </div>
     </section>

@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,6 +18,7 @@ import {
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IManagedAdapter} from "./interfaces/IManagedAdapter.sol";
 import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
+import {IVenusVToken} from "./interfaces/IVenusVToken.sol";
 
 /// @title ProofVault — ERC-4626 vault with idle buffer + 3-tier withdrawal + async Aster tracking
 /// @notice Supports 3 yield rails: Aster (async), secondary (ManagedAdapter), LP (StableSwap)
@@ -34,6 +36,8 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     IAsterEarnAdapter public asterAdapter;
     IManagedAdapter public secondaryAdapter;
     IManagedAdapter public lpAdapter;
+    IVenusVToken public venusVToken;
+    uint256 public venusExchangeRateScale;
     bool public configurationLocked;
     mapping(address => uint256) private _lastDepositBlock;
     address public pegArbExecutor;
@@ -49,8 +53,10 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     event BountyPaid(address indexed executor, uint256 amount);
     event EmergencyWithdraw(address indexed token, uint256 amount);
     event AutoHarvestTriggered(uint256 harvested);
+    event AsterWithdrawRequestFailed(uint256 amount);
     event EngineSet(address indexed engine);
     event PegArbExecutorSet(address indexed pegArbExecutor);
+    event VenusIdleBufferSet(address indexed venusVToken, uint256 exchangeRateScale);
     event AdaptersSet(
         address indexed aster,
         address indexed secondary,
@@ -71,6 +77,13 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     error ProofVault__PegArbNotApproved();
     error ProofVault__SlippageExceeded(uint256 expected, uint256 actual, uint256 maxSlippageBps);
     error ProofVault__FlashLoanBlocked();
+    error ProofVault__InvalidFlashAdapter();
+    error ProofVault__InvalidFlashRoute();
+    error ProofVault__FlashPrincipalMissing();
+    error ProofVault__FlashRepayShortfall(uint256 required, uint256 available);
+    error ProofVault__VenusDecimalsInvalid();
+    error ProofVault__VenusMintFailed(uint256 code);
+    error ProofVault__VenusRedeemFailed(uint256 code);
 
     // --- Modifiers ---
     modifier onlyEngine() {
@@ -119,6 +132,34 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         emit PegArbExecutorSet(pegArb_);
     }
 
+    function setVenusIdleBuffer(address venusVToken_) external onlyOwner {
+        if (configurationLocked) revert ProofVault__ConfigurationLocked();
+
+        if (venusVToken_ == address(0)) {
+            venusVToken = IVenusVToken(address(0));
+            venusExchangeRateScale = 0;
+            emit VenusIdleBufferSet(address(0), 0);
+            return;
+        }
+
+        IVenusVToken candidate = IVenusVToken(venusVToken_);
+        uint8 assetDecimals = IERC20Metadata(asset()).decimals();
+        uint8 vTokenDecimals = candidate.decimals();
+        uint256 exponent = 18 + uint256(assetDecimals);
+
+        if (exponent < vTokenDecimals || exponent - vTokenDecimals > 77) {
+            revert ProofVault__VenusDecimalsInvalid();
+        }
+
+        uint256 scale = 10 ** (exponent - vTokenDecimals);
+
+        venusVToken = candidate;
+        venusExchangeRateScale = scale;
+        IERC20(asset()).forceApprove(venusVToken_, type(uint256).max);
+
+        emit VenusIdleBufferSet(venusVToken_, scale);
+    }
+
     function lockConfiguration() external onlyOwner {
         if (engine == address(0)) revert ProofVault__EngineNotSet();
         if (address(asterAdapter) == address(0))
@@ -146,7 +187,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             ? lpAdapter.managedAssets()
             : 0;
         return
-            IERC20(asset()).balanceOf(address(this)) +
+            _idleAssets() +
             asterAdapter.managedAssets() +
             secondaryAdapter.managedAssets() +
             lpManaged;
@@ -159,7 +200,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         if (!configurationLocked) revert ProofVault__NotLocked();
         _lastDepositBlock[receiver] = block.number;
         _maybeHarvest();
-        return super.deposit(assets, receiver);
+        uint256 shares = super.deposit(assets, receiver);
+        _parkIdleInVenus(_bufferTarget(totalAssets()));
+        return shares;
     }
 
     function mint(
@@ -169,7 +212,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         if (!configurationLocked) revert ProofVault__NotLocked();
         _lastDepositBlock[receiver] = block.number;
         _maybeHarvest();
-        return super.mint(shares, receiver);
+        uint256 mintedShares = super.mint(shares, receiver);
+        _parkIdleInVenus(_bufferTarget(totalAssets()));
+        return mintedShares;
     }
 
     function withdraw(
@@ -229,14 +274,20 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
         if (asterTarget > currentAster) {
             uint256 deficit = asterTarget - currentAster;
-            uint256 available = IERC20(asset()).balanceOf(address(this));
-            if (available > buffer) {
-                uint256 toSend = Math.min(deficit, available - buffer);
+            uint256 available = _availableIdleForDeployment(buffer);
+            if (available > 0) {
+                uint256 toSend = Math.min(deficit, available);
+                _ensureRawLiquidity(toSend, buffer);
+                toSend = Math.min(toSend, IERC20(asset()).balanceOf(address(this)));
                 IERC20(asset()).safeTransfer(address(asterAdapter), toSend);
                 asterAdapter.onVaultDeposit(toSend);
             }
         } else if (currentAster > asterTarget) {
-            asterAdapter.requestWithdraw(currentAster - asterTarget);
+            uint256 requestAmount = currentAster - asterTarget;
+            try asterAdapter.requestWithdraw(requestAmount) {
+            } catch {
+                emit AsterWithdrawRequestFailed(requestAmount);
+            }
         }
 
         // LP rail
@@ -247,6 +298,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
         // Secondary rail: absorb remaining idle excess
         _rebalanceSecondary(buffer);
+        _parkIdleInVenus(buffer);
 
 
         // Slippage check: verify totalAssets didn't drop beyond acceptable threshold
@@ -258,7 +310,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             }
         }
 
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
+        uint256 idle = _idleAssets();
         uint256 lpManaged = address(lpAdapter) != address(0)
             ? lpAdapter.managedAssets()
             : 0;
@@ -269,6 +321,42 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             secondaryAdapter.managedAssets(),
             lpManaged
         );
+    }
+
+    /// @notice Atomic flash-loan rebalance step: deploy borrowed funds, pull source adapter liquidity, and repay pool.
+    /// @dev Called by StrategyEngine from Pancake/Uniswap V3 flash callback.
+    function executeFlashRebalanceStep(
+        address fromAdapter,
+        address toAdapter,
+        uint256 flashPrincipal,
+        uint256 repayAmount,
+        address flashPool
+    ) external onlyEngine nonReentrant {
+        if (!_isConfiguredAdapter(fromAdapter) || !_isConfiguredAdapter(toAdapter)) {
+            revert ProofVault__InvalidFlashAdapter();
+        }
+        if (fromAdapter == toAdapter || flashPool == address(0)) {
+            revert ProofVault__InvalidFlashRoute();
+        }
+        if (flashPrincipal == 0 || repayAmount < flashPrincipal) {
+            revert ProofVault__FlashPrincipalMissing();
+        }
+
+        IERC20 assetToken = IERC20(asset());
+        if (assetToken.balanceOf(address(this)) < flashPrincipal) {
+            revert ProofVault__FlashPrincipalMissing();
+        }
+
+        assetToken.safeTransfer(toAdapter, flashPrincipal);
+        IManagedAdapter(toAdapter).onVaultDeposit(flashPrincipal);
+
+        IManagedAdapter(fromAdapter).withdrawToVault(repayAmount);
+
+        uint256 available = assetToken.balanceOf(address(this));
+        if (available < repayAmount) {
+            revert ProofVault__FlashRepayShortfall(repayAmount, available);
+        }
+        assetToken.safeTransfer(flashPool, repayAmount);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -283,7 +371,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     {
         uint256 total = totalAssets();
         target = _bufferTarget(total);
-        current = IERC20(asset()).balanceOf(address(this));
+        current = _idleAssets();
         utilizationBps = target > 0
             ? Math.min((current * BPS_DENOMINATOR) / target, BPS_DENOMINATOR)
             : BPS_DENOMINATOR;
@@ -311,6 +399,16 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     function _ensureLiquid(uint256 needed) internal {
         uint256 idle = IERC20(asset()).balanceOf(address(this));
         if (idle >= needed) return;
+
+        if (address(venusVToken) != address(0)) {
+            uint256 remainingFromVenus = needed - idle;
+            uint256 venusIdle = _venusUnderlyingBalance();
+            if (venusIdle > 0) {
+                _redeemFromVenus(Math.min(remainingFromVenus, venusIdle));
+                idle = IERC20(asset()).balanceOf(address(this));
+                if (idle >= needed) return;
+            }
+        }
 
         // Tier 2: Pull from secondary adapter
         uint256 remaining = needed - idle;
@@ -364,9 +462,11 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
         if (lpTarget > currentLp) {
             uint256 deficit = lpTarget - currentLp;
-            uint256 idle = IERC20(asset()).balanceOf(address(this));
-            if (idle > bufferTarget_) {
-                uint256 toSend = Math.min(deficit, idle - bufferTarget_);
+            uint256 idle = _availableIdleForDeployment(bufferTarget_);
+            if (idle > 0) {
+                uint256 toSend = Math.min(deficit, idle);
+                _ensureRawLiquidity(toSend, bufferTarget_);
+                toSend = Math.min(toSend, IERC20(asset()).balanceOf(address(this)));
                 IERC20(asset()).safeTransfer(address(lpAdapter), toSend);
                 lpAdapter.onVaultDeposit(toSend);
             }
@@ -377,11 +477,15 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
 
     /// @dev Move excess idle into secondary, or pull from secondary if below buffer
     function _rebalanceSecondary(uint256 bufferTarget_) internal {
-        uint256 idle = IERC20(asset()).balanceOf(address(this));
+        uint256 idle = _idleAssets();
         if (idle > bufferTarget_) {
             uint256 excess = idle - bufferTarget_;
-            IERC20(asset()).safeTransfer(address(secondaryAdapter), excess);
-            secondaryAdapter.onVaultDeposit(excess);
+            _ensureRawLiquidity(excess, bufferTarget_);
+            uint256 toSend = Math.min(excess, IERC20(asset()).balanceOf(address(this)));
+            if (toSend > 0) {
+                IERC20(asset()).safeTransfer(address(secondaryAdapter), toSend);
+                secondaryAdapter.onVaultDeposit(toSend);
+            }
         }
     }
 
@@ -415,5 +519,67 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             }
         }
         // Silently ignore failures — never block user deposit/withdraw
+    }
+
+    function _isConfiguredAdapter(address adapter) internal view returns (bool) {
+        return
+            adapter == address(asterAdapter) ||
+            adapter == address(secondaryAdapter) ||
+            adapter == address(lpAdapter);
+    }
+
+    function _idleAssets() internal view returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this)) + _venusUnderlyingBalance();
+    }
+
+    function _venusUnderlyingBalance() internal view returns (uint256) {
+        if (address(venusVToken) == address(0) || venusExchangeRateScale == 0) return 0;
+
+        uint256 vTokenBalance = venusVToken.balanceOf(address(this));
+        if (vTokenBalance == 0) return 0;
+
+        return (vTokenBalance * venusVToken.exchangeRateStored()) / venusExchangeRateScale;
+    }
+
+    function _availableIdleForDeployment(uint256 bufferTarget_) internal view returns (uint256) {
+        uint256 idle = _idleAssets();
+        return idle > bufferTarget_ ? idle - bufferTarget_ : 0;
+    }
+
+    function _ensureRawLiquidity(uint256 neededRaw, uint256 bufferTarget_) internal {
+        if (neededRaw == 0 || address(venusVToken) == address(0)) return;
+
+        uint256 raw = IERC20(asset()).balanceOf(address(this));
+        if (raw >= neededRaw) return;
+
+        uint256 missing = neededRaw - raw;
+        uint256 venusIdle = _venusUnderlyingBalance();
+        uint256 deployable = _availableIdleForDeployment(bufferTarget_);
+
+        uint256 redeemAmount = Math.min(missing, Math.min(venusIdle, deployable));
+        if (redeemAmount > 0) _redeemFromVenus(redeemAmount);
+    }
+
+    function _parkIdleInVenus(uint256 bufferTarget_) internal {
+        if (address(venusVToken) == address(0)) return;
+
+        uint256 raw = IERC20(asset()).balanceOf(address(this));
+        if (raw == 0) return;
+
+        uint256 deployable = _availableIdleForDeployment(bufferTarget_);
+        uint256 keepRaw = Math.min(raw, deployable);
+        uint256 toMint = raw - keepRaw;
+
+        if (toMint > 0) _mintToVenus(toMint);
+    }
+
+    function _mintToVenus(uint256 amount) internal {
+        uint256 result = venusVToken.mint(amount);
+        if (result != 0) revert ProofVault__VenusMintFailed(result);
+    }
+
+    function _redeemFromVenus(uint256 amount) internal {
+        uint256 result = venusVToken.redeemUnderlying(amount);
+        if (result != 0) revert ProofVault__VenusRedeemFailed(result);
     }
 }

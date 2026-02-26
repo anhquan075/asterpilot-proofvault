@@ -1,15 +1,55 @@
+import { useEffect, useState } from 'react';
 import { PieChart } from 'lucide-react';
 import { toSafeNumber, fmtBps, fmtUsdf } from "@/lib/vaultDisplayFormatters";
 import { formatUnits } from "ethers";
 
-export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryManagedAssets, lpManagedAssets, lpStakingInfo, totalAssetsRaw, algoMetrics, harvestGasEstimate, harvestGasMultiplier }) {
+function toBigIntSafe(v) {
+  try {
+    return BigInt(v ?? 0);
+  } catch {
+    return 0n;
+  }
+}
+
+export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryManagedAssets, lpManagedAssets, lpStakingInfo, pendingWithdrawals, totalAssetsRaw, bufferStatus, algoMetrics, harvestGasEstimate, harvestGasMultiplier }) {
+  const [venusApy, setVenusApy] = useState('4.2');
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchVenusApy() {
+      try {
+        const ethersLib = await import('ethers');
+        const provider = new ethersLib.JsonRpcProvider('https://bsc-dataseed.binance.org/');
+        // vUSDT Contract on BSC
+        const vUSDT = new ethersLib.Contract('0xfD5840Cd36d94D7229439859C0112a4185BC0255', ['function supplyRatePerBlock() view returns (uint256)'], provider);
+        const ratePerBlock = await vUSDT.supplyRatePerBlock();
+        // APY = (ratePerBlock / 1e18) * blocksPerYear * 100
+        // BSC block time is ~3 seconds -> ~10512000 blocks/year
+        const blocksPerYear = 10512000;
+        const rate = Number(ethersLib.formatUnits(ratePerBlock, 18));
+        const apy = rate * blocksPerYear * 100;
+        if (mounted) setVenusApy(apy.toFixed(2));
+      } catch (e) {
+        console.error("Failed to fetch Venus APY", e);
+      }
+    }
+    fetchVenusApy();
+    return () => { mounted = false; };
+  }, []);
   const total = toSafeNumber(totalAssetsRaw) ?? 0;
+  const asterRaw = toBigIntSafe(asterManagedAssets);
+  const secondaryRaw = toBigIntSafe(secondaryManagedAssets);
+  const pendingAsterRaw = toBigIntSafe(pendingWithdrawals?.totalAmount ?? 0n);
+  const asterStakedRaw = asterRaw > pendingAsterRaw ? asterRaw - pendingAsterRaw : 0n;
+  const bufferCurrentRaw = toBigIntSafe(bufferStatus?.current ?? 0n);
+  const bufferRaw = secondaryRaw + bufferCurrentRaw;
   const aster = toSafeNumber(asterManagedAssets) ?? 0;
   const lp = toSafeNumber(lpManagedAssets) ?? 0;
+  const buffer = toSafeNumber(bufferRaw) ?? 0;
 
   const asterPct = total > 0 ? Math.round((aster / total) * 100) : 0;
   const lpPct = total > 0 ? Math.round((lp / total) * 100) : 0;
-  const secondaryPct = Math.max(0, 100 - asterPct - lpPct);
+  const bufferPct = total > 0 ? Math.round((buffer / total) * 100) : 0;
 
   return (
     <div className="card">
@@ -29,14 +69,14 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
         />
         <div
           className="allocationSegment allocationSegment--secondary"
-          style={{ width: `${secondaryPct}%` }}
-          title={`Buffer ${secondaryPct}%`}
+          style={{ width: `${bufferPct}%` }}
+          title={`Buffer ${bufferPct}%`}
         />
       </div>
       <div className="allocationLegend">
         <span className="allocationLegendItem allocationLegendItem--aster">AsterDEX {asterPct}%</span>
         <span className="allocationLegendItem allocationLegendItem--lp">StableSwap LP {lpPct}%</span>
-        <span className="allocationLegendItem allocationLegendItem--secondary">Buffer {secondaryPct}%</span>
+        <span className="allocationLegendItem allocationLegendItem--secondary">Buffer (vUSDT) {bufferPct}%</span>
       </div>
 
       <table className="oracleTable">
@@ -53,35 +93,23 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
           <tr>
             <td>AsterDEX</td>
             <td>{fmtUsdf(asterManagedAssets)}</td>
-            <td>—</td>
-            <td>—</td>
-            <td>—</td>
+            <td>{fmtUsdf(asterStakedRaw)}</td>
+            <td>{fmtUsdf(pendingAsterRaw)}</td>
+            <td>0.0000</td>
           </tr>
           <tr>
             <td>StableSwap LP</td>
             <td>{fmtUsdf(lpManagedAssets)}</td>
-            <td>
-              {lpStakingInfo && lpStakingInfo.staked > 0n
-                ? fmtUsdf(lpStakingInfo.staked)
-                : "—"}
-            </td>
-            <td>
-              {lpStakingInfo && lpStakingInfo.unstaked > 0n
-                ? fmtUsdf(lpStakingInfo.unstaked)
-                : "—"}
-            </td>
-            <td>
-              {lpStakingInfo && lpStakingInfo.pending > 0n
-                ? `${parseFloat(formatUnits(lpStakingInfo.pending, 18)).toFixed(4)} CAKE`
-                : "—"}
-            </td>
+            <td>{fmtUsdf(lpStakingInfo?.staked ?? 0n)}</td>
+            <td>{fmtUsdf(lpStakingInfo?.unstaked ?? 0n)}</td>
+            <td>{`${parseFloat(formatUnits(lpStakingInfo?.pending ?? 0n, 18)).toFixed(4)} CAKE`}</td>
           </tr>
           <tr>
-            <td>Buffer</td>
-            <td>{fmtUsdf(secondaryManagedAssets)}</td>
-            <td>—</td>
-            <td>—</td>
-            <td>—</td>
+            <td>Buffer (vUSDT)</td>
+            <td>{fmtUsdf(bufferRaw)}</td>
+            <td>{fmtUsdf(secondaryRaw)}</td>
+            <td>{fmtUsdf(bufferCurrentRaw)}</td>
+            <td>0.0000</td>
           </tr>
         </tbody>
       </table>
@@ -115,11 +143,15 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
           <span style={{ color: 'var(--text-muted)' }}>Active Protocols</span>
-          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{[asterPct > 0 && 'AsterDEX', lpPct > 0 && 'StableSwap LP', secondaryPct > 0 && 'Buffer'].filter(Boolean).join(', ') || '—'}</span>
+          <span style={{ color: 'var(--text)', fontWeight: 600 }}>{[asterPct > 0 && 'AsterDEX', lpPct > 0 && 'StableSwap LP', bufferPct > 0 && 'Buffer'].filter(Boolean).join(', ') || '—'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
           <span style={{ color: 'var(--text-muted)' }}>Buffer Ratio</span>
-          <span style={{ color: secondaryPct > 50 ? 'var(--warning)' : 'var(--success)', fontWeight: 600 }}>{secondaryPct}%</span>
+          <span style={{ color: bufferPct > 50 ? 'var(--warning)' : 'var(--success)', fontWeight: 600 }}>{bufferPct}%</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+          <span style={{ color: 'var(--text-muted)' }}>Buffer Engine</span>
+          <span style={{ color: '#F8B128', fontWeight: 600 }}>Venus Protocol (vUSDT) ✦ {venusApy}% APY</span>
         </div>
       </div>
 

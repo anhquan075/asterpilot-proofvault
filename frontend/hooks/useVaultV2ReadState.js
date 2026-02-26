@@ -62,6 +62,7 @@ export function useVaultV2ReadState() {
     volatility: 0n,
     sharpe: 0n,
     observationCount: 0n,
+    observations: [],
   });
 
   // V2-specific: auction metrics
@@ -103,8 +104,9 @@ export function useVaultV2ReadState() {
     circuitBreakerAddress, sharpeTrackerAddress, pegArbExecutorAddress,
     decimals, shareDecimals, setDecimals, setShareDecimals,
     setBusyAction, setStatus, setNetworkChainId, setShowNetworkModal,
+    silent = false,
   }) => {
-    setBusyAction("refresh");
+    if (!silent) setBusyAction("refresh");
     try {
       const ethersLib = await import("ethers");
       const runner = signer ?? provider;
@@ -194,6 +196,31 @@ export function useVaultV2ReadState() {
       }
 
       // Sharpe tracker metrics
+      if (sharpeTrackerAddress) {
+        const sharpeTracker = new ethersLib.Contract(ethersLib.getAddress(sharpeTrackerAddress.trim()), [
+          "function computeSharpe() view returns (int256)",
+          "function getObservations() view returns (int128[])",
+          "function count() view returns (uint256)",
+          "function windowSize() view returns (uint256)",
+        ], runner);
+        
+        try {
+          const [sharpeRatio, obs, obsCount] = await Promise.all([
+            sharpeTracker.computeSharpe().catch(() => 0n),
+            sharpeTracker.getObservations().catch(() => []),
+            sharpeTracker.count().catch(() => 0n),
+          ]);
+          setSharpeMetrics({
+            meanYieldBps: 0n, // Derivable from obs if needed, but primary is sharpeRatio
+            volatility: 0n,
+            sharpe: sharpeRatio,
+            observationCount: obsCount,
+            observations: obs,
+          });
+        } catch (e) {
+          // ignore tracking error
+        }
+      }
       if (sharpeTrackerAddress) {
         const sharpePreview = await engine.previewSharpe().catch(() => null);
         if (sharpePreview) {
@@ -326,10 +353,13 @@ export function useVaultV2ReadState() {
 
       // V2 buffer status
       if (rawBufferStatus) {
+        const target = rawBufferStatus.target ?? rawBufferStatus[0] ?? 0n;
+        const current = rawBufferStatus.current ?? rawBufferStatus[1] ?? 0n;
+        const utilizationBps = rawBufferStatus.utilizationBps ?? rawBufferStatus[2] ?? 0n;
         setBufferStatus({
-          idleBalance: rawBufferStatus.idleBalance ?? 0n,
-          bufferTarget: rawBufferStatus.bufferTarget ?? 0n,
-          utilizationBps: rawBufferStatus.utilizationBps ?? 0n,
+          target,
+          current,
+          utilizationBps,
         });
       }
 
@@ -347,7 +377,9 @@ export function useVaultV2ReadState() {
       setRiskScoreVal(toSafeNumber(rawRiskScore));
       setTimeUntilNext(toSafeNumber(rawTimeUntilNext));
       setCycleCountVal(toSafeNumber(rawCycleCount));
-      setStatus(`State refreshed | canExecute=${isExecutable} (${decodeReason(ethersLib, reason)})`);
+      if (!silent) {
+        setStatus(`State refreshed | canExecute=${isExecutable} (${decodeReason(ethersLib, reason)})`);
+      }
 
       if (provider) {
         const network = await provider.getNetwork();
@@ -355,9 +387,11 @@ export function useVaultV2ReadState() {
         setShowNetworkModal(network.chainId !== 56n);
       }
     } catch (error) {
-      setStatus(`Refresh failed: ${error.message}`);
+      if (!silent) {
+        setStatus(`Refresh failed: ${error.message}`);
+      }
     } finally {
-      setBusyAction(null);
+      if (!silent) setBusyAction(null);
     }
   }, []);
 

@@ -95,7 +95,7 @@ export function VaultTvlStatsDepositWithdrawCard({
 
       <div className="vaultActionsRow">
         <div className="vaultActionGroup">
-          {isBusy && busyAction === "deposit" ? (
+          {busyAction === "deposit" ? (
             <RobotRouteProgress isExecuting={true} />
           ) : (
             <>

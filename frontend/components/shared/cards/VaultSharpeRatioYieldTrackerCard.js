@@ -29,23 +29,24 @@ export function VaultSharpeRatioYieldTrackerCard({ sharpeState }) {
     <div className="card card--accent" style={{ display: 'flex', flexDirection: 'column', paddingBottom: 16 }}>
       <h3 className="card__title"><TrendingUp size={14} style={{ display:'inline', verticalAlign:'middle', marginRight:6 }} />Sharpe Ratio</h3>
 
-      <div className={`sharpe__value ${sharpeColor}`} style={{ flexShrink: 0 }}>
-        {observationCount >= 3 ? sharpeDisplay : '—'}
+      <div className={`sharpe__value ${sharpeColor}`} style={{ flexShrink: 0 }} title="Sharpe ratio computes to 0.00 until the vault accrues positive yield between execution cycles">
+        {observationCount > 0 ? sharpeDisplay : '—'}
       </div>
       <div className="card__muted" style={{ textAlign: 'center', marginBottom: 4, fontSize: '0.75em', wordBreak: 'break-word', whiteSpace: 'normal', flexShrink: 0 }}>
         {observationCount >= 3
           ? `Risk-adjusted return (${observationCount} cycles)`
-          : `Need ${3 - Number(observationCount)} more cycles`}
+          : observationCount > 0 
+            ? `Need ${Math.max(0, 3 - Number(observationCount))} more cycles for full window`
+            : `Need 3 more cycles`}
       </div>
-
       <div className="sharpe__stats" style={{ marginTop: 'auto', paddingTop: 4 }}>
         <div className="sharpe__stat">
           <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Mean Yield</div>
-          <div>{observationCount >= 3 ? `${meanDisplay}%` : '—'}</div>
+          <div title="Average yield per cycle">{observationCount > 0 ? `${meanDisplay}%` : '—'}</div>
         </div>
         <div className="sharpe__stat">
           <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Volatility</div>
-          <div>{observationCount >= 3 ? `${volDisplay}%` : '—'}</div>
+          <div title="Standard deviation of yield">{observationCount > 0 ? `${volDisplay}%` : '—'}</div>
         </div>
         <div className="sharpe__stat">
           <div className="card__muted" style={{ marginBottom: 2, fontSize: '9px' }}>Obs.</div>

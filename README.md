@@ -1,7 +1,8 @@
 <p align="center">
   <img src="frontend/public/logo.svg" alt="AsterPilot ProofVault" width="120" height="120" />
-  <br />
+  <br /><br />
   <img src="https://img.shields.io/badge/BNB_Chain-Mainnet_Ready-F0B90B?style=for-the-badge&logo=binance" alt="BNB Chain" />
+  <img src="https://img.shields.io/badge/Architecture-V3_Institutional-121212?style=for-the-badge" alt="V3 Architecture" />
   <img src="https://img.shields.io/badge/Security-ZK_Verified-4CAF50?style=for-the-badge" alt="ZK Security" />
 </p>
 

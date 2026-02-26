@@ -146,9 +146,9 @@ contract PegArbExecutor is IPegArbExecutor, ReentrancyGuard {
         view
         returns (uint256 poolPrice, ArbDirection dir)
     {
-        uint256[2] memory bal = stableSwapPool.get_balances();
-        if (bal[1] == 0) revert PegArbExecutor__EmptyPool();
-        poolPrice = bal[0] * 1e18 / bal[1]; // USDT per USDF
+        (bool ok, uint256 bal0, uint256 bal1) = _readPoolBalances();
+        if (!ok || bal1 == 0) revert PegArbExecutor__EmptyPool();
+        poolPrice = bal0 * 1e18 / bal1; // USDT per USDF
 
         uint256 threshold = 1e18 * deviationThresholdBps / BPS_DENOMINATOR;
 
@@ -159,6 +159,34 @@ contract PegArbExecutor is IPegArbExecutor, ReentrancyGuard {
         } else {
             dir = ArbDirection.None;
         }
+    }
+
+    function _readPoolBalances()
+        internal
+        view
+        returns (bool ok, uint256 bal0, uint256 bal1)
+    {
+        address poolAddr = address(stableSwapPool);
+
+        (bool sGet, bytes memory dGet) = poolAddr.staticcall(
+            abi.encodeWithSignature("get_balances()")
+        );
+        if (sGet && dGet.length >= 64) {
+            uint256[2] memory b = abi.decode(dGet, (uint256[2]));
+            return (true, b[0], b[1]);
+        }
+
+        (bool s0, bytes memory d0) = poolAddr.staticcall(
+            abi.encodeWithSignature("balances(uint256)", 0)
+        );
+        (bool s1, bytes memory d1) = poolAddr.staticcall(
+            abi.encodeWithSignature("balances(uint256)", 1)
+        );
+        if (s0 && s1 && d0.length >= 32 && d1.length >= 32) {
+            return (true, abi.decode(d0, (uint256)), abi.decode(d1, (uint256)));
+        }
+
+        return (false, 0, 0);
     }
 
     /// @dev Path A: USDT → buy cheap USDF on pool → redeem at par → USDT

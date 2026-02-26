@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-
+import { Toast } from "../ui/Toast";
+import { RobotRouteProgress } from "../ui/RobotRouteProgress";
 function computeSafeWithdrawable(totalAssetsRaw, asterManagedAssets, decimals) {
   try {
     const total = BigInt(totalAssetsRaw ?? 0);
@@ -95,31 +96,37 @@ export function VaultTvlStatsDepositWithdrawCard({
 
       <div className="vaultActionsRow">
         <div className="vaultActionGroup">
-          <div className="vaultActionLabelRow">
-            <label className="vaultActionLabel">Deposit (USDT)</label>
-            {userBalanceDisplay != null && (
-              <button
-                className="vaultMaxBtn"
-                onClick={() => userBalanceFormatted && setDepositAmount(userBalanceFormatted)}
-                disabled={!canOperate || !userBalanceFormatted}
-                title="Your wallet USDT balance"
-              >
-                Max {userBalanceDisplay}
+          {isBusy && busyAction === "deposit" ? (
+            <RobotRouteProgress isExecuting={true} />
+          ) : (
+            <>
+              <div className="vaultActionLabelRow">
+                <label className="vaultActionLabel">Deposit (USDT)</label>
+                {userBalanceDisplay != null && (
+                  <button
+                    className="vaultMaxBtn"
+                    onClick={() => userBalanceFormatted && setDepositAmount(userBalanceFormatted)}
+                    disabled={!canOperate || !userBalanceFormatted}
+                    title="Your wallet USDT balance"
+                  >
+                    Max {userBalanceDisplay}
+                  </button>
+                )}
+              </div>
+              <input
+                type="number"
+                min="0"
+                placeholder="0.00"
+                value={depositAmount}
+                onChange={e => setDepositAmount(e.target.value)}
+                disabled={!canOperate}
+                style={depositExceedsBalance ? { borderColor: "#ef4444" } : undefined}
+              />
+              <button type="button" onClick={handleDeposit} disabled={!canOperate || !depositAmount || depositExceedsBalance}>
+                Deposit
               </button>
-            )}
-          </div>
-          <input
-            type="number"
-            min="0"
-            placeholder="0.00"
-            value={depositAmount}
-            onChange={e => setDepositAmount(e.target.value)}
-            disabled={!canOperate}
-            style={depositExceedsBalance ? { borderColor: "#ef4444" } : undefined}
-          />
-          <button type="button" onClick={handleDeposit} disabled={!canOperate || !depositAmount || depositExceedsBalance}>
-            {busyAction === "deposit" ? "Depositing…" : "Deposit"}
-          </button>
+            </>
+          )}
         </div>
 
         <div className="vaultActionGroup">

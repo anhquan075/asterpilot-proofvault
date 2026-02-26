@@ -126,22 +126,22 @@ sequenceDiagram
 
 | Contract | Address |
 | --- | --- |
-| `ProofVault` | `0xdE1FBFc6a334e848152c4F938A2Ac2eeB0f6590b` |
-| `StrategyEngine` | `0x6570E79bC9dbe8e7EfbF929f3D877065293cd891` |
-| `RiskPolicy` | `0xE5675Db6eb5806F2c32FE905D8bbD609F5C417e1` |
-| `ChainlinkPriceOracle` | `0xFE5A18b7a330205dA6778cEa4536D642b4e772fF` |
-| `CircuitBreaker` | `0x65079A226a23f3F7786aa7FB231f84FB81CB43B3` |
-| `SharpeTracker` | `0x9953510D913e1D844a175404C9E7c49A8C163bEc` |
+| `ProofVault` | [`0x69FA0e6bc9b412EB5c90516c4E684EF596c2424d`](https://bscscan.com/address/0x69FA0e6bc9b412EB5c90516c4E684EF596c2424d) |
+| `StrategyEngine` | [`0x2414959E51E4f3459A114DEA7b3f4Da83c9849aa`](https://bscscan.com/address/0x2414959E51E4f3459A114DEA7b3f4Da83c9849aa) |
+| `RiskPolicy` | [`0xE37AAAc34307A3EF7F38e019b28018e720E037Dc`](https://bscscan.com/address/0xE37AAAc34307A3EF7F38e019b28018e720E037Dc) |
+| `ChainlinkPriceOracle` | [`0xFC0b07a4C06b72db57297eEC11c79e658EFE3A5a`](https://bscscan.com/address/0xFC0b07a4C06b72db57297eEC11c79e658EFE3A5a) |
+| `CircuitBreaker` | [`0x74bda872E528c58D66d5DBd9Bb9072b06d99f510`](https://bscscan.com/address/0x74bda872E528c58D66d5DBd9Bb9072b06d99f510) |
+| `SharpeTracker` | [`0x61b8f2BbF3863b1c07f42Ac76fB899B7eF483bD6`](https://bscscan.com/address/0x61b8f2BbF3863b1c07f42Ac76fB899B7eF483bD6) |
 
 ### Adapters and Executors
 
 | Contract | Address |
 | --- | --- |
-| `AsterEarnAdapterWithSwap` | `0x2E96DA33D701cAAEfb34d491A2c4D42f39C2529F` |
-| `ManagedAdapter` | `0x5B752e0D04A8C7e7ca26290EA2dEFA61be814C51` |
-| `StableSwapLPYieldAdapterWithFarm` | `0x084Ad2C0D1254Cdd955FaFd9eC5b16D079D71df9` |
-| `PegArbExecutor` | `0xA624EB4aC7A70eFf7DBADe603fb9d6bbd345954B` |
-| `ExecutionAuction` | `0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6` |
+| `AsterEarnAdapterWithSwap` | [`0x05CF9BC006f21fe7e87d1058f606aF876E52f95E`](https://bscscan.com/address/0x05CF9BC006f21fe7e87d1058f606aF876E52f95E) |
+| `ManagedAdapter` | [`0x5FdeED968470602328d896b4db6b7C0F5BA867E5`](https://bscscan.com/address/0x5FdeED968470602328d896b4db6b7C0F5BA867E5) |
+| `StableSwapLPYieldAdapterWithFarm` | [`0xA6974768f90d579573faaE512e6a613464e4963c`](https://bscscan.com/address/0xA6974768f90d579573faaE512e6a613464e4963c) |
+| `PegArbExecutor` | [`0x5036cA3FB2Ff95A813c262831A6023CB527666d3`](https://bscscan.com/address/0x5036cA3FB2Ff95A813c262831A6023CB527666d3) |
+| `ExecutionAuction` | [`0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D`](https://bscscan.com/address/0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D) |
 
 ### Key Integration Addresses
 

@@ -19,7 +19,7 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
     async function fetchVenusApy() {
       try {
         const ethersLib = await import('ethers');
-        const provider = new ethersLib.JsonRpcProvider('https://bsc-dataseed.binance.org/');
+        const provider = new ethersLib.JsonRpcProvider('https://binance.llamarpc.com');
         // vUSDT Contract on BSC
         const vUSDT = new ethersLib.Contract('0xfD5840Cd36d94D7229439859C0112a4185BC0255', ['function supplyRatePerBlock() view returns (uint256)'], provider);
         const ratePerBlock = await vUSDT.supplyRatePerBlock();
@@ -164,19 +164,6 @@ export function VaultStrategyAllocationBarCard({ asterManagedAssets, secondaryMa
           </span>
         </div>
       )}
-
-      {/* ─── Robot Route Execution Flow ─── */}
-      <div style={{ marginTop: 14, borderTop: "1px dashed rgba(255,255,255,.06)", paddingTop: 12 }}>
-        <p style={{ margin: "0 0 8px", fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--accent)", fontWeight: 700 }}>Robot Route Enabled</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 7, color: "var(--text-muted)", fontSize: 11, lineHeight: 1.4 }}>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>1.</span><span>User deposits USDT → Vault</span></div>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>2.</span><span>Engine swaps USDT → USDF (PancakeSwap)</span></div>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>3.</span><span>Engine deposits USDF → AsterDEX Earn → receives asUSDF</span></div>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>4.</span><span>Engine adds liquidity to USDF/USDT pool → receives LP tokens</span></div>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>5.</span><span>Engine stakes LP tokens in MasterChef → earns CAKE</span></div>
-          <div style={{ display: "flex", gap: 7 }}><span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>6.</span><span>executeCycle() harvests CAKE → swaps to USDT → redeploys</span></div>
-        </div>
-      </div>
     </div>
   );
 }

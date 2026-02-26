@@ -38,9 +38,12 @@ function assertAddress(addr, label) {
 
 function normalizeWriteError(error) {
   const raw = error?.shortMessage || error?.message || "Transaction failed";
+  if (raw.includes("NotLocked") || raw.includes("not locked") || raw.includes("ProofVault__NotLocked")) {
+    return "Deposits are blocked: vault configuration is not locked. An admin must call lockConfiguration() before deposits can be accepted.";
+  }
   const missingRevert = raw.includes("missing revert data") || raw.includes("reason=null") || raw.includes("execution reverted (no data present)");
   if (error?.code === "CALL_EXCEPTION" && missingRevert) {
-    return "Deposit rejected by contract simulation. Vault accounting is reverting (totalAssets/managedAssets). This is a deployment configuration issue, not a wallet balance issue.";
+    return "Deposit rejected by contract. The vault or one of its adapters may not be fully configured. Contact the vault admin.";
   }
   return raw;
 }
@@ -95,11 +98,10 @@ export function useVaultV2WriteActions({ refresh }) {
       const amount = ethersLib.parseUnits(depositAmount || "0", decimals);
       if (amount <= 0n) throw new Error("Invalid deposit amount");
 
-      setStatus("Checking vault health...");
-      try {
-        await vault.totalAssets();
-      } catch {
-        throw new Error("Deposit blocked: vault totalAssets() currently reverts. One or more adapters are misconfigured in this deployment.");
+      setStatus("Checking vault configuration...");
+      const isLocked = await vault.configurationLocked().catch(() => null);
+      if (isLocked === false) {
+        throw new Error("Deposits are blocked: vault configuration is not locked. An admin must call lockConfiguration() to enable deposits.");
       }
 
       const allowance = await token.allowance(signerAddress, vaultContractAddress).catch(() => 0n);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, CircleDashed, Loader2 } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Loader2, Route } from 'lucide-react';
 
 const STEPS = [
   "Depositing USDT to Vault",
@@ -39,8 +39,9 @@ export function RobotRouteProgress({ isExecuting, onComplete }) {
 
   return (
     <div style={{ marginTop: 16, padding: '12px', background: 'rgba(13, 11, 9, 0.6)', borderRadius: 8, border: '1px solid var(--line)' }}>
-      <p style={{ margin: "0 0 12px", fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--accent)", fontWeight: 700 }}>
-        🤖 Live Atomic Execution Route
+      <p style={{ margin: "0 0 12px", fontSize: 10, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--accent)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+        <Route size={12} />
+        Live Atomic Execution Route
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {STEPS.map((step, idx) => {

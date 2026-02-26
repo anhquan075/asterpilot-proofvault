@@ -1,4 +1,4 @@
-
+import React from "react";
 import { Activity } from "lucide-react";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 

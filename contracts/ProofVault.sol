@@ -182,15 +182,21 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Total assets = idle balance + aster managed + secondary managed + lp managed
+    /// @dev Each adapter call is try/catch-guarded: a reverting adapter returns 0 rather than
+    ///      propagating the revert and bricking deposits/withdrawals/share-price calculations.
     function totalAssets() public view override returns (uint256) {
-        uint256 lpManaged = address(lpAdapter) != address(0)
-            ? lpAdapter.managedAssets()
-            : 0;
-        return
-            _idleAssets() +
-            asterAdapter.managedAssets() +
-            secondaryAdapter.managedAssets() +
-            lpManaged;
+        uint256 asterManaged;
+        try asterAdapter.managedAssets() returns (uint256 v) { asterManaged = v; } catch {}
+
+        uint256 secondaryManaged;
+        try secondaryAdapter.managedAssets() returns (uint256 v) { secondaryManaged = v; } catch {}
+
+        uint256 lpManaged;
+        if (address(lpAdapter) != address(0)) {
+            try lpAdapter.managedAssets() returns (uint256 v) { lpManaged = v; } catch {}
+        }
+
+        return _idleAssets() + asterManaged + secondaryManaged + lpManaged;
     }
 
     function deposit(

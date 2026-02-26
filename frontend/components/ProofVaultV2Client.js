@@ -1,4 +1,4 @@
-
+import React from "react";
 import { VaultCircuitBreakerCard, VaultDutchAuctionCard } from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
 import { VaultCycleExecutionStatusCard } from "@/components/shared/cards/VaultCycleExecutionStatusCard";
 import { VaultExecutionAuctionRraBidCard } from "@/components/shared/cards/VaultExecutionAuctionRraBidCard";
@@ -12,28 +12,18 @@ import { VaultTopNavbar } from "@/components/shared/ui/VaultTopNavbar";
 import { useRainbowKitWallet } from "@/hooks/useRainbowKitWallet";
 import { useVaultV2ReadState } from "@/hooks/useVaultV2ReadState";
 import { useVaultV2WriteActions } from "@/hooks/useVaultV2WriteActions";
-import { V2_MAINNET_ADDRESSES } from "@/lib/contractAddresses";
+import { useNetworkMode } from "@/hooks/useNetworkMode";
+import { NETWORK_CONFIGS } from "@/lib/networkConfig";
 import { AlertTriangle, ExternalLink, Shield, TrendingUp, Zap } from "lucide-react";
+import { VaultTestnetDevPanel } from "@/components/shared/ui/VaultTestnetDevPanel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const V2_MAINNET_PRESET = {
-  vaultAddress: V2_MAINNET_ADDRESSES.vaultAddress,
-  engineAddress: V2_MAINNET_ADDRESSES.engineAddress,
-  tokenAddress: V2_MAINNET_ADDRESSES.tokenAddress,
-  circuitBreakerAddress: V2_MAINNET_ADDRESSES.circuitBreakerAddress,
-  sharpeTrackerAddress: V2_MAINNET_ADDRESSES.sharpeTrackerAddress,
-  pegArbExecutorAddress: V2_MAINNET_ADDRESSES.pegArbExecutorAddress,
-  executionAuctionAddress: V2_MAINNET_ADDRESSES.executionAuctionAddress,
-};
 
-const SUPPORTED_CHAIN_IDS = new Set([56n]);
-const BNB_PUBLIC_RPC = import.meta.env.VITE_BNB_PUBLIC_RPC_URL || "https://bsc-rpc.publicnode.com";
-const BSCSCAN_ADDR = "https://bscscan.com/address/";
-const BSCSCAN_TX = "https://bscscan.com/tx/";
+
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 function shortAddr(addr) {
-  if (!addr || addr === ZERO_ADDR) return "not set";
+  if (!addr || addr === ZERO_ADDR) return "not deployed";
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
 
@@ -42,17 +32,17 @@ function shortHash(hash) {
   return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
 
-function ContractAddressBadge({ label, address, icon: Icon }) {
+function ContractAddressBadge({ label, address, icon: Icon, bscScanAddr }) {
   const isSet = address && address !== ZERO_ADDR;
   return (
     <span className={`contractBadge ${isSet ? "contractBadge--set" : "contractBadge--unset"}`}>
       {Icon && <Icon size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />}
       <span className="contractBadgeLabel">{label}</span>
       {isSet
-        ? <a href={`${BSCSCAN_ADDR}${address}`} target="_blank" rel="noopener noreferrer" className="contractBadgeAddr">
+        ? <a href={`${bscScanAddr}${address}`} target="_blank" rel="noopener noreferrer" className="contractBadgeAddr">
           {shortAddr(address)} <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
         </a>
-        : <span className="contractBadgeAddr">not configured</span>
+        : <span className="contractBadgeAddr">not deployed</span>
       }
     </span>
   );
@@ -61,6 +51,8 @@ function ContractAddressBadge({ label, address, icon: Icon }) {
 export default function ProofVaultV2Client() {
   const [, setStatus] = useState("Loading live data...");
   const [busyAction, setBusyAction] = useState(null);
+  const { networkMode, isTestnet } = useNetworkMode();
+  const networkConfig = NETWORK_CONFIGS[networkMode];
   const {
     vaultAddress,
     engineAddress,
@@ -69,7 +61,9 @@ export default function ProofVaultV2Client() {
     sharpeTrackerAddress,
     pegArbExecutorAddress,
     executionAuctionAddress,
-  } = V2_MAINNET_PRESET;
+  } = networkConfig.contracts;
+  const bscScanAddr = `${networkConfig.blockExplorer}/address/`;
+  const bscScanTx = `${networkConfig.blockExplorer}/tx/`;
 
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -125,9 +119,9 @@ export default function ProofVaultV2Client() {
 
   useEffect(() => {
     import("ethers").then(({ JsonRpcProvider }) => {
-      setPublicProvider(new JsonRpcProvider(BNB_PUBLIC_RPC));
+      setPublicProvider(new JsonRpcProvider(networkConfig.rpcUrl));
     });
-  }, []);
+  }, [networkConfig.rpcUrl]);
 
   useEffect(() => {
     if (publicProvider && !wallet.signer) {
@@ -231,8 +225,17 @@ export default function ProofVaultV2Client() {
     [actions, wallet.signer, pegArbExecutorAddress, refreshArgs]
   );
 
-  const networkSupported = wallet.networkChainId === null || SUPPORTED_CHAIN_IDS.has(wallet.networkChainId);
-  const vaultAccountingHealthy = vaultState.totalAssetsRaw !== null;
+  // Testnet: silent refresh after minting mock tokens
+  const handleMinted = useCallback(() => {
+    const runnerProvider = wallet.provider ?? publicProvider;
+    if (runnerProvider) {
+      vaultState.refresh({ ...refreshArgs, signer: wallet.signer, provider: runnerProvider, silent: true });
+      setLastLiveSyncAt(Date.now());
+    }
+  }, [wallet.provider, publicProvider, wallet.signer, refreshArgs, vaultState]);
+
+  const networkSupported = wallet.networkChainId === null || wallet.networkChainId === networkConfig.chainId;
+  const depositsBlocked = vaultState.configLocked === false;
   const latestTx = actions.txHistory?.[0] ?? null;
   const latestTxId = latestTx?.id;
   const liveLabel = lastLiveSyncAt
@@ -277,6 +280,20 @@ export default function ProofVaultV2Client() {
     <section className="panel panel--enhanced">
       <VaultTopNavbar busyAction={busyAction} />
 
+      {isTestnet && (
+        <VaultTestnetDevPanel
+          tokenAddress={tokenAddress}
+          signer={wallet.signer}
+          walletAddress={wallet.wallet}
+          userTokenBalance={vaultState.userTokenBalance}
+          decimals={decimals}
+          totalAssetsRaw={vaultState.totalAssetsRaw}
+          cycleCountVal={vaultState.cycleCountVal}
+          blockExplorer={networkConfig.blockExplorer}
+          onMinted={handleMinted}
+        />
+      )}
+
       {/* Live sync badge removed from normal flow, moved to offline push notification */ }
 
       {isOffline && (
@@ -294,7 +311,7 @@ export default function ProofVaultV2Client() {
           <div className="globalTxPushBody">
             <span>{screenTxPush.action} · {screenTxPush.outcome}</span>
             {screenTxPush.hash ? (
-              <a href={`${BSCSCAN_TX}${screenTxPush.hash}`} target="_blank" rel="noopener noreferrer">
+              <a href={`${bscScanTx}${screenTxPush.hash}`} target="_blank" rel="noopener noreferrer">
                 {shortHash(screenTxPush.hash)} <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
               </a>
             ) : (
@@ -307,28 +324,28 @@ export default function ProofVaultV2Client() {
       {!networkSupported && (
         <div className="networkStrip">
           <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
-          Wrong network detected. Switch to BNB Smart Chain (BSC Mainnet, Chain ID 56).
+          Wrong network detected. Switch to {networkConfig.label} (Chain ID {networkConfig.chainIdNum}).
         </div>
       )}
 
-      {!vaultAccountingHealthy && (
+      {depositsBlocked && (
         <div className="networkStrip">
           <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
-          Vault accounting check failed (`totalAssets()` reverted). Deposits are temporarily blocked until deployment config is healthy.
+          Deposits are blocked: vault configuration is not locked. Admin must call <code>lockConfiguration()</code> on the vault contract to enable deposits.
         </div>
       )}
 
       {/* V2 Contract address strip — 3-rail: Vault, Engine, CircuitBreaker, SharpeTracker, PegArb, Auction */}
       <div className="contractStrip contractStrip--v2">
         <div className="contractGroup contractGroup--core">
-          <ContractAddressBadge label="Vault" address={vaultAddress} />
-          <ContractAddressBadge label="Engine" address={engineAddress} />
+          <ContractAddressBadge label="Vault" address={vaultAddress} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge label="Engine" address={engineAddress} bscScanAddr={bscScanAddr} />
         </div>
         <div className="contractGroup contractGroup--advanced">
-          <ContractAddressBadge label="CircuitBreaker" address={circuitBreakerAddress} icon={Shield} />
-          <ContractAddressBadge label="SharpeTracker" address={sharpeTrackerAddress} icon={TrendingUp} />
-          <ContractAddressBadge label="PegArb" address={pegArbExecutorAddress} icon={Zap} />
-          <ContractAddressBadge label="RRA Auction" address={executionAuctionAddress} icon={Zap} />
+          <ContractAddressBadge label="CircuitBreaker" address={circuitBreakerAddress} icon={Shield} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge label="SharpeTracker" address={sharpeTrackerAddress} icon={TrendingUp} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge label="PegArb" address={pegArbExecutorAddress} icon={Zap} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge label="Execution Auction" address={executionAuctionAddress} icon={Zap} bscScanAddr={bscScanAddr} />
         </div>
       </div>
 
@@ -420,6 +437,8 @@ export default function ProofVaultV2Client() {
               algoMetrics={vaultState.algoMetrics}
               harvestGasEstimate={vaultState.harvestGasEstimate}
               harvestGasMultiplier={vaultState.harvestGasMultiplier}
+              rpcUrl={networkConfig.rpcUrl}
+              vUSDTAddress={networkConfig.vUSDTAddress}
             />
           <VaultExecutionAuctionRraBidCard
             executionAuctionAddress={executionAuctionAddress}
@@ -446,6 +465,7 @@ export default function ProofVaultV2Client() {
         <VaultTransactionHistoryCard
           txHistory={actions.txHistory}
           onClear={actions.clearTxHistory}
+          blockExplorer={networkConfig.blockExplorer}
         />
       </div>
     </section>

@@ -1,5 +1,5 @@
 import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
-import { CheckCircle2, Circle, Info, Loader, Pause, Play, Zap } from 'lucide-react';
+import { CheckCircle2, XCircle, Circle, Info, Loader, Pause, Play, Zap } from 'lucide-react';
 import { useEffect, useState } from "react";
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -49,7 +49,10 @@ function AlgoSummary({ pd }) {
         textTransform: "uppercase",
         letterSpacing: ".05em"
       }}>
-        {executable ? "✓ Ready" : "✗ Not ready"}
+        {executable
+          ? <><CheckCircle2 size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Ready</>
+          : <><XCircle size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Not ready</>
+        }
       </span>
     </div>
   );

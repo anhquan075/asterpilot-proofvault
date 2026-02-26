@@ -35,6 +35,8 @@ export function useRainbowKitWallet() {
     ? "Unknown"
     : networkChainId === 56n
     ? "BNB Mainnet"
+    : networkChainId === 97n
+    ? "BNB Testnet"
     : `Chain ${networkChainId}`;
 
   return {

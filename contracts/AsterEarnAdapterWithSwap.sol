@@ -248,8 +248,8 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         uint256 minUsdfOut = usdtAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
         _inputAsset.forceApprove(address(swapPool), usdtAmount);
-        // coin 1 = USDT (sell), coin 0 = USDF (buy)
-        usdfReceived = swapPool.exchange(1, 0, usdtAmount, minUsdfOut);
+        // coin 0 = USDT (sell), coin 1 = USDF (buy) — pool: coin0=USDT, coin1=USDF
+        usdfReceived = swapPool.exchange(0, 1, usdtAmount, minUsdfOut);
         _inputAsset.forceApprove(address(swapPool), 0);
 
         emit SwapExecuted(usdtAmount, usdfReceived);
@@ -262,8 +262,8 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         uint256 minUsdtOut = usdfAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
         _outputAsset.forceApprove(address(swapPool), usdfAmount);
-        // coin 0 = USDF (sell), coin 1 = USDT (buy)
-        usdtReceived = swapPool.exchange(0, 1, usdfAmount, minUsdtOut);
+        // coin 1 = USDF (sell), coin 0 = USDT (buy) — pool: coin0=USDT, coin1=USDF
+        usdtReceived = swapPool.exchange(1, 0, usdfAmount, minUsdtOut);
         _outputAsset.forceApprove(address(swapPool), 0);
 
         emit ReverseSwapExecuted(usdfAmount, usdtReceived);

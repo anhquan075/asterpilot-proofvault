@@ -1,6 +1,6 @@
 # ProofVault V2 — BSC Mainnet Address Registry
 
-Deployed: 2026-02-27 (v2 r4 — AsterEarnAdapterWithSwap uses StableSwap pool for USDT→USDF)
+Deployed: 2026-02-27 (v2 r5 — fix correct USDF address 0x5A110fC = Astherus USDF; fix exchange coin indices exchange(0,1) for USDT→USDF)
 Deployer: `0xB789D888A53D34f6701C1A5876101Cb32dbF17cF`
 Script: `scripts/deploy-mainnet-full-stack.js`
 Chain: BNB Chain Mainnet (Chain ID 56)
@@ -10,24 +10,24 @@ Gas price: 0.1 gwei
 
 | Contract                   | Address                                      |
 | -------------------------- | -------------------------------------------- |
-| ProofVault                 | `0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685` |
-| StrategyEngine             | `0x2E0165Cc82c12791E9De65FdcaA5aEC50119E810` |
-| RiskPolicy                 | `0x0e4068228bF6bFA1e82793C9B0e10975E25BA55f` |
-| ChainlinkPriceOracle       | `0x2eA7D18072954e1A2847f28FA1f267d6F327672a` |
-| CircuitBreaker             | `0x762862eaea188D8fc73Ce980280981F7bD70fe4E` |
-| SharpeTracker              | `0x90173165243E5758A8fCdB338Cc06542cD1f2CB5` |
-| AsterEarnAdapter           | `0x9C1EC45318C5dd039d00610e53567CB387A3361c` |
-| ManagedAdapter (secondary) | `0xAdF903cA29eE03C2a313844452663aB31c10d93e` |
-| StableSwapLPAdapter        | `0x4154Cf25F774AAA01530430BddF72835956B69CB` |
-| PegArbExecutor             | `0x0047D91F029cf25D73f8320c4eD36a0Fa7394B11` |
-| ExecutionAuction           | `0x55648020EFDA1D768aEaDa4f621049091441C1B0` |
+| ProofVault                 | `0x2db50C57F8F3D64bF9EfD8e387b460C744c3B5a8` |
+| StrategyEngine             | `0x0b62Db1A942b4346F99516746b883eb848292126` |
+| RiskPolicy                 | `0xfC01B5b5Feb7Cd83E33156D3e1ea55Cc33DF501F` |
+| ChainlinkPriceOracle       | `0x8cBdf5Ecf1e8851BD94ec717956D2DA3f4FF81a1` |
+| CircuitBreaker             | `0x7B64283e43A15DCE74517a9B43Bcb110ABcb9bD6` |
+| SharpeTracker              | `0x51cB598F207E8D7Aee8138864e8Ec22313c4bA66` |
+| AsterEarnAdapter           | `0x636888514c3a475817eDc71F2000460925Ff1399` |
+| ManagedAdapter (secondary) | `0xFE4680524fdFEF452CeD1fafF5319CD05380E92b` |
+| StableSwapLPAdapter        | `0xDb5a6b027EA60bdbec6D45212F353Ee9a6099009` |
+| PegArbExecutor             | `0x178Ea822aDa80c21385CEB0E153D887Dd50b8779` |
+| ExecutionAuction           | `0xa9F21bCCD4B4Be87EE8Cb6Ab1841B6597513CDdc` |
 
 ## External Dependencies
 
 | Name                 | Address                                      |
 | -------------------- | -------------------------------------------- |
 | USDT (BSC)           | `0x55d398326f99059fF775485246999027B3197955` |
-| USDF                 | `0xc271fc70dd9e678a6a43a982f436e12d4a63c0a5` |
+| USDF (Astherus USDF) | `0x5A110fC00474038f6c02E89C707D638602EA44B5` |
 | AsterDEX Minter      | `0xdB57a53C428a9faFcbFefFB6dd80d0f427543695` |
 | Chainlink USDT/USD   | `0xB97Ad0E74fa7d920791E90258A6E2085088b4320` |
 | USDF/USDT StableSwap | `0x176f274335c8B5fD5Ec5e8274d0cf36b08E44A57` |
@@ -55,7 +55,7 @@ Gas price: 0.1 gwei
 ## BscScan Verification
 
 ```bash
-npx hardhat verify --network bnb 0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685 \
+npx hardhat verify --network bnb 0x2db50C57F8F3D64bF9EfD8e387b460C744c3B5a8 \
   "0x55d398326f99059fF775485246999027B3197955" \
   "AsterPilot ProofVault V2 Share" \
   "apvV2SHARE" \

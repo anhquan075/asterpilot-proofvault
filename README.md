@@ -170,22 +170,22 @@ sequenceDiagram
 
 | Contract                     | Address                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `ProofVault`                 | [`0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685`](https://bscscan.com/address/0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685) |
-| `StrategyEngine`             | [`0x2E0165Cc82c12791E9De65FdcaA5aEC50119E810`](https://bscscan.com/address/0x2E0165Cc82c12791E9De65FdcaA5aEC50119E810) |
-| `RiskPolicy`                 | [`0x0e4068228bF6bFA1e82793C9B0e10975E25BA55f`](https://bscscan.com/address/0x0e4068228bF6bFA1e82793C9B0e10975E25BA55f) |
-| `ChainlinkPriceOracle`       | [`0x2eA7D18072954e1A2847f28FA1f267d6F327672a`](https://bscscan.com/address/0x2eA7D18072954e1A2847f28FA1f267d6F327672a) |
-| `CircuitBreaker`             | [`0x762862eaea188D8fc73Ce980280981F7bD70fe4E`](https://bscscan.com/address/0x762862eaea188D8fc73Ce980280981F7bD70fe4E) |
-| `SharpeTracker`              | [`0x90173165243E5758A8fCdB338Cc06542cD1f2CB5`](https://bscscan.com/address/0x90173165243E5758A8fCdB338Cc06542cD1f2CB5) |
-| `AsterEarnAdapter`           | [`0x9C1EC45318C5dd039d00610e53567CB387A3361c`](https://bscscan.com/address/0x9C1EC45318C5dd039d00610e53567CB387A3361c) |
-| `ManagedAdapter` (secondary) | [`0xAdF903cA29eE03C2a313844452663aB31c10d93e`](https://bscscan.com/address/0xAdF903cA29eE03C2a313844452663aB31c10d93e) |
-| `StableSwapLPAdapter`        | [`0x4154Cf25F774AAA01530430BddF72835956B69CB`](https://bscscan.com/address/0x4154Cf25F774AAA01530430BddF72835956B69CB) |
-| `PegArbExecutor`             | [`0x0047D91F029cf25D73f8320c4eD36a0Fa7394B11`](https://bscscan.com/address/0x0047D91F029cf25D73f8320c4eD36a0Fa7394B11) |
-| `ExecutionAuction`           | [`0x55648020EFDA1D768aEaDa4f621049091441C1B0`](https://bscscan.com/address/0x55648020EFDA1D768aEaDa4f621049091441C1B0) |
+| `ProofVault`                 | [`0x2db50C57F8F3D64bF9EfD8e387b460C744c3B5a8`](https://bscscan.com/address/0x2db50C57F8F3D64bF9EfD8e387b460C744c3B5a8) |
+| `StrategyEngine`             | [`0x0b62Db1A942b4346F99516746b883eb848292126`](https://bscscan.com/address/0x0b62Db1A942b4346F99516746b883eb848292126) |
+| `RiskPolicy`                 | [`0xfC01B5b5Feb7Cd83E33156D3e1ea55Cc33DF501F`](https://bscscan.com/address/0xfC01B5b5Feb7Cd83E33156D3e1ea55Cc33DF501F) |
+| `ChainlinkPriceOracle`       | [`0x8cBdf5Ecf1e8851BD94ec717956D2DA3f4FF81a1`](https://bscscan.com/address/0x8cBdf5Ecf1e8851BD94ec717956D2DA3f4FF81a1) |
+| `CircuitBreaker`             | [`0x7B64283e43A15DCE74517a9B43Bcb110ABcb9bD6`](https://bscscan.com/address/0x7B64283e43A15DCE74517a9B43Bcb110ABcb9bD6) |
+| `SharpeTracker`              | [`0x51cB598F207E8D7Aee8138864e8Ec22313c4bA66`](https://bscscan.com/address/0x51cB598F207E8D7Aee8138864e8Ec22313c4bA66) |
+| `AsterEarnAdapter`           | [`0x636888514c3a475817eDc71F2000460925Ff1399`](https://bscscan.com/address/0x636888514c3a475817eDc71F2000460925Ff1399) |
+| `ManagedAdapter` (secondary) | [`0xFE4680524fdFEF452CeD1fafF5319CD05380E92b`](https://bscscan.com/address/0xFE4680524fdFEF452CeD1fafF5319CD05380E92b) |
+| `StableSwapLPAdapter`        | [`0xDb5a6b027EA60bdbec6D45212F353Ee9a6099009`](https://bscscan.com/address/0xDb5a6b027EA60bdbec6D45212F353Ee9a6099009) |
+| `PegArbExecutor`             | [`0x178Ea822aDa80c21385CEB0E153D887Dd50b8779`](https://bscscan.com/address/0x178Ea822aDa80c21385CEB0E153D887Dd50b8779) |
+| `ExecutionAuction`           | [`0xa9F21bCCD4B4Be87EE8Cb6Ab1841B6597513CDdc`](https://bscscan.com/address/0xa9F21bCCD4B4Be87EE8Cb6Ab1841B6597513CDdc) |
 
 #### Key Integration Addresses
 
 - USDT: [`0x55d398326f99059fF775485246999027B3197955`](https://bscscan.com/address/0x55d398326f99059fF775485246999027B3197955)
-- USDF: [`0xc271fc70dd9e678a6a43a982f436e12d4a63c0a5`](https://bscscan.com/address/0xc271fc70dd9e678a6a43a982f436e12d4a63c0a5)
+- USDF (Astherus USDF): [`0x5A110fC00474038f6c02E89C707D638602EA44B5`](https://bscscan.com/address/0x5A110fC00474038f6c02E89C707D638602EA44B5)
 - StableSwap Pool: [`0x176f274335c8B5fD5Ec5e8274d0cf36b08E44A57`](https://bscscan.com/address/0x176f274335c8B5fD5Ec5e8274d0cf36b08E44A57)
 - Pancake Router: [`0x10ED43C718714eb63d5aA57B78B54704E256024E`](https://bscscan.com/address/0x10ED43C718714eb63d5aA57B78B54704E256024E)
 - MasterChef: [`0x556B9306565093C855AEA9AE92A594704c2Cd59e`](https://bscscan.com/address/0x556B9306565093C855AEA9AE92A594704c2Cd59e)

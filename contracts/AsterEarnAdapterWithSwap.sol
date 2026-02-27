@@ -6,12 +6,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IAsterEarnAdapter} from "./interfaces/IAsterEarnAdapter.sol";
-import {IPancakeRouter} from "./interfaces/IPancakeRouter.sol";
+import {IStableSwapPool} from "./interfaces/IStableSwapPool.sol";
 
 /// @title AsterEarnAdapterWithSwap — async request / claim withdrawal pattern + USDT→USDF swap
 /// @notice Wraps AsterDEX Earn minter with selector-based calls.
 ///         Supports async withdrawal request tracking with batch-claim support.
-///         Swaps USDT → USDF before depositing into AsterDEX Earn (robot route compliance)
+///         Swaps USDT → USDF via StableSwap pool before depositing into AsterDEX Earn.
+///         Uses StableSwap (Curve-style) instead of PancakeSwap V2 AMM because the
+///         USDT/USDF liquidity lives exclusively in the StableSwap pool on mainnet.
 contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     using SafeERC20 for IERC20;
 
@@ -28,7 +30,7 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     bytes4  public  immutable claimWithdrawSelector;
     bytes4  public  immutable getWithdrawRequestSelector;
     
-    IPancakeRouter public immutable router; // PancakeSwap router for USDT→USDF swap
+    IStableSwapPool public immutable swapPool; // StableSwap pool for USDT↔USDF (coin1↔coin0)
 
     // ── storage ──
     address public vault;
@@ -75,13 +77,13 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         bytes4  _requestWithdrawSel,
         bytes4  _claimWithdrawSel,
         bytes4  _getWithdrawRequestSel,
-        address _router,
+        address _swapPool,
         address _initialOwner
     ) Ownable(_initialOwner) {
         if (_inputAssetAddr == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
         if (_outputAssetAddr == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
         if (_asterMinter == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
-        if (_router == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
+        if (_swapPool == address(0)) revert AsterEarnAdapterWithSwap__ZeroAddress();
 
         _inputAsset               = IERC20(_inputAssetAddr);
         _outputAsset              = IERC20(_outputAssetAddr);
@@ -91,7 +93,7 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         requestWithdrawSelector   = _requestWithdrawSel;
         claimWithdrawSelector     = _claimWithdrawSel;
         getWithdrawRequestSelector = _getWithdrawRequestSel;
-        router                    = IPancakeRouter(_router);
+        swapPool                  = IStableSwapPool(_swapPool);
 
         // Default: 1% max slippage for USDT→USDF swap
         swapSlippageBps = 100;
@@ -238,58 +240,33 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
 
     // ── internals ──
 
-    /// @dev Swap USDT → USDF via PancakeSwap router
+    /// @dev Swap USDT → USDF via StableSwap pool (coin1=USDT → coin0=USDF).
+    ///      StableSwap maintains near-1:1 peg; minOut = input * (1 - slippage).
     function _swapUsdtToUsdf(uint256 usdtAmount) internal returns (uint256 usdfReceived) {
         if (usdtAmount == 0) revert AsterEarnAdapterWithSwap__ZeroAmount();
 
-        // Build swap path: USDT → USDF
-        address[] memory path = new address[](2);
-        path[0] = address(_inputAsset);  // USDT
-        path[1] = address(_outputAsset); // USDF
+        uint256 minUsdfOut = usdtAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
-        // Get expected output
-        uint256[] memory amountsOut = router.getAmountsOut(usdtAmount, path);
-        uint256 minUsdfOut = amountsOut[1] * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
+        _inputAsset.forceApprove(address(swapPool), usdtAmount);
+        // coin 1 = USDT (sell), coin 0 = USDF (buy)
+        usdfReceived = swapPool.exchange(1, 0, usdtAmount, minUsdfOut);
+        _inputAsset.forceApprove(address(swapPool), 0);
 
-        // Execute swap
-        _inputAsset.forceApprove(address(router), usdtAmount);
-        uint256[] memory amounts = router.swapExactTokensForTokens(
-            usdtAmount,
-            minUsdfOut,
-            path,
-            address(this),
-            block.timestamp + 300 // 5 min deadline
-        );
-        _inputAsset.forceApprove(address(router), 0);
-
-        usdfReceived = amounts[1];
         emit SwapExecuted(usdtAmount, usdfReceived);
-        return usdfReceived;
     }
 
+    /// @dev Swap USDF → USDT via StableSwap pool (coin0=USDF → coin1=USDT).
     function _swapUsdfToUsdt(uint256 usdfAmount) internal returns (uint256 usdtReceived) {
         if (usdfAmount == 0) return 0;
 
-        address[] memory path = new address[](2);
-        path[0] = address(_outputAsset);
-        path[1] = address(_inputAsset);
+        uint256 minUsdtOut = usdfAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
-        uint256[] memory amountsOut = router.getAmountsOut(usdfAmount, path);
-        uint256 minUsdtOut = amountsOut[1] * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
+        _outputAsset.forceApprove(address(swapPool), usdfAmount);
+        // coin 0 = USDF (sell), coin 1 = USDT (buy)
+        usdtReceived = swapPool.exchange(0, 1, usdfAmount, minUsdtOut);
+        _outputAsset.forceApprove(address(swapPool), 0);
 
-        _outputAsset.forceApprove(address(router), usdfAmount);
-        uint256[] memory amounts = router.swapExactTokensForTokens(
-            usdfAmount,
-            minUsdtOut,
-            path,
-            address(this),
-            block.timestamp + 300
-        );
-        _outputAsset.forceApprove(address(router), 0);
-
-        usdtReceived = amounts[1];
         emit ReverseSwapExecuted(usdfAmount, usdtReceived);
-        return usdtReceived;
     }
 
     function _swapAllOutputToInput() internal {

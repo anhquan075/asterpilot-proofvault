@@ -4,21 +4,22 @@
 // networkConfig.js imports these as fallback values.
 
 // BNB Chain Mainnet (Chain ID 56)
-// Deployed: 2026-02-27 (v2 r3) via scripts/deploy-mainnet-full-stack.js
-// LP rail enabled: StableSwapLPYieldAdapterWithFarm (pool 69)
+// Deployed: 2026-02-27 (v2 r4) via scripts/deploy-mainnet-full-stack.js
+// Fix: AsterEarnAdapterWithSwap now uses StableSwap pool for USDT→USDF swap
+//      (no PancakeSwap V2 USDT/USDF pair exists on mainnet)
 // Deployer: 0xB789D888A53D34f6701C1A5876101Cb32dbF17cF
 export const V2_MAINNET_PRESET = {
-  vaultAddress: "0x2585181C92cf2b16248f74916CB7281E32Eab771",
-  engineAddress: "0x96ab75cbea418ca2fc6b86D1569f71E91947f756",
+  vaultAddress: "0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685",
+  engineAddress: "0x2E0165Cc82c12791E9De65FdcaA5aEC50119E810",
   tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // BSC USDT
-  circuitBreakerAddress: "0x2E93E3d533B411733cF9F173c0e9a7A16Fc54B8E",
-  sharpeTrackerAddress: "0x461D26B93d0298dAc819638137E4426FDF376B6d",
-  pegArbExecutorAddress: "0x54e0361ED0E737E1B0163103e6b7C919523A2043",
-  riskPolicyAddress: "0xAAbBF69b661a3d327dE386CEF65a4214566591a7",
-  asterAdapterAddress: "0xbbd0f77227bCFC1791e5d51098243B36c600f954",
-  secondaryAdapterAddress: "0xA88e397DE1CC0787C1b2efF8EC5A215FE4145858",
-  lpAdapterAddress: "0x577CE23B0991F82240057e7A1c74272fbf768790",
-  executionAuctionAddress: "0x1Cc719a414d56A5C38936743d4a518382f935d51",
+  circuitBreakerAddress: "0x762862eaea188D8fc73Ce980280981F7bD70fe4E",
+  sharpeTrackerAddress: "0x90173165243E5758A8fCdB338Cc06542cD1f2CB5",
+  pegArbExecutorAddress: "0x0047D91F029cf25D73f8320c4eD36a0Fa7394B11",
+  riskPolicyAddress: "0x0e4068228bF6bFA1e82793C9B0e10975E25BA55f",
+  asterAdapterAddress: "0x9C1EC45318C5dd039d00610e53567CB387A3361c",
+  secondaryAdapterAddress: "0xAdF903cA29eE03C2a313844452663aB31c10d93e",
+  lpAdapterAddress: "0x4154Cf25F774AAA01530430BddF72835956B69CB",
+  executionAuctionAddress: "0x55648020EFDA1D768aEaDa4f621049091441C1B0",
 };
 
 // BNB Chain Testnet (Chain ID 97)

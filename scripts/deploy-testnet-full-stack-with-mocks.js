@@ -172,11 +172,17 @@ async function main() {
       "0x9ee679e8",
       "0x712679e8",
       "0x88d5b31a",
-      await router.getAddress(),
+      await pool.getAddress(), // StableSwap pool for USDT↔USDF swap (same path as mainnet)
       deployer.address
     )
   ).waitForDeployment();
   console.log("[5] AsterEarnAdapterWithSwap:", await asterAdapter.getAddress());
+
+  // Seed MockStableSwapPool with USDF so exchange(1→0) swaps can pay out.
+  // The pool tracks virtual balances but needs actual token holdings to transfer.
+  const SWAP_SEED = hre.ethers.parseEther("10000000"); // 10M USDF
+  await (await usdf.mint(await pool.getAddress(), SWAP_SEED)).wait();
+  console.log("  Pool seeded with 10M USDF for USDT→USDF swap path ✓");
 
   // [6] ManagedAdapter (secondary)
   const ManagedAdapter = await hre.ethers.getContractFactory("ManagedAdapter");

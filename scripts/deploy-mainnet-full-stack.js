@@ -232,24 +232,26 @@ async function main() {
   ).waitForDeployment();
   console.log(await sharpeTracker.getAddress());
 
-  // ── [5] AsterEarnAdapter ────────────────────────────────────────────────────
-  // Uses AsterEarnAdapter (no swap) — AsterDEX minter on mainnet accepts USDT
-  // directly. AsterEarnAdapterWithSwap requires a USDT/USDF V2 pair which does
-  // not exist on BSC mainnet (see fork-test-mainnet.js Phase 5 probe).
+  // ── [5] AsterEarnAdapterWithSwap ─────────────────────────────────────────
+  // Uses AsterEarnAdapterWithSwap — swaps USDT→USDF via StableSwap pool before
+  // depositing into AsterDEX Earn. PancakeSwap V2 USDT/USDF pair does not exist
+  // on BSC mainnet; all USDT/USDF liquidity lives in the StableSwap pool.
   process.stdout.write("[5/11] Deploying AsterEarnAdapter... ");
   const AsterEarnAdapter = await hre.ethers.getContractFactory(
-    "AsterEarnAdapter"
+    "AsterEarnAdapterWithSwap"
   );
   const asterAdapter = await (
     await AsterEarnAdapter.deploy(
       BSC_USDT,
+      BSC_USDF,
       ASTER_MINTER,
       SEL_DEPOSIT,
       SEL_MANAGED_ASSETS,
       SEL_REQUEST_WD,
       SEL_CLAIM_WD,
       SEL_GET_WD_REQ,
-      deployer.address // initial owner, transferred to vault then renounced
+      BSC_STABLESWAP, // swap pool for USDT↔USDF (coin1↔coin0)
+      deployer.address
     )
   ).waitForDeployment();
   console.log(await asterAdapter.getAddress());

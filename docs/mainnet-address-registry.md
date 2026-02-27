@@ -1,6 +1,6 @@
 # ProofVault V2 — BSC Mainnet Address Registry
 
-Deployed: 2026-02-27 (v2 r3 — LP rail enabled, pool 69)
+Deployed: 2026-02-27 (v2 r4 — AsterEarnAdapterWithSwap uses StableSwap pool for USDT→USDF)
 Deployer: `0xB789D888A53D34f6701C1A5876101Cb32dbF17cF`
 Script: `scripts/deploy-mainnet-full-stack.js`
 Chain: BNB Chain Mainnet (Chain ID 56)
@@ -10,17 +10,17 @@ Gas price: 0.1 gwei
 
 | Contract                   | Address                                      |
 | -------------------------- | -------------------------------------------- |
-| ProofVault                 | `0x2585181C92cf2b16248f74916CB7281E32Eab771` |
-| StrategyEngine             | `0x96ab75cbea418ca2fc6b86D1569f71E91947f756` |
-| RiskPolicy                 | `0xAAbBF69b661a3d327dE386CEF65a4214566591a7` |
-| ChainlinkPriceOracle       | `0x359956Af6A71A0FB2Cf436A9CEDF4226728c9725` |
-| CircuitBreaker             | `0x2E93E3d533B411733cF9F173c0e9a7A16Fc54B8E` |
-| SharpeTracker              | `0x461D26B93d0298dAc819638137E4426FDF376B6d` |
-| AsterEarnAdapter           | `0xbbd0f77227bCFC1791e5d51098243B36c600f954` |
-| ManagedAdapter (secondary) | `0xA88e397DE1CC0787C1b2efF8EC5A215FE4145858` |
-| StableSwapLPAdapter        | `0x577CE23B0991F82240057e7A1c74272fbf768790` |
-| PegArbExecutor             | `0x54e0361ED0E737E1B0163103e6b7C919523A2043` |
-| ExecutionAuction           | `0x1Cc719a414d56A5C38936743d4a518382f935d51` |
+| ProofVault                 | `0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685` |
+| StrategyEngine             | `0x2E0165Cc82c12791E9De65FdcaA5aEC50119E810` |
+| RiskPolicy                 | `0x0e4068228bF6bFA1e82793C9B0e10975E25BA55f` |
+| ChainlinkPriceOracle       | `0x2eA7D18072954e1A2847f28FA1f267d6F327672a` |
+| CircuitBreaker             | `0x762862eaea188D8fc73Ce980280981F7bD70fe4E` |
+| SharpeTracker              | `0x90173165243E5758A8fCdB338Cc06542cD1f2CB5` |
+| AsterEarnAdapter           | `0x9C1EC45318C5dd039d00610e53567CB387A3361c` |
+| ManagedAdapter (secondary) | `0xAdF903cA29eE03C2a313844452663aB31c10d93e` |
+| StableSwapLPAdapter        | `0x4154Cf25F774AAA01530430BddF72835956B69CB` |
+| PegArbExecutor             | `0x0047D91F029cf25D73f8320c4eD36a0Fa7394B11` |
+| ExecutionAuction           | `0x55648020EFDA1D768aEaDa4f621049091441C1B0` |
 
 ## External Dependencies
 
@@ -55,7 +55,7 @@ Gas price: 0.1 gwei
 ## BscScan Verification
 
 ```bash
-npx hardhat verify --network bnb 0x2585181C92cf2b16248f74916CB7281E32Eab771 \
+npx hardhat verify --network bnb 0x6E31A7F5b2565cDA914E9bd16e5d1e44E2390685 \
   "0x55d398326f99059fF775485246999027B3197955" \
   "AsterPilot ProofVault V2 Share" \
   "apvV2SHARE" \

@@ -176,15 +176,20 @@ sequenceDiagram
 
 ### Mainnet (BNB Chain, Chain ID 56)
 
-#### Core
+Deployed: 2026-02-27 via `scripts/deploy-mainnet-full-stack.js`
 
-| Contract           | Address                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `ProofVault`       | [`0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644`](https://bscscan.com/address/0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644) |
-| `StrategyEngine`   | [`0xb621062d6651E1D975e3134c86FA9db1fab909B7`](https://bscscan.com/address/0xb621062d6651E1D975e3134c86FA9db1fab909B7) |
-| `ExecutionAuction` | [`0x147a91205d5eb67CFEEAd48a0e8b3443DE4B1e27`](https://bscscan.com/address/0x147a91205d5eb67CFEEAd48a0e8b3443DE4B1e27) |
-
-> Other mainnet peripheral contracts (`RiskPolicy`, `CircuitBreaker`, `SharpeTracker`, adapters) are pending configuration lock. Addresses will be added here once `lockConfiguration()` is called.
+| Contract                     | Address                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `ProofVault`                 | [`0xD81fCB29b09aD7d72AD53E9f842AB16989fb7175`](https://bscscan.com/address/0xD81fCB29b09aD7d72AD53E9f842AB16989fb7175) |
+| `StrategyEngine`             | [`0x8e64C7Da37814d8A9f99a66719a92701c3263342`](https://bscscan.com/address/0x8e64C7Da37814d8A9f99a66719a92701c3263342) |
+| `RiskPolicy`                 | [`0x572D5DB8F76A23B969b6aeA13557A6Ce24583131`](https://bscscan.com/address/0x572D5DB8F76A23B969b6aeA13557A6Ce24583131) |
+| `ChainlinkPriceOracle`       | [`0xdAD39Eccf4d9B479b62258924A29af1C1134aF4a`](https://bscscan.com/address/0xdAD39Eccf4d9B479b62258924A29af1C1134aF4a) |
+| `CircuitBreaker`             | [`0x54CB320C14b486e2F9ebf0479720Ec0e2B3575fB`](https://bscscan.com/address/0x54CB320C14b486e2F9ebf0479720Ec0e2B3575fB) |
+| `SharpeTracker`              | [`0x069a30d0AB051db5208DdE515D6B8622a31F9358`](https://bscscan.com/address/0x069a30d0AB051db5208DdE515D6B8622a31F9358) |
+| `AsterEarnAdapter`           | [`0xE2942aCc4B18F77Ba35a64d9020E6E1061108A15`](https://bscscan.com/address/0xE2942aCc4B18F77Ba35a64d9020E6E1061108A15) |
+| `ManagedAdapter` (secondary) | [`0x17B959816e2AfD8A2178B9ACAbC7EB7739DfF8D5`](https://bscscan.com/address/0x17B959816e2AfD8A2178B9ACAbC7EB7739DfF8D5) |
+| `PegArbExecutor`             | [`0xb6FE71870dD5Ecc6AC5f4170cf3890B2fAB1b778`](https://bscscan.com/address/0xb6FE71870dD5Ecc6AC5f4170cf3890B2fAB1b778) |
+| `ExecutionAuction`           | [`0x364Efe8C3C9d93499F5f67112E85946f3F0e9Cec`](https://bscscan.com/address/0x364Efe8C3C9d93499F5f67112E85946f3F0e9Cec) |
 
 #### Key Integration Addresses
 

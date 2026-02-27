@@ -408,7 +408,11 @@ export function useVaultV2WriteActions({ refresh }) {
                 "Execution rejected. Check breaker status and algorithm decision.";
             }
 
-            if (msg.includes("Check breaker status") && circuitBreakerAddress) {
+            if (
+              msg.includes("Check breaker status") &&
+              circuitBreakerAddress &&
+              circuitBreakerAddress !== ZERO_ADDR
+            ) {
               try {
                 const breaker = new ethersLib.Contract(
                   ethersLib.getAddress(circuitBreakerAddress.trim()),

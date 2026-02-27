@@ -450,6 +450,23 @@ export default function ProofVaultV2Client() {
         </div>
       )}
 
+      {/* V2 contracts not yet deployed on mainnet — show notice */}
+      {!isTestnet && circuitBreakerAddress === ZERO_ADDR && (
+        <div className="networkStrip">
+          <AlertTriangle
+            size={14}
+            style={{
+              display: "inline",
+              verticalAlign: "middle",
+              marginRight: 6,
+            }}
+          />
+          V2 enhanced contracts (CircuitBreaker, SharpeTracker, PegArb) are not
+          yet deployed on mainnet. Core vault operations are available — V2
+          analytics coming soon.
+        </div>
+      )}
+
       {depositsBlocked && (
         <div className="networkStrip">
           <AlertTriangle
@@ -572,6 +589,11 @@ export default function ProofVaultV2Client() {
             />
           </div>
           <div className="bento-row-side" style={{ flex: 3 }}>
+            {circuitBreakerAddress !== ZERO_ADDR && (
+              <VaultCircuitBreakerCard
+                breakerState={vaultState.breakerStatus}
+              />
+            )}
             <VaultPegArbOpportunityAndHistoryCard
               arbPreview={vaultState.arbPreview}
               onExecuteArb={handleExecuteArb}

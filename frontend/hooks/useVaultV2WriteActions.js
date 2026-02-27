@@ -378,7 +378,7 @@ export function useVaultV2WriteActions({ refresh }) {
                     msg = `Execution reverted with custom error selector ${selector}. Check adapter state or re-seed mock router reserves.`;
                   }
                 } else {
-                  // No revert data — silent revert, likely a mock contract without reserves
+                  // No revert data — silent revert (out-of-gas, adapter call failure, or cooldown)
                   const probeEngine = new ethersLib.Contract(
                     ethersLib.getAddress(engineAddress.trim()),
                     ["function vault() view returns(address)"],
@@ -396,12 +396,12 @@ export function useVaultV2WriteActions({ refresh }) {
                     msg =
                       totalAssets === 0n
                         ? "Execution reverted: vault has no assets. Deposit funds first, then execute."
-                        : "Execution reverted (no revert data). Likely mock router missing reserves — re-run seed-mock-pancake-router-usdt-usdf-reserves.js.";
+                        : "Execution reverted (no revert data). On testnet: run scripts/seed-mock-pancake-router-usdt-usdf-reserves.js --network bnbTestnet. On mainnet: check circuit breaker status or wait for cycle cooldown to elapse.";
                   }
                 }
               } catch {
                 msg =
-                  "Execution reverted at runtime. Re-seed mock router reserves and retry.";
+                  "Execution reverted at runtime. Check circuit breaker status and cycle cooldown, then retry.";
               }
             } else {
               msg =

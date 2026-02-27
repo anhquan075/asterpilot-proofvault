@@ -58,7 +58,7 @@ contract ExecutionAuction is ReentrancyGuard {
     error ExecutionAuction__NotWinner();
     error ExecutionAuction__NotFallbackPhase();
     error ExecutionAuction__NoRefund();
-    error BidIncrementTooLow(uint256 required, uint256 provided);
+    error ExecutionAuction__BidIncrementTooLow(uint256 required, uint256 provided);
 
     /*//////////////////////////////////////////////////////////////
                              IMMUTABLES
@@ -107,7 +107,7 @@ contract ExecutionAuction is ReentrancyGuard {
         }
         if (bidWindow_ == 0 || executeWindow_ == 0) revert ExecutionAuction__ZeroWindow();
         if (minBidIncrementBps_ < 100 || minBidIncrementBps_ > 5000) {
-            revert BidIncrementTooLow(0, minBidIncrementBps_);
+            revert ExecutionAuction__BidIncrementTooLow(0, minBidIncrementBps_);
         }
 
         engine             = IStrategyEngine(engine_);
@@ -151,7 +151,7 @@ contract ExecutionAuction is ReentrancyGuard {
         if (amount < minBid) revert ExecutionAuction__BelowMinBid();
         if (round.winningBid > 0) {
             uint256 minRequired = round.winningBid + (round.winningBid * minBidIncrementBps) / 10000;
-            if (amount < minRequired) revert BidIncrementTooLow(minRequired, amount);
+            if (amount < minRequired) revert ExecutionAuction__BidIncrementTooLow(minRequired, amount);
         }
 
         // Queue refund for displaced winner

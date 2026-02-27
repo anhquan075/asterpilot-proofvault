@@ -51,7 +51,6 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         uint256 lp
     );
     event BountyPaid(address indexed executor, uint256 amount);
-    event EmergencyWithdraw(address indexed token, uint256 amount);
     event AutoHarvestTriggered(uint256 harvested);
     event AsterWithdrawRequestFailed(uint256 amount);
     event EngineSet(address indexed engine);
@@ -260,7 +259,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         address executor,
         uint256 bountyBps,
         uint256 lpTargetBps
-    ) external onlyEngine nonReentrant {
+    ) external nonReentrant onlyEngine {
         if (!configurationLocked) revert ProofVault__NotLocked();
         uint256 total = totalAssets();
         uint256 buffer = _bufferTarget(total);
@@ -337,7 +336,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         uint256 flashPrincipal,
         uint256 repayAmount,
         address flashPool
-    ) external onlyEngine nonReentrant {
+    ) external nonReentrant onlyEngine {
         if (!_isConfiguredAdapter(fromAdapter) || !_isConfiguredAdapter(toAdapter)) {
             revert ProofVault__InvalidFlashAdapter();
         }

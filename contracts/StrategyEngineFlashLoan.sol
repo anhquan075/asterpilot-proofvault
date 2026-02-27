@@ -29,7 +29,9 @@ interface IManagedAdapter {
 }
 
 /// @title StrategyEngineFlashLoan
-/// @notice Implements atomic rebalancing via PancakeSwap V3 flash loans
+/// @notice Legacy standalone flash-loan helper. Superseded by StrategyEngine's integrated
+///         flash-rebalance flow (executeCycleWithFlash + ProofVault.executeFlashRebalanceStep).
+///         Kept for reference and testnet backwards-compatibility only.
 contract StrategyEngineFlashLoan is IUniswapV3FlashCallback, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
@@ -39,13 +41,14 @@ contract StrategyEngineFlashLoan is IUniswapV3FlashCallback, ReentrancyGuard, Ow
     // Config
     bool public isToken0; // Is USDT token0 or token1 in the pool?
 
-    error Unauthorized();
-    error ZeroAddress();
+    error StrategyEngineFlashLoan__Unauthorized();
+    error StrategyEngineFlashLoan__ZeroAddress();
+    error StrategyEngineFlashLoan__InsufficientWithdrawal();
 
     event AtomicRebalance(address indexed fromAdapter, address indexed toAdapter, uint256 amount);
 
     constructor(address _asset, address _pcsV3Pool, bool _isToken0) Ownable(msg.sender) {
-        if (_asset == address(0) || _pcsV3Pool == address(0)) revert ZeroAddress();
+        if (_asset == address(0) || _pcsV3Pool == address(0)) revert StrategyEngineFlashLoan__ZeroAddress();
         asset = _asset;
         pcsV3Pool = _pcsV3Pool;
         isToken0 = _isToken0;
@@ -87,7 +90,7 @@ contract StrategyEngineFlashLoan is IUniswapV3FlashCallback, ReentrancyGuard, Ow
         uint256 fee1,
         bytes calldata data
     ) external override {
-        if (msg.sender != pcsV3Pool) revert Unauthorized();
+        if (msg.sender != pcsV3Pool) revert StrategyEngineFlashLoan__Unauthorized();
 
         FlashData memory flashData = abi.decode(data, (FlashData));
         uint256 fee = isToken0 ? fee0 : fee1;
@@ -102,8 +105,7 @@ contract StrategyEngineFlashLoan is IUniswapV3FlashCallback, ReentrancyGuard, Ow
         uint256 totalRepayment = flashData.amount + fee;
         uint256 withdrawn = IManagedAdapter(flashData.fromAdapter).withdrawToVault(totalRepayment);
         
-        // Ensure we got enough back (simplistic check for hackathon logic)
-        require(withdrawn >= totalRepayment, "Rebalance: Insufficient withdrawal");
+        if (withdrawn < totalRepayment) revert StrategyEngineFlashLoan__InsufficientWithdrawal();
 
         // 3. Repay the flash loan
         IERC20(asset).safeTransfer(pcsV3Pool, totalRepayment);

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+/// @notice Legacy adapter — no USDT→USDF swap path. Superseded by AsterEarnAdapterWithSwap.
+///         Kept for reference and testnet backwards-compatibility only.
+
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SafeERC20

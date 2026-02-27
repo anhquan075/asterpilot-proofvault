@@ -96,12 +96,10 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         poolId = poolId_;
 
         // Default harvest settings (can be updated before lock)
-        minCakeHarvestAmount  = 1e18;   // 1 CAKE minimum
-        harvestSlippageBps    = 100;    // 1% max slippage
+        minCakeHarvestAmount  = 1e18;    // 1 CAKE minimum
+        harvestSlippageBps    = 100;     // 1% max slippage
         harvestGasEstimate    = 350_000; // estimated gas for harvest
         harvestGasMultiplier  = 3;       // reward must be >= 3× gas cost
-        minCakeHarvestAmount = 1e18; // 1 CAKE minimum
-        harvestSlippageBps   = 100;  // 1% max slippage
     }
 
     modifier onlyVault() {

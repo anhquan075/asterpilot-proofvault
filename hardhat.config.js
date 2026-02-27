@@ -10,13 +10,16 @@ const PRIVATE_KEY = RAW_PRIVATE_KEY
     : `0x${RAW_PRIVATE_KEY}`
   : "";
 
-// Gas price constants (in wei)
-// BSC mainnet minimum is 3 gwei; set explicitly so hardhat never
-// over-estimates during busy blocks. Override via env for flexibility.
-const GAS_PRICE_MAINNET =
-  parseInt(process.env.GAS_PRICE_GWEI || "3") * 1_000_000_000;
-const GAS_PRICE_TESTNET =
-  parseInt(process.env.GAS_PRICE_GWEI || "3") * 1_000_000_000;
+// Gas price constants (in wei).
+// Uses parseFloat so fractional gwei (e.g. GAS_PRICE_GWEI=0.1) is supported.
+// BSC mainnet minimum is 1 gwei; default 3 gwei is conservative for busy blocks.
+// Override via GAS_PRICE_GWEI env var — accepts decimals (e.g. "0.1" → 100_000_000 wei).
+const GAS_PRICE_MAINNET = Math.round(
+  parseFloat(process.env.GAS_PRICE_GWEI || "3") * 1_000_000_000
+);
+const GAS_PRICE_TESTNET = Math.round(
+  parseFloat(process.env.GAS_PRICE_GWEI || "3") * 1_000_000_000
+);
 
 module.exports = {
   solidity: {

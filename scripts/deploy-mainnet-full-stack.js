@@ -57,8 +57,12 @@ const SEL_CLAIM_WD = process.env.V2_CLAIM_WITHDRAW_SELECTOR || "0x712679e8";
 const SEL_GET_WD_REQ =
   process.env.V2_GET_WITHDRAW_REQUEST_SELECTOR || "0x88d5b31a";
 
-// ── LP rail — optional, only deployed if V2_LP_POOL_ID is set ────────────────────────────────
-const LP_POOL_ID = process.env.V2_LP_POOL_ID; // MasterChef pool ID for USDF/USDT LP (TBD)
+// ── LP rail — optional, only deployed if V2_LP_POOL_ID is set to a non-zero value ──────────────
+// "0" or empty string both disable LP rail (pool ID 0 is not the USDF/USDT pool)
+const LP_POOL_ID =
+  process.env.V2_LP_POOL_ID && process.env.V2_LP_POOL_ID !== "0"
+    ? process.env.V2_LP_POOL_ID
+    : undefined;
 const LP_TOKEN = process.env.V2_LP_TOKEN_ADDRESS || BSC_STABLESWAP; // LP token = pool on PCS
 
 // ── Policy params (production-safe conservative defaults) ────────────────────────────────────

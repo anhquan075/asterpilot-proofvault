@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  VaultCircuitBreakerCard,
-  VaultDutchAuctionCard,
-} from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
+import { VaultDutchAuctionCard } from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
 import { VaultCycleExecutionStatusCard } from "@/components/shared/cards/VaultCycleExecutionStatusCard";
 import { VaultExecutionAuctionRraBidCard } from "@/components/shared/cards/VaultExecutionAuctionRraBidCard";
 import { VaultOraclePolicyMetricsCard } from "@/components/shared/cards/VaultOraclePolicyMetricsCard";
@@ -589,11 +586,6 @@ export default function ProofVaultV2Client() {
             />
           </div>
           <div className="bento-row-side" style={{ flex: 3 }}>
-            {circuitBreakerAddress !== ZERO_ADDR && (
-              <VaultCircuitBreakerCard
-                breakerState={vaultState.breakerStatus}
-              />
-            )}
             <VaultPegArbOpportunityAndHistoryCard
               arbPreview={vaultState.arbPreview}
               onExecuteArb={handleExecuteArb}

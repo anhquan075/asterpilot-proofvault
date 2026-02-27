@@ -176,8 +176,6 @@ sequenceDiagram
 
 ### Mainnet (BNB Chain, Chain ID 56)
 
-Deployed: 2026-02-27 via `scripts/deploy-mainnet-full-stack.js`
-
 | Contract                     | Address                                                                                                                |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `ProofVault`                 | [`0xD81fCB29b09aD7d72AD53E9f842AB16989fb7175`](https://bscscan.com/address/0xD81fCB29b09aD7d72AD53E9f842AB16989fb7175) |

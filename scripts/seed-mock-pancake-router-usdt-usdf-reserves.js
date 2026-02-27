@@ -19,10 +19,10 @@
 
 const { ethers } = require("hardhat");
 
-// Known testnet addresses from V2_TESTNET_PRESET (redeployed 2026-02-27)
-const ASTER_ADAPTER_ADDR = "0x3d5795ad0f1b160B751ac2a00Cf451c57bb210D8";
-const CIRCUIT_BREAKER_ADDR = "0xCD58f14320e827E388AeA50Bb48b8E4c1eE48de0";
-const USDT_ADDR = "0x65079A226a23f3F7786aa7FB231f84FB81CB43B3";
+// Known testnet addresses from V2_TESTNET_PRESET (redeployed 2026-02-27 v2)
+const ASTER_ADAPTER_ADDR = "0x096148CE528701614dF518B217A430A88635d561";
+const CIRCUIT_BREAKER_ADDR = "0xfB5D6f83b1a5c42dFCd3fFAF76d0eF0d5ae5cB66";
+const USDT_ADDR = "0x74bda872E528c58D66d5DBd9Bb9072b06d99f510";
 
 const SEED_AMOUNT = ethers.parseUnits("10000000", 18); // 10M tokens
 

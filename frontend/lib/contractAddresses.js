@@ -18,17 +18,18 @@ export const V2_MAINNET_PRESET = {
 };
 
 // BNB Chain Testnet (Chain ID 97)
-// Deployed: 2026-02-27 via scripts/deploy-testnet-full-stack-with-mocks.js
+// Deployed: 2026-02-27 (v2) via scripts/deploy-testnet-full-stack-with-mocks.js
 // chainlinkStalePeriod = 259200 (3 days)
+// Fix: ProofVault slippage check now excludes executor bounty from baseline
 export const V2_TESTNET_PRESET = {
-  vaultAddress: "0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6",
-  engineAddress: "0x6fC173849E6a993292F538cA48eB4fd00c3605e5",
-  tokenAddress: "0x65079A226a23f3F7786aa7FB231f84FB81CB43B3", // mock USDT
-  circuitBreakerAddress: "0xCD58f14320e827E388AeA50Bb48b8E4c1eE48de0",
-  sharpeTrackerAddress: "0xE9d9c3564a8dC75c553390f15f7Fbb7a81531BD0",
-  pegArbExecutorAddress: "0x6D9C5EE63d8a4eea6E0f6354f38F14525D169be5",
-  riskPolicyAddress: "0xDB16526616a12ED2d0Cb7bfa5681929Fd1e97211",
-  asterAdapterAddress: "0x3d5795ad0f1b160B751ac2a00Cf451c57bb210D8",
-  secondaryAdapterAddress: "0x5d31f59bE9131B8d884de1c9E2035A9767933881",
-  executionAuctionAddress: "0x800BCDa679e8D458248D4342D8DD53253CC2ffBE",
+  vaultAddress: "0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D",
+  engineAddress: "0x6518CFAf53C39D6127723D67402e63E636Dd1c3E",
+  tokenAddress: "0x74bda872E528c58D66d5DBd9Bb9072b06d99f510", // mock USDT
+  circuitBreakerAddress: "0xfB5D6f83b1a5c42dFCd3fFAF76d0eF0d5ae5cB66",
+  sharpeTrackerAddress: "0xe4eB72e5d29AA868948F2a691255BAAFf4A8b479",
+  pegArbExecutorAddress: "0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c",
+  riskPolicyAddress: "0x55D9BCB9F13Ca2d5aD3345E60234E48e6A719133",
+  asterAdapterAddress: "0x096148CE528701614dF518B217A430A88635d561",
+  secondaryAdapterAddress: "0x30d4F9f3e98BadD935872b03F64Bdb4F7AaE8628",
+  executionAuctionAddress: "0x9e5763A7C11DB894A6aA1164cFDc849F9243751B",
 };

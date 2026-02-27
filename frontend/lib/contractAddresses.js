@@ -4,20 +4,21 @@
 // networkConfig.js imports these as fallback values.
 
 // BNB Chain Mainnet (Chain ID 56)
-// Deployed: 2026-02-27 (v2 r2) via scripts/deploy-mainnet-full-stack.js
-// Fix: Signal B threshold raised 100→8000 bps (pool sits at ~4968 bps normally)
+// Deployed: 2026-02-27 (v2 r3) via scripts/deploy-mainnet-full-stack.js
+// LP rail enabled: StableSwapLPYieldAdapterWithFarm (pool 69)
 // Deployer: 0xB789D888A53D34f6701C1A5876101Cb32dbF17cF
 export const V2_MAINNET_PRESET = {
-  vaultAddress: "0xf6ff5C42accaC935Ca6b83687280A1E8dc637D33",
-  engineAddress: "0x0Bb17DbBF19Db46bA29e322675B5bc39e861C5a1",
+  vaultAddress: "0x2585181C92cf2b16248f74916CB7281E32Eab771",
+  engineAddress: "0x96ab75cbea418ca2fc6b86D1569f71E91947f756",
   tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // BSC USDT
-  circuitBreakerAddress: "0x45619Dd30d5724C58B9aaa4608EeF9B32a718Fea",
-  sharpeTrackerAddress: "0xA231a4d5bc9749FC26d109Aa3BebE8CC2b622dcF",
-  pegArbExecutorAddress: "0xba5d34A2BC3ccD44598971A5C56E8FfA6BB78525",
-  riskPolicyAddress: "0x2C932Cb04E629bdaB84488cDeB85Ef81B73654BC",
-  asterAdapterAddress: "0x1896A0A3E4a348936D8BbdA989B27321db8d1590",
-  secondaryAdapterAddress: "0xd03247B056a93350f820dC51E6D8502C277b4055",
-  executionAuctionAddress: "0xd5536970711F8304F57EdFA76f9e74e248466DC3",
+  circuitBreakerAddress: "0x2E93E3d533B411733cF9F173c0e9a7A16Fc54B8E",
+  sharpeTrackerAddress: "0x461D26B93d0298dAc819638137E4426FDF376B6d",
+  pegArbExecutorAddress: "0x54e0361ED0E737E1B0163103e6b7C919523A2043",
+  riskPolicyAddress: "0xAAbBF69b661a3d327dE386CEF65a4214566591a7",
+  asterAdapterAddress: "0xbbd0f77227bCFC1791e5d51098243B36c600f954",
+  secondaryAdapterAddress: "0xA88e397DE1CC0787C1b2efF8EC5A215FE4145858",
+  lpAdapterAddress: "0x577CE23B0991F82240057e7A1c74272fbf768790",
+  executionAuctionAddress: "0x1Cc719a414d56A5C38936743d4a518382f935d51",
 };
 
 // BNB Chain Testnet (Chain ID 97)

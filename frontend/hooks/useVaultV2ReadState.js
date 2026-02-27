@@ -32,6 +32,11 @@ function decodeReason(ethersLib, bytes32Reason) {
   }
 }
 
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+function isZeroAddr(addr) {
+  return !addr || addr.toLowerCase() === ZERO_ADDR;
+}
+
 /// V2 unified read state hook - combines vault, engine, circuit breaker, and sharpe tracker
 export function useVaultV2ReadState() {
   const { networkMode } = useNetworkMode();
@@ -249,7 +254,7 @@ export function useVaultV2ReadState() {
         }
 
         // Circuit breaker status
-        if (circuitBreakerAddress) {
+        if (!isZeroAddr(circuitBreakerAddress)) {
           const breakerPreview = await engine
             .previewBreaker()
             .catch(() => null);
@@ -282,7 +287,7 @@ export function useVaultV2ReadState() {
         }
 
         // Sharpe tracker metrics
-        if (sharpeTrackerAddress) {
+        if (!isZeroAddr(sharpeTrackerAddress)) {
           const sharpeTracker = new ethersLib.Contract(
             ethersLib.getAddress(sharpeTrackerAddress.trim()),
             [
@@ -359,7 +364,7 @@ export function useVaultV2ReadState() {
         }
 
         // Peg arbitrage preview
-        if (pegArbExecutorAddress) {
+        if (!isZeroAddr(pegArbExecutorAddress)) {
           const pegArbContract = new ethersLib.Contract(
             ethersLib.getAddress(pegArbExecutorAddress.trim()),
             pegArbAbi,
@@ -420,7 +425,7 @@ export function useVaultV2ReadState() {
           ]);
         }
 
-        if (asterAdapterAddress) {
+        if (!isZeroAddr(asterAdapterAddress)) {
           const asterAdapterContract = new ethersLib.Contract(
             asterAdapterAddress,
             managedAdapterAbi,
@@ -430,7 +435,7 @@ export function useVaultV2ReadState() {
             .managedAssets()
             .catch(() => null);
         }
-        if (secondaryAdapterAddress) {
+        if (!isZeroAddr(secondaryAdapterAddress)) {
           const secondaryAdapterContract = new ethersLib.Contract(
             secondaryAdapterAddress,
             managedAdapterAbi,
@@ -603,7 +608,9 @@ export function useVaultV2ReadState() {
         if (provider) {
           const network = await provider.getNetwork();
           setNetworkChainId(network.chainId);
-          setShowNetworkModal(network.chainId !== BigInt(networkConfig.chainIdNum));
+          setShowNetworkModal(
+            network.chainId !== BigInt(networkConfig.chainIdNum)
+          );
         }
       } catch (error) {
         if (!silent) {

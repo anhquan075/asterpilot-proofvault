@@ -17,6 +17,7 @@ contract SharpeTracker {
     error SharpeTracker__WindowOutOfRange();
     error SharpeTracker__OnlyEngine();
     error SharpeTracker__EngineAlreadySet();
+    error SharpeTracker__ZeroAddress();
 
     // ── state ──
     int128[30] public observations;
@@ -49,7 +50,7 @@ contract SharpeTracker {
     /// @param engine_ The StrategyEngine address that will call recordYield
     function setEngine(address engine_) external {
         if (engine != address(0)) revert SharpeTracker__EngineAlreadySet();
-        if (engine_ == address(0)) revert SharpeTracker__OnlyEngine();
+        if (engine_ == address(0)) revert SharpeTracker__ZeroAddress();
         engine = engine_;
     }
 

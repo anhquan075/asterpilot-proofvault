@@ -13,6 +13,56 @@ Autonomous, non-custodial yield routing stack on BNB Chain.
 
 This README reflects the current deployed institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
 
+## Philosophy of Design
+
+### Why this system was designed this way
+
+The core insight behind AsterPilot ProofVault is that human capital managers fail at exactly the moments when precision matters most: during volatility spikes, peg deviations, and liquidity crunches. They sleep, they hesitate, and they pay for the privilege of being slow. This system removes the human from the loop entirely — not as a convenience feature, but as a first principle.
+
+The design starts from a simple question: **if the smart contract is always awake, always deterministic, and can see every on-chain signal, why would you ever trust a human to press a button?**
+
+### Core strategy and execution logic
+
+The system operates as a three-rail capital routing engine governed by a risk state machine:
+
+**Rail 1 — AsterDEX Earn (Primary):** USDT is swapped to USDF and deposited into AsterDEX Earn as the primary yield source and capital anchor. In distress conditions, allocation to Aster _increases_ (from `normalAsterBps` to `drawdownAsterBps`) because AsterDEX Earn is the most stable, protocol-native yield source when external LP markets are stressed.
+
+**Rail 2 — Venus Protocol (Idle Buffer):** Capital not actively deployed earns passive yield via Venus vUSDT. There is no idle capital — even the buffer works. This is not a fallback; it is the baseline.
+
+**Rail 3 — PancakeSwap StableSwap LP + MasterChef (Growth):** LP allocation is highest in `Normal` state and retreats to zero in `Drawdown`. CAKE rewards are auto-harvested and compounded back into the vault. The LP rail is the first to be unwound under stress, protecting principal while keeping yield flowing.
+
+**Risk state machine:** The engine computes EWMA (exponentially-weighted moving average) volatility each cycle, classifies market conditions into three states (Normal / Guarded / Drawdown), and adjusts all three rail allocations atomically. Hysteresis bands prevent regime thrashing on marginal price movements.
+
+**Execution model:** `executeCycle()` is fully permissionless — any address can call it. A Dutch auction bounty mechanism (linear escalation from `minBountyBps` to `maxBountyBps`) creates a MEV-like incentive structure so that competitive searchers time execution optimally without the vault paying a flat fee. In the `ExecutionAuction` overlay, this flips further: searchers _pay_ the vault for execution rights, converting automation from a cost center into a revenue source.
+
+**Flash loan regime shifts:** When risk state changes (e.g., Normal → Drawdown), capital must shift between adapters without leaving funds idle during the transition. `executeCycleWithFlashRebalance()` uses a PancakeSwap V3 flash callback to atomically deposit into the target adapter, pull from the source, and repay the flash pool in a single transaction — eliminating double-slippage and idle capital window.
+
+**Peg arbitrage:** `PegArbExecutor` monitors the USDF/USDT pool for peg deviation and executes atomic arb (buy cheap USDF → redeem at par, or mint USDF at par → sell expensive) returning net profit to the vault. This turns a systemic risk (USDF depeg) into a vault revenue event.
+
+### Key assumptions that were questioned or challenged
+
+1. **"Rebalancers should be compensated by the vault."** We inverted this. In the `ExecutionAuction` model, rebalancers _pay_ for execution rights because they capture MEV from optimal block timing. The vault benefits, not just the executor.
+
+2. **"A circuit breaker needs an admin to trip and reset it."** Ours is fully autonomous — it trips on any single signal (Chainlink USDT/USD deviation, StableSwap reserve ratio imbalance, virtual price drawdown) and recovers automatically after a cooldown when all signals clear. No multisig, no call required.
+
+3. **"Higher volatility = lower Aster allocation."** We challenged this. Under drawdown conditions, Aster allocation _increases_ because it is the most protocol-native, stable yield primitive. LP exposure (the most volatile) is reduced to near-zero. AsterDEX Earn functions as a hedge, not just a yield source.
+
+4. **"Sharpe ratio requires off-chain analytics."** We compute rolling Sharpe and Sortino ratios on-chain using a circular buffer (O(1) writes), Bessel-corrected sample variance, and Babylonian integer square root — all in Solidity 0.8.24. No oracle needed.
+
+5. **"Non-custodial means no admin can do anything."** Correct — after `lockConfiguration()` is called, ownership is irrevocably renounced on every contract that touches user funds. `RiskPolicy` has no owner at all — all parameters are `immutable`. The system is governed by code, not keys.
+
+### How the design prioritizes sustainability, resilience, and elegance
+
+**Sustainability:** The bounty model is designed to be self-funding. Peg arb profits, CAKE harvest yields, and auction bid revenue all flow back to the vault's TVL, compounding returns for depositors without external subsidy.
+
+**Resilience:** The three-tier liquidity waterfall (idle → Venus → LP → Aster claims) ensures withdrawals can always be serviced. The circuit breaker halts rebalancing under three independent market stress signals — any one is sufficient to pause — and recovers automatically when all clear. The flash-loan block guard prevents same-block deposit/withdraw sandwich attacks.
+
+**Elegance:** Every configurable parameter is set once at construction and frozen. No governance tokens, no upgrade proxies, no timelock. The architecture is intentionally minimal: once deployed and locked, it runs indefinitely with zero privileged intervention. The system's correctness can be verified entirely from its immutable bytecode.
+
+> **Note on ZKRiskOracle:** The `ZKRiskOracle` contract is an architectural integration point for ZK coprocessors (e.g., Brevis/Axiom) to submit cryptographically-verified Monte Carlo risk computations on-chain. In the current deployment, the oracle stores verified metrics and its data can be read by external keepers or future engine upgrades. The core `StrategyEngine` operates deterministically from on-chain signals and does not depend on ZKRiskOracle for its current execution path — ensuring liveness even if the ZK coprocessor is unavailable.
+
+---
+
 ## What This System Is
 
 AsterPilot ProofVault is an ERC-4626 vault that routes USDT across three rails under a permissionless execution model:
@@ -33,22 +83,22 @@ Core policy and safety are on-chain:
 
 ## Contract Architecture (Current)
 
-| Contract | Role |
-| --- | --- |
-| `ProofVault` | ERC-4626 vault, liquidity manager, and rebalance executor (`onlyEngine`) |
-| `StrategyEngine` | Permissionless `executeCycle()` decision engine |
-| `StrategyEngineFlashLoan` | PancakeSwap V3 flash callback for atomic capital shifts between adapters |
-| `AsterEarnAdapterWithSwap` | Primary Aster rail with USDT/USDF swap and async withdraw claims |
-| `VenusYieldAdapter` | Secondary rail buffer adapter integrating Venus Protocol (`vUSDT`) |
-| `StableSwapLPYieldAdapterWithFarm` | LP + farm rail, permissionless CAKE harvest path |
-| `RiskPolicy` | Immutable risk and allocation parameters |
-| `ChainlinkPriceOracle` | Chainlink wrapper with staleness/validity checks |
-| `ZKRiskOracle` | ZK-Coprocessor endpoint for off-chain verified Monte Carlo risk bounds |
-| `CircuitBreaker` | Triple-signal breaker (price deviation, reserve ratio, virtual price drawdown) |
-| `SharpeTracker` | Rolling yield observations + Sharpe/Sortino calculations |
-| `PegArbExecutor` | Permissionless peg-arb executor returning net profit to vault |
-| `ExecutionAuction` | Rebalance Rights Auction overlay for `executeCycle()` |
-| `OmnichainZapReceiver` | Cross-chain intent gateway via Stargate/LayerZero |
+| Contract                           | Role                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `ProofVault`                       | ERC-4626 vault, liquidity manager, and rebalance executor (`onlyEngine`)       |
+| `StrategyEngine`                   | Permissionless `executeCycle()` decision engine                                |
+| `StrategyEngineFlashLoan`          | PancakeSwap V3 flash callback for atomic capital shifts between adapters       |
+| `AsterEarnAdapterWithSwap`         | Primary Aster rail with USDT/USDF swap and async withdraw claims               |
+| `VenusYieldAdapter`                | Secondary rail buffer adapter integrating Venus Protocol (`vUSDT`)             |
+| `StableSwapLPYieldAdapterWithFarm` | LP + farm rail, permissionless CAKE harvest path                               |
+| `RiskPolicy`                       | Immutable risk and allocation parameters                                       |
+| `ChainlinkPriceOracle`             | Chainlink wrapper with staleness/validity checks                               |
+| `ZKRiskOracle`                     | ZK-Coprocessor endpoint for off-chain verified Monte Carlo risk bounds         |
+| `CircuitBreaker`                   | Triple-signal breaker (price deviation, reserve ratio, virtual price drawdown) |
+| `SharpeTracker`                    | Rolling yield observations + Sharpe/Sortino calculations                       |
+| `PegArbExecutor`                   | Permissionless peg-arb executor returning net profit to vault                  |
+| `ExecutionAuction`                 | Rebalance Rights Auction overlay for `executeCycle()`                          |
+| `OmnichainZapReceiver`             | Cross-chain intent gateway via Stargate/LayerZero                              |
 
 ## Mermaid: System Topology
 
@@ -128,10 +178,10 @@ sequenceDiagram
 
 #### Core
 
-| Contract | Address |
-| --- | --- |
-| `ProofVault` | [`0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644`](https://bscscan.com/address/0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644) |
-| `StrategyEngine` | [`0xb621062d6651E1D975e3134c86FA9db1fab909B7`](https://bscscan.com/address/0xb621062d6651E1D975e3134c86FA9db1fab909B7) |
+| Contract           | Address                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `ProofVault`       | [`0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644`](https://bscscan.com/address/0xCF386Dd2c8C8356cdBF76e5c3D53B5Ef89362644) |
+| `StrategyEngine`   | [`0xb621062d6651E1D975e3134c86FA9db1fab909B7`](https://bscscan.com/address/0xb621062d6651E1D975e3134c86FA9db1fab909B7) |
 | `ExecutionAuction` | [`0x147a91205d5eb67CFEEAd48a0e8b3443DE4B1e27`](https://bscscan.com/address/0x147a91205d5eb67CFEEAd48a0e8b3443DE4B1e27) |
 
 > Other mainnet peripheral contracts (`RiskPolicy`, `CircuitBreaker`, `SharpeTracker`, adapters) are pending configuration lock. Addresses will be added here once `lockConfiguration()` is called.
@@ -147,18 +197,18 @@ sequenceDiagram
 
 ### Testnet (BNB Chain Testnet, Chain ID 97)
 
-| Contract | Address |
-| --- | --- |
-| `ProofVault` | [`0x91484e3E37daB55e1F5345b2448d709F0F989cC0`](https://testnet.bscscan.com/address/0x91484e3E37daB55e1F5345b2448d709F0F989cC0) |
-| `StrategyEngine` | [`0x01aCCB9ceADFe3dE6070e9859795A46e3B435CD1`](https://testnet.bscscan.com/address/0x01aCCB9ceADFe3dE6070e9859795A46e3B435CD1) |
-| `CircuitBreaker` | [`0x267371eE32Bb873d7C604138f0a94BDF12A2e30b`](https://testnet.bscscan.com/address/0x267371eE32Bb873d7C604138f0a94BDF12A2e30b) |
-| `SharpeTracker` | [`0x81CB7a859Ea779F4963Db070c09f9E698F800810`](https://testnet.bscscan.com/address/0x81CB7a859Ea779F4963Db070c09f9E698F800810) |
-| `PegArbExecutor` | [`0xA69f9D03C26A19f12e02ccbD062129b6561bf2D5`](https://testnet.bscscan.com/address/0xA69f9D03C26A19f12e02ccbD062129b6561bf2D5) |
-| `RiskPolicy` | [`0xfF7bdA782755B689C6511B69a478C2376451c404`](https://testnet.bscscan.com/address/0xfF7bdA782755B689C6511B69a478C2376451c404) |
-| `AsterEarnAdapter` | [`0xDB5301a5Ae5621024c2f2914aDd872D39b92CFe8`](https://testnet.bscscan.com/address/0xDB5301a5Ae5621024c2f2914aDd872D39b92CFe8) |
+| Contract            | Address                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `ProofVault`        | [`0x91484e3E37daB55e1F5345b2448d709F0F989cC0`](https://testnet.bscscan.com/address/0x91484e3E37daB55e1F5345b2448d709F0F989cC0) |
+| `StrategyEngine`    | [`0x01aCCB9ceADFe3dE6070e9859795A46e3B435CD1`](https://testnet.bscscan.com/address/0x01aCCB9ceADFe3dE6070e9859795A46e3B435CD1) |
+| `CircuitBreaker`    | [`0x267371eE32Bb873d7C604138f0a94BDF12A2e30b`](https://testnet.bscscan.com/address/0x267371eE32Bb873d7C604138f0a94BDF12A2e30b) |
+| `SharpeTracker`     | [`0x81CB7a859Ea779F4963Db070c09f9E698F800810`](https://testnet.bscscan.com/address/0x81CB7a859Ea779F4963Db070c09f9E698F800810) |
+| `PegArbExecutor`    | [`0xA69f9D03C26A19f12e02ccbD062129b6561bf2D5`](https://testnet.bscscan.com/address/0xA69f9D03C26A19f12e02ccbD062129b6561bf2D5) |
+| `RiskPolicy`        | [`0xfF7bdA782755B689C6511B69a478C2376451c404`](https://testnet.bscscan.com/address/0xfF7bdA782755B689C6511B69a478C2376451c404) |
+| `AsterEarnAdapter`  | [`0xDB5301a5Ae5621024c2f2914aDd872D39b92CFe8`](https://testnet.bscscan.com/address/0xDB5301a5Ae5621024c2f2914aDd872D39b92CFe8) |
 | `VenusYieldAdapter` | [`0x91264EaC2e9298df9a83E7917c06d82Eb71567A3`](https://testnet.bscscan.com/address/0x91264EaC2e9298df9a83E7917c06d82Eb71567A3) |
-| Mock USDT | [`0x71e3010Df995C1D611AbD3C5BdB198c677D6D65c`](https://testnet.bscscan.com/address/0x71e3010Df995C1D611AbD3C5BdB198c677D6D65c) |
-| `ExecutionAuction` | [`0x4179E904F37746D240bF9A46c84e1d5Eb3d761fe`](https://testnet.bscscan.com/address/0x4179E904F37746D240bF9A46c84e1d5Eb3d761fe) |
+| Mock USDT           | [`0x71e3010Df995C1D611AbD3C5BdB198c677D6D65c`](https://testnet.bscscan.com/address/0x71e3010Df995C1D611AbD3C5BdB198c677D6D65c) |
+| `ExecutionAuction`  | [`0x4179E904F37746D240bF9A46c84e1d5Eb3d761fe`](https://testnet.bscscan.com/address/0x4179E904F37746D240bF9A46c84e1d5Eb3d761fe) |
 
 ## Network Mode (Feature Flag)
 

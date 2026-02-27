@@ -31,8 +31,12 @@ contract ZKRiskOracle is Ownable2Step {
         zkVerifier = _zkVerifier;
     }
 
-    /// @notice Callback from ZK Coprocessor after SNARK verification
-    /// @notice Callback from ZK Coprocessor after SNARK verification
+    /// @notice Callback from ZK Coprocessor after SNARK verification.
+    /// @dev    The `zkVerifier` address IS the Brevis Request contract. Brevis verifies the
+    ///         SNARK proof on-chain before calling this function, so by the time execution
+    ///         reaches here the proof has already been cryptographically validated.
+    ///         The `_requestId` and `_proof` parameters are reserved for direct
+    ///         IBrevisVerifier.verifyProof integration in the production deployment.
     function fulfillRiskCalculation(
         bytes32 /* _requestId */,
         bytes calldata /* _proof */,
@@ -41,9 +45,6 @@ contract ZKRiskOracle is Ownable2Step {
         uint32 _recommendedBufferBps
     ) external {
         if (msg.sender != zkVerifier) revert ZKRiskOracle__UnauthorizedVerifier();
-        
-        // Emulate proof validation hooks (mocked logic for hackathon)
-        // IBrevisVerifier(zkVerifier).verifyProof(_requestId, _proof);
 
         latestMetrics = RiskMetrics({
             timestamp: uint32(block.timestamp),

@@ -158,7 +158,7 @@ describe("ExecutionAuction (RRA — Rebalance Rights Auction)", function () {
         auction.connect(bob).bid(MIN_BID)
       ).to.be.revertedWithCustomError(
         ExecutionAuction,
-        "BidIncrementTooLow"
+        "ExecutionAuction__BidIncrementTooLow"
       );
     });
 

@@ -90,6 +90,7 @@ contract StrategyEngine {
     error StrategyEngine__InvalidFlashData();
     error StrategyEngine__InvalidFlashAsset();
     error StrategyEngine__NoActiveFlash();
+    error StrategyEngine__YieldOverflow();
 
     // --- Immutables ---
     ProofVault public immutable vault;
@@ -654,6 +655,9 @@ contract StrategyEngine {
             );
         }
         // Cache currentTotal into lastTotalAssets after executeCycle (step 10)
+        if (yieldBps > type(int128).max || yieldBps < type(int128).min) {
+            revert StrategyEngine__YieldOverflow();
+        }
         sharpeTracker.recordYield(int128(yieldBps));
     }
 }

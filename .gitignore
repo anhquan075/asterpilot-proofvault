@@ -50,3 +50,4 @@ pnpm-debug.log*
 .npm/
 .pnpm-store/
 target/
+plans/

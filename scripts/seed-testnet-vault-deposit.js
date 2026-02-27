@@ -13,8 +13,8 @@
 
 const { ethers } = require("hardhat");
 
-const VAULT_ADDR = "0xFF500c8efFf28F71F7167F7d3c3b92724fFEaB50";
-const USDT_ADDR = "0x07413d9320Ca0804070d787021EbE5440896BC44"; // mock USDT (no access control on mint)
+const VAULT_ADDR = "0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6";
+const USDT_ADDR = "0x65079A226a23f3F7786aa7FB231f84FB81CB43B3"; // mock USDT (no access control on mint)
 
 const MINT_AMOUNT = ethers.parseUnits("100000", 18); // 100k USDT minted
 const DEPOSIT_AMOUNT = ethers.parseUnits("50000", 18); // 50k USDT deposited
@@ -79,9 +79,12 @@ async function main() {
 
     // ── 3. Deposit ───────────────────────────────────────────────────────────
     const totalBefore = await vault.totalAssets();
+    // totalAssets() returns USDT amount in underlying decimals (18)
+    const assetDecimals = 18;
     console.log(
       "\nVault totalAssets before deposit:",
-      ethers.formatUnits(totalBefore, 18)
+      ethers.formatUnits(totalBefore, assetDecimals),
+      "USDT"
     );
 
     const depositTx = await vault.deposit(DEPOSIT_AMOUNT, target);
@@ -92,9 +95,11 @@ async function main() {
     const shares = await vault.balanceOf(target);
     console.log(
       "Vault totalAssets after deposit:",
-      ethers.formatUnits(totalAfter, 18)
+      ethers.formatUnits(totalAfter, assetDecimals),
+      "USDT"
     );
-    console.log("pvUSD shares received:", ethers.formatUnits(shares, 18));
+    // Vault shares use asset decimals + 6 offset (ERC4626 decimalsOffset)
+    console.log("pvUSD shares received (raw):", shares.toString());
 
     console.log(
       "\n✓ Vault seeded. Run executeCycle() to see allocations update."

@@ -21,14 +21,14 @@ export const V2_MAINNET_PRESET = {
 // Deployed: 2026-02-27 via scripts/deploy-testnet-full-stack-with-mocks.js
 // chainlinkStalePeriod = 259200 (3 days)
 export const V2_TESTNET_PRESET = {
-  vaultAddress: "0xFF500c8efFf28F71F7167F7d3c3b92724fFEaB50",
-  engineAddress: "0x264aaAbe5a7C13556fDcf7d01e25d162EB80B846",
-  tokenAddress: "0x07413d9320Ca0804070d787021EbE5440896BC44", // mock USDT
-  circuitBreakerAddress: "0x1E63C0F23D89eC3b58b696d7c17Bb0159A25DEF5",
-  sharpeTrackerAddress: "0xfcCfE943563E3C46B01eeFE601E8C7826e0219dB",
-  pegArbExecutorAddress: "0x9e334c02a4fb0f4Ba642066E418BD1De6B0072d0",
-  riskPolicyAddress: "0x372cd31121C139da2f78173dfc6D5edbd066Fa9D",
-  asterAdapterAddress: "0xF4CA93D2d2195Aa84f987ED74A7c7Dd94DbB19E2",
-  secondaryAdapterAddress: "0x9188Ce2D130A9b5dE17Ff2f5Cb5D0adC17Ce9530",
-  executionAuctionAddress: "0xa4d6685743f585820d20Fdc7200B1b29352000C3",
+  vaultAddress: "0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6",
+  engineAddress: "0x6fC173849E6a993292F538cA48eB4fd00c3605e5",
+  tokenAddress: "0x65079A226a23f3F7786aa7FB231f84FB81CB43B3", // mock USDT
+  circuitBreakerAddress: "0xCD58f14320e827E388AeA50Bb48b8E4c1eE48de0",
+  sharpeTrackerAddress: "0xE9d9c3564a8dC75c553390f15f7Fbb7a81531BD0",
+  pegArbExecutorAddress: "0x6D9C5EE63d8a4eea6E0f6354f38F14525D169be5",
+  riskPolicyAddress: "0xDB16526616a12ED2d0Cb7bfa5681929Fd1e97211",
+  asterAdapterAddress: "0x3d5795ad0f1b160B751ac2a00Cf451c57bb210D8",
+  secondaryAdapterAddress: "0x5d31f59bE9131B8d884de1c9E2035A9767933881",
+  executionAuctionAddress: "0x800BCDa679e8D458248D4342D8DD53253CC2ffBE",
 };

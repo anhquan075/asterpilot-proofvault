@@ -67,71 +67,60 @@ The system operates as a three-rail capital routing engine governed by a risk st
 
 AsterPilot ProofVault is an ERC-4626 vault that routes USDT across three rails under a permissionless execution model:
 
-1. Primary rail: `AsterEarnAdapterWithSwap` (USDT → USDF swap, then async Aster minter integration).
-2. Secondary rail (Buffer): `VenusYieldAdapter` (Idle USDT is routed to Venus Protocol vUSDT for 100% capital efficiency).
-3. LP rail: `StableSwapLPYieldAdapterWithFarm` (StableSwap LP + MasterChef farm + CAKE harvest).
+1. **Primary rail — `AsterEarnAdapterWithSwap`:** USDT is swapped to USDF via the StableSwap pool (`exchange(1→0)`), then deposited into AsterDEX Earn as async yield. Claims are batched and swapped back to USDT on withdrawal.
+2. **Secondary rail — `ManagedAdapter`:** Idle USDT sits as a liquid buffer. Capital not deployed to Aster or LP earns nothing here — it is the liquidity reserve for withdrawals and slippage absorption.
+3. **LP rail — `StableSwapLPYieldAdapterWithFarm`:** USDT is added as single-sided liquidity to the USDF/USDT StableSwap pool, the LP token is staked in MasterChef (pool 69), and CAKE rewards are harvested and compounded back to USDT.
 
 Core policy and safety are on-chain:
 
-- `StrategyEngine` computes state and target allocations, utilizing `StrategyEngineFlashLoan` to execute atomic regime shifts via PancakeSwap V3 flash callbacks (eliminating idle capital and double-slippage).
-- `RiskPolicy` stores immutable thresholds/targets.
-- `CircuitBreaker` auto-trips/recovers from three market signals.
-- `SharpeTracker` records rolling risk-adjusted performance observations.
-- `ZKRiskOracle` accepts cryptographically verified off-chain Monte Carlo simulations from ZK-Coprocessors (like Brevis or Axiom) to dynamically adjust Hysteresis bands.
-- `ExecutionAuction` auctions rebalance rights and forwards bid revenue/bounties.
-- `OmnichainZapReceiver` allows users on any Layer 2 (Arbitrum, Base, Optimism) to bridge and deposit into the BNB Chain vault in a single transaction via LayerZero/Stargate.
+- `StrategyEngine` computes EWMA volatility, classifies market state (Normal/Guarded/Drawdown), and calls `vault.rebalance()` with target allocation bps for each rail.
+- `RiskPolicy` stores immutable thresholds and allocation targets.
+- `CircuitBreaker` auto-trips on three independent signals and recovers automatically after cooldown.
+- `SharpeTracker` records rolling on-chain Sharpe/Sortino ratio observations via circular buffer.
+- `ExecutionAuction` auctions rebalance execution rights — winning bidders pay the vault for the right to call `executeCycle()`, turning automation into a revenue source.
+- `PegArbExecutor` monitors the USDF/USDT pool and executes peg-restoration arbitrage, returning net profit to the vault.
 
-## Contract Architecture (Current)
+## Contract Architecture (Deployed)
 
 | Contract                           | Role                                                                           |
 | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `ProofVault`                       | ERC-4626 vault, liquidity manager, and rebalance executor (`onlyEngine`)       |
-| `StrategyEngine`                   | Permissionless `executeCycle()` decision engine                                |
-| `StrategyEngineFlashLoan`          | PancakeSwap V3 flash callback for atomic capital shifts between adapters       |
-| `AsterEarnAdapterWithSwap`         | Primary Aster rail with USDT/USDF swap and async withdraw claims               |
-| `VenusYieldAdapter`                | Secondary rail buffer adapter integrating Venus Protocol (`vUSDT`)             |
-| `StableSwapLPYieldAdapterWithFarm` | LP + farm rail, permissionless CAKE harvest path                               |
-| `RiskPolicy`                       | Immutable risk and allocation parameters                                       |
-| `ChainlinkPriceOracle`             | Chainlink wrapper with staleness/validity checks                               |
-| `ZKRiskOracle`                     | ZK-Coprocessor endpoint for off-chain verified Monte Carlo risk bounds         |
+| `ProofVault`                       | ERC-4626 vault, liquidity manager, rebalance executor (`onlyEngine`)           |
+| `StrategyEngine`                   | Permissionless `executeCycle()` — computes state, triggers rebalance           |
+| `AsterEarnAdapterWithSwap`         | Rail 1: USDT→USDF via StableSwap, async deposit/claim into AsterDEX Earn       |
+| `ManagedAdapter`                   | Rail 2: Idle USDT buffer — liquid reserve for withdrawals                      |
+| `StableSwapLPYieldAdapterWithFarm` | Rail 3: StableSwap LP + MasterChef farm + CAKE harvest                         |
+| `RiskPolicy`                       | Immutable risk thresholds and rail allocation targets                          |
+| `ChainlinkPriceOracle`             | Chainlink USDT/USD feed wrapper with staleness and validity checks             |
 | `CircuitBreaker`                   | Triple-signal breaker (price deviation, reserve ratio, virtual price drawdown) |
-| `SharpeTracker`                    | Rolling yield observations + Sharpe/Sortino calculations                       |
-| `PegArbExecutor`                   | Permissionless peg-arb executor returning net profit to vault                  |
-| `ExecutionAuction`                 | Rebalance Rights Auction overlay for `executeCycle()`                          |
-| `OmnichainZapReceiver`             | Cross-chain intent gateway via Stargate/LayerZero                              |
+| `SharpeTracker`                    | On-chain rolling Sharpe/Sortino via circular buffer + Babylonian integer sqrt  |
+| `PegArbExecutor`                   | Permissionless peg-arb: buy cheap USDF → redeem at par (or mint → sell)        |
+| `ExecutionAuction`                 | Rebalance Rights Auction — executors pay vault for `executeCycle()` rights     |
 
 ## Mermaid: System Topology
 
 ```mermaid
 graph LR
-    L2User[Omnichain Users] --> Zap[OmnichainZapReceiver]
-    Zap --> Vault[ProofVault]
-    User[BNB Chain Users] --> Vault
-    Searcher[Executors] --> Engine[StrategyEngine.executeCycle]
+    User[BNB Chain Users] --> Vault[ProofVault\nERC-4626]
+    Searcher[Executors / Keepers] --> Engine[StrategyEngine\nexecuteCycle]
     Searcher --> Auction[ExecutionAuction]
 
     Auction --> Engine
-    Engine --> Flash[StrategyEngineFlashLoan]
-    Engine --> Breaker[CircuitBreaker]
+    Engine --> Breaker[CircuitBreaker\n3-signal guard]
     Engine --> Oracle[ChainlinkPriceOracle]
-    Engine --> Policy[RiskPolicy]
-    Engine --> Sharpe[SharpeTracker]
+    Engine --> Policy[RiskPolicy\nimmutable params]
+    Engine --> Sharpe[SharpeTracker\non-chain Sharpe]
     Engine --> Vault
 
-    ZKCoprocessor[ZK Coprocessor / Brevis] -.-> ZKOracle[ZKRiskOracle]
-    ZKOracle --> Policy
-
-    Vault --> Aster[AsterEarnAdapterWithSwap]
-    Vault --> Secondary[VenusYieldAdapter]
-    Vault --> LP[StableSwapLPYieldAdapterWithFarm]
+    Vault --> Aster[AsterEarnAdapterWithSwap\nRail 1 — Primary]
+    Vault --> Secondary[ManagedAdapter\nRail 2 — Buffer]
+    Vault --> LP[StableSwapLPYieldAdapterWithFarm\nRail 3 — Growth]
     Vault --> Arb[PegArbExecutor]
 
-    Aster --> Router[Pancake Router]
-    Aster --> Minter[Aster Minter]
-    LP --> Pool[StableSwap Pool]
-    LP --> Chef[MasterChef]
-    Secondary --> Venus[Venus Protocol vUSDT]
-    Flash --> PCSv3[PancakeSwap V3 Pool]
+    Aster --> SwapPool[StableSwap Pool\nUSDT→USDF exchange]
+    Aster --> Minter[AsterDEX Earn\nasync yield minter]
+    LP --> SwapPool
+    LP --> Chef[MasterChef\npool 69 CAKE farm]
+    Arb --> SwapPool
 ```
 
 ## Mermaid: Rebalance Execution Flow
@@ -146,6 +135,7 @@ sequenceDiagram
     participant ST as SharpeTracker
     participant PV as ProofVault
     participant AA as AsterEarnAdapterWithSwap
+    participant SP as StableSwap Pool
     participant MA as ManagedAdapter
     participant LA as StableSwapLPYieldAdapterWithFarm
 
@@ -161,14 +151,16 @@ sequenceDiagram
     SE->>ST: recordYield(...)
     SE->>PV: rebalance(asterBps, slippage, executor, bountyBps, lpBps)
 
-    PV->>MA: withdrawToVault(...) (if needed)
-    PV->>AA: onVaultDeposit(...) / requestWithdraw(...)
-    PV->>LA: onVaultDeposit(...) / withdrawToVault(...)
+    PV->>MA: withdrawToVault(...) if rebalancing down
+    PV->>AA: onVaultDeposit(USDT)
+    AA->>SP: exchange(i=1,j=0) USDT→USDF
+    AA->>SP: deposit USDF into AsterDEX Earn
+    PV->>LA: onVaultDeposit(USDT) / withdrawToVault(...)
     PV-->>EOA: executor bounty transfer
 
     opt Auction path completion
         EA-->>EOA: auction bounty payout
-        EA-->>PV: winning bid transfer
+        EA-->>PV: winning bid revenue
     end
 ```
 

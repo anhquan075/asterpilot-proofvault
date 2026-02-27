@@ -1,5 +1,8 @@
 import React from "react";
-import { VaultCircuitBreakerCard, VaultDutchAuctionCard } from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
+import {
+  VaultCircuitBreakerCard,
+  VaultDutchAuctionCard,
+} from "@/components/shared/cards/VaultCircuitBreakerThreeSignalStatusCard";
 import { VaultCycleExecutionStatusCard } from "@/components/shared/cards/VaultCycleExecutionStatusCard";
 import { VaultExecutionAuctionRraBidCard } from "@/components/shared/cards/VaultExecutionAuctionRraBidCard";
 import { VaultOraclePolicyMetricsCard } from "@/components/shared/cards/VaultOraclePolicyMetricsCard";
@@ -13,12 +16,16 @@ import { useRainbowKitWallet } from "@/hooks/useRainbowKitWallet";
 import { useVaultV2ReadState } from "@/hooks/useVaultV2ReadState";
 import { useVaultV2WriteActions } from "@/hooks/useVaultV2WriteActions";
 import { useNetworkMode } from "@/hooks/useNetworkMode";
-import { NETWORK_CONFIGS } from "@/lib/networkConfig";
-import { AlertTriangle, ExternalLink, Shield, TrendingUp, Zap } from "lucide-react";
+import { NETWORK_CONFIGS, NETWORK_MODE } from "@/lib/networkConfig";
+import {
+  AlertTriangle,
+  ExternalLink,
+  Shield,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { VaultTestnetDevPanel } from "@/components/shared/ui/VaultTestnetDevPanel";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
@@ -35,15 +42,34 @@ function shortHash(hash) {
 function ContractAddressBadge({ label, address, icon: Icon, bscScanAddr }) {
   const isSet = address && address !== ZERO_ADDR;
   return (
-    <span className={`contractBadge ${isSet ? "contractBadge--set" : "contractBadge--unset"}`}>
-      {Icon && <Icon size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />}
+    <span
+      className={`contractBadge ${
+        isSet ? "contractBadge--set" : "contractBadge--unset"
+      }`}
+    >
+      {Icon && (
+        <Icon
+          size={12}
+          style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }}
+        />
+      )}
       <span className="contractBadgeLabel">{label}</span>
-      {isSet
-        ? <a href={`${bscScanAddr}${address}`} target="_blank" rel="noopener noreferrer" className="contractBadgeAddr">
-          {shortAddr(address)} <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
+      {isSet ? (
+        <a
+          href={`${bscScanAddr}${address}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="contractBadgeAddr"
+        >
+          {shortAddr(address)}{" "}
+          <ExternalLink
+            size={10}
+            style={{ display: "inline", verticalAlign: "middle" }}
+          />
         </a>
-        : <span className="contractBadgeAddr">not deployed</span>
-      }
+      ) : (
+        <span className="contractBadgeAddr">not deployed</span>
+      )}
     </span>
   );
 }
@@ -51,7 +77,7 @@ function ContractAddressBadge({ label, address, icon: Icon, bscScanAddr }) {
 export default function ProofVaultV2Client() {
   const [, setStatus] = useState("Loading live data...");
   const [busyAction, setBusyAction] = useState(null);
-  const { networkMode, isTestnet } = useNetworkMode();
+  const { networkMode, isTestnet, setNetworkMode } = useNetworkMode();
   const networkConfig = NETWORK_CONFIGS[networkMode];
   const {
     vaultAddress,
@@ -79,36 +105,47 @@ export default function ProofVaultV2Client() {
   const vaultState = useVaultV2ReadState();
   const actions = useVaultV2WriteActions({ refresh: vaultState.refresh });
 
-  const refreshArgs = useMemo(() => ({
-    signer: wallet.signer,
-    provider: wallet.provider ?? publicProvider,
-    vaultAddress,
-    engineAddress,
-    tokenAddress,
-    circuitBreakerAddress,
-    sharpeTrackerAddress,
-    pegArbExecutorAddress,
-    decimals,
-    shareDecimals,
-    setDecimals,
-    setShareDecimals,
-    setBusyAction,
-    setStatus,
-    setNetworkChainId: () => { },
-    setShowNetworkModal: () => { },
-  }), [
-    wallet.signer,
-    wallet.provider,
-    publicProvider,
-    vaultAddress,
-    engineAddress,
-    tokenAddress,
-    circuitBreakerAddress,
-    sharpeTrackerAddress,
-    pegArbExecutorAddress,
-    decimals,
-    shareDecimals
-  ]);
+  const refreshArgs = useMemo(
+    () => ({
+      signer: wallet.signer,
+      provider: wallet.provider ?? publicProvider,
+      vaultAddress,
+      engineAddress,
+      tokenAddress,
+      circuitBreakerAddress,
+      sharpeTrackerAddress,
+      pegArbExecutorAddress,
+      decimals,
+      shareDecimals,
+      setDecimals,
+      setShareDecimals,
+      setBusyAction,
+      setStatus,
+      setNetworkChainId: () => {},
+      setShowNetworkModal: () => {},
+    }),
+    [
+      wallet.signer,
+      wallet.provider,
+      publicProvider,
+      vaultAddress,
+      engineAddress,
+      tokenAddress,
+      circuitBreakerAddress,
+      sharpeTrackerAddress,
+      pegArbExecutorAddress,
+      decimals,
+      shareDecimals,
+    ]
+  );
+
+  // Auto-sync UI network mode when wallet switches chains.
+  // Chain 56 → mainnet, Chain 97 → testnet, other → keep current (show warning).
+  useEffect(() => {
+    if (wallet.networkChainId === 56n) setNetworkMode(NETWORK_MODE.MAINNET);
+    else if (wallet.networkChainId === 97n)
+      setNetworkMode(NETWORK_MODE.TESTNET);
+  }, [wallet.networkChainId, setNetworkMode]);
 
   // Clear transaction history when wallet disconnects
   useEffect(() => {
@@ -125,7 +162,11 @@ export default function ProofVaultV2Client() {
 
   useEffect(() => {
     if (publicProvider && !wallet.signer) {
-      vaultState.refresh({ ...refreshArgs, signer: null, provider: publicProvider });
+      vaultState.refresh({
+        ...refreshArgs,
+        signer: null,
+        provider: publicProvider,
+      });
       setLastLiveSyncAt(Date.now());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,7 +197,10 @@ export default function ProofVaultV2Client() {
 
     runSilentRefresh();
     const intervalId = setInterval(() => {
-      if (typeof document === "undefined" || document.visibilityState === "visible") {
+      if (
+        typeof document === "undefined" ||
+        document.visibilityState === "visible"
+      ) {
         runSilentRefresh();
       }
     }, 8000);
@@ -171,57 +215,90 @@ export default function ProofVaultV2Client() {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [wallet.signer, wallet.provider, publicProvider, refreshArgs, vaultState.refresh]);
+  }, [
+    wallet.signer,
+    wallet.provider,
+    publicProvider,
+    refreshArgs,
+    vaultState.refresh,
+  ]);
 
-  const handleDeposit = useCallback(() =>
-    actions.deposit({
-      signer: wallet.signer,
+  const handleDeposit = useCallback(
+    () =>
+      actions.deposit({
+        signer: wallet.signer,
+        vaultAddress,
+        tokenAddress,
+        depositAmount,
+        decimals,
+        setBusyAction,
+        setStatus,
+        refreshArgs,
+      }),
+    [
+      actions,
+      wallet.signer,
       vaultAddress,
       tokenAddress,
       depositAmount,
       decimals,
-      setBusyAction,
-      setStatus,
-      refreshArgs
-    }),
-    [actions, wallet.signer, vaultAddress, tokenAddress, depositAmount, decimals, refreshArgs]
+      refreshArgs,
+    ]
   );
 
-  const handleWithdraw = useCallback(() =>
-    actions.withdraw({
-      signer: wallet.signer,
+  const handleWithdraw = useCallback(
+    () =>
+      actions.withdraw({
+        signer: wallet.signer,
+        vaultAddress,
+        withdrawAmount,
+        decimals,
+        setBusyAction,
+        setStatus,
+        refreshArgs,
+      }),
+    [
+      actions,
+      wallet.signer,
       vaultAddress,
       withdrawAmount,
       decimals,
-      setBusyAction,
-      setStatus,
-      refreshArgs
-    }),
-    [actions, wallet.signer, vaultAddress, withdrawAmount, decimals, refreshArgs]
+      refreshArgs,
+    ]
   );
 
-  const handleExecuteCycle = useCallback(() =>
-    actions.executeCycle({
-      signer: wallet.signer,
+  const handleExecuteCycle = useCallback(
+    () =>
+      actions.executeCycle({
+        signer: wallet.signer,
+        engineAddress,
+        circuitBreakerAddress,
+        canExecute: vaultState.canExecute,
+        canExecuteReason: vaultState.canExecuteReason,
+        setBusyAction,
+        setStatus,
+        refreshArgs,
+      }),
+    [
+      actions,
+      wallet.signer,
       engineAddress,
       circuitBreakerAddress,
-      canExecute: vaultState.canExecute,
-      canExecuteReason: vaultState.canExecuteReason,
-      setBusyAction,
-      setStatus,
-      refreshArgs
-    }),
-    [actions, wallet.signer, engineAddress, circuitBreakerAddress, vaultState.canExecute, vaultState.canExecuteReason, refreshArgs]
+      vaultState.canExecute,
+      vaultState.canExecuteReason,
+      refreshArgs,
+    ]
   );
 
-  const handleExecuteArb = useCallback(() =>
-    actions.executeArbitrage({
-      signer: wallet.signer,
-      pegArbExecutorAddress,
-      setBusyAction,
-      setStatus,
-      refreshArgs,
-    }),
+  const handleExecuteArb = useCallback(
+    () =>
+      actions.executeArbitrage({
+        signer: wallet.signer,
+        pegArbExecutorAddress,
+        setBusyAction,
+        setStatus,
+        refreshArgs,
+      }),
     [actions, wallet.signer, pegArbExecutorAddress, refreshArgs]
   );
 
@@ -229,17 +306,30 @@ export default function ProofVaultV2Client() {
   const handleMinted = useCallback(() => {
     const runnerProvider = wallet.provider ?? publicProvider;
     if (runnerProvider) {
-      vaultState.refresh({ ...refreshArgs, signer: wallet.signer, provider: runnerProvider, silent: true });
+      vaultState.refresh({
+        ...refreshArgs,
+        signer: wallet.signer,
+        provider: runnerProvider,
+        silent: true,
+      });
       setLastLiveSyncAt(Date.now());
     }
   }, [wallet.provider, publicProvider, wallet.signer, refreshArgs, vaultState]);
 
-  const networkSupported = wallet.networkChainId === null || wallet.networkChainId === networkConfig.chainId;
+  // Unsupported = connected to a chain that is neither mainnet (56) nor testnet (97).
+  // mainnet/testnet mismatch is handled by the auto-sync effect above, so this
+  // strip only fires for genuinely unknown chains (e.g., local hardhat, Polygon).
+  const networkSupported =
+    wallet.networkChainId === null ||
+    wallet.networkChainId === 56n ||
+    wallet.networkChainId === 97n;
   const depositsBlocked = vaultState.configLocked === false;
   const latestTx = actions.txHistory?.[0] ?? null;
   const latestTxId = latestTx?.id;
   const liveLabel = lastLiveSyncAt
-    ? `Live data every 8s · last sync ${new Date(lastLiveSyncAt).toLocaleTimeString()}`
+    ? `Live data every 8s · last sync ${new Date(
+        lastLiveSyncAt
+      ).toLocaleTimeString()}`
     : "Live data initializing...";
 
   const [isOffline, setIsOffline] = useState(false);
@@ -251,7 +341,12 @@ export default function ProofVaultV2Client() {
       // Force a sync immediately when coming back online
       const runnerProvider = wallet.provider ?? publicProvider;
       if (runnerProvider) {
-        vaultState.refresh({ ...refreshArgs, signer: wallet.signer, provider: runnerProvider, silent: true });
+        vaultState.refresh({
+          ...refreshArgs,
+          signer: wallet.signer,
+          provider: runnerProvider,
+          silent: true,
+        });
         setLastLiveSyncAt(Date.now());
       }
     };
@@ -259,7 +354,7 @@ export default function ProofVaultV2Client() {
     window.addEventListener("online", handleOnline);
     // Initial check
     if (!navigator.onLine) setIsOffline(true);
-    
+
     return () => {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
@@ -294,10 +389,14 @@ export default function ProofVaultV2Client() {
         />
       )}
 
-      {/* Live sync badge removed from normal flow, moved to offline push notification */ }
+      {/* Live sync badge removed from normal flow, moved to offline push notification */}
 
       {isOffline && (
-        <div className={`globalTxPush globalTxPush--failed`} role="status" aria-live="polite">
+        <div
+          className={`globalTxPush globalTxPush--failed`}
+          role="status"
+          aria-live="polite"
+        >
           <div className="globalTxPushTitle">CONNECTION LOST</div>
           <div className="globalTxPushBody">
             <span>Live data paused. Waiting for network...</span>
@@ -306,13 +405,27 @@ export default function ProofVaultV2Client() {
       )}
 
       {screenTxPush && !isOffline && (
-        <div className={`globalTxPush globalTxPush--${screenTxPush.outcome}`} role="status" aria-live="polite">
+        <div
+          className={`globalTxPush globalTxPush--${screenTxPush.outcome}`}
+          role="status"
+          aria-live="polite"
+        >
           <div className="globalTxPushTitle">New Transaction</div>
           <div className="globalTxPushBody">
-            <span>{screenTxPush.action} · {screenTxPush.outcome}</span>
+            <span>
+              {screenTxPush.action} · {screenTxPush.outcome}
+            </span>
             {screenTxPush.hash ? (
-              <a href={`${bscScanTx}${screenTxPush.hash}`} target="_blank" rel="noopener noreferrer">
-                {shortHash(screenTxPush.hash)} <ExternalLink size={10} style={{ display: 'inline', verticalAlign: 'middle' }} />
+              <a
+                href={`${bscScanTx}${screenTxPush.hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {shortHash(screenTxPush.hash)}{" "}
+                <ExternalLink
+                  size={10}
+                  style={{ display: "inline", verticalAlign: "middle" }}
+                />
               </a>
             ) : (
               <span>pending details</span>
@@ -323,35 +436,80 @@ export default function ProofVaultV2Client() {
 
       {!networkSupported && (
         <div className="networkStrip">
-          <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
-          Wrong network detected. Switch to {networkConfig.label} (Chain ID {networkConfig.chainIdNum}).
+          <AlertTriangle
+            size={14}
+            style={{
+              display: "inline",
+              verticalAlign: "middle",
+              marginRight: 6,
+            }}
+          />
+          Unsupported network ({wallet.networkLabel}). Switch your wallet to{" "}
+          <strong>BNB Mainnet (Chain ID 56)</strong> or{" "}
+          <strong>BNB Testnet (Chain ID 97)</strong>.
         </div>
       )}
 
       {depositsBlocked && (
         <div className="networkStrip">
-          <AlertTriangle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />
-          Deposits are blocked: vault configuration is not locked. Admin must call <code>lockConfiguration()</code> on the vault contract to enable deposits.
+          <AlertTriangle
+            size={14}
+            style={{
+              display: "inline",
+              verticalAlign: "middle",
+              marginRight: 8,
+            }}
+          />
+          Deposits are blocked: vault configuration is not locked. Admin must
+          call <code>lockConfiguration()</code> on the vault contract to enable
+          deposits.
         </div>
       )}
 
       {/* V2 Contract address strip — 3-rail: Vault, Engine, CircuitBreaker, SharpeTracker, PegArb, Auction */}
       <div className="contractStrip contractStrip--v2">
         <div className="contractGroup contractGroup--core">
-          <ContractAddressBadge label="Vault" address={vaultAddress} bscScanAddr={bscScanAddr} />
-          <ContractAddressBadge label="Engine" address={engineAddress} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge
+            label="Vault"
+            address={vaultAddress}
+            bscScanAddr={bscScanAddr}
+          />
+          <ContractAddressBadge
+            label="Engine"
+            address={engineAddress}
+            bscScanAddr={bscScanAddr}
+          />
         </div>
         <div className="contractGroup contractGroup--advanced">
-          <ContractAddressBadge label="CircuitBreaker" address={circuitBreakerAddress} icon={Shield} bscScanAddr={bscScanAddr} />
-          <ContractAddressBadge label="SharpeTracker" address={sharpeTrackerAddress} icon={TrendingUp} bscScanAddr={bscScanAddr} />
-          <ContractAddressBadge label="PegArb" address={pegArbExecutorAddress} icon={Zap} bscScanAddr={bscScanAddr} />
-          <ContractAddressBadge label="Execution Auction" address={executionAuctionAddress} icon={Zap} bscScanAddr={bscScanAddr} />
+          <ContractAddressBadge
+            label="CircuitBreaker"
+            address={circuitBreakerAddress}
+            icon={Shield}
+            bscScanAddr={bscScanAddr}
+          />
+          <ContractAddressBadge
+            label="SharpeTracker"
+            address={sharpeTrackerAddress}
+            icon={TrendingUp}
+            bscScanAddr={bscScanAddr}
+          />
+          <ContractAddressBadge
+            label="PegArb"
+            address={pegArbExecutorAddress}
+            icon={Zap}
+            bscScanAddr={bscScanAddr}
+          />
+          <ContractAddressBadge
+            label="Execution Auction"
+            address={executionAuctionAddress}
+            icon={Zap}
+            bscScanAddr={bscScanAddr}
+          />
         </div>
       </div>
 
       {/* V2 Dashboard */}
       <div className="v2-dash-layout">
-
         {/* ── Row 1: Hero TVL & Status ── */}
         <div className="bento-section-header">
           <span className="bento-section-label">Vault Overview</span>
@@ -385,7 +543,9 @@ export default function ProofVaultV2Client() {
           </div>
           <div className="bento-row-side" style={{ flex: 3 }}>
             <VaultDutchAuctionCard auctionState={vaultState.auctionMetrics} />
-            <VaultSharpeRatioYieldTrackerCard sharpeState={vaultState.sharpeMetrics} />
+            <VaultSharpeRatioYieldTrackerCard
+              sharpeState={vaultState.sharpeMetrics}
+            />
           </div>
         </div>
         {/* ── Row 2: Execution + Arbitrage ── */}
@@ -426,20 +586,20 @@ export default function ProofVaultV2Client() {
           <span className="bento-section-line" />
         </div>
         <div className="bento-row-thirds">
-            <VaultStrategyAllocationBarCard
-              asterManagedAssets={vaultState.asterManagedAssets}
-              secondaryManagedAssets={vaultState.secondaryManagedAssets}
-              lpManagedAssets={vaultState.lpManagedAssets}
-              lpStakingInfo={vaultState.lpStakingInfo}
-              pendingWithdrawals={vaultState.pendingWithdrawals}
-              totalAssetsRaw={vaultState.totalAssetsRaw}
-              bufferStatus={vaultState.bufferStatus}
-              algoMetrics={vaultState.algoMetrics}
-              harvestGasEstimate={vaultState.harvestGasEstimate}
-              harvestGasMultiplier={vaultState.harvestGasMultiplier}
-              rpcUrl={networkConfig.rpcUrl}
-              vUSDTAddress={networkConfig.vUSDTAddress}
-            />
+          <VaultStrategyAllocationBarCard
+            asterManagedAssets={vaultState.asterManagedAssets}
+            secondaryManagedAssets={vaultState.secondaryManagedAssets}
+            lpManagedAssets={vaultState.lpManagedAssets}
+            lpStakingInfo={vaultState.lpStakingInfo}
+            pendingWithdrawals={vaultState.pendingWithdrawals}
+            totalAssetsRaw={vaultState.totalAssetsRaw}
+            bufferStatus={vaultState.bufferStatus}
+            algoMetrics={vaultState.algoMetrics}
+            harvestGasEstimate={vaultState.harvestGasEstimate}
+            harvestGasMultiplier={vaultState.harvestGasMultiplier}
+            rpcUrl={networkConfig.rpcUrl}
+            vUSDTAddress={networkConfig.vUSDTAddress}
+          />
           <VaultExecutionAuctionRraBidCard
             executionAuctionAddress={executionAuctionAddress}
             tokenAddress={tokenAddress}

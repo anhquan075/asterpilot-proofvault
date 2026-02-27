@@ -299,19 +299,21 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         _rebalanceLp(deployable, lpTargetBps, buffer);
 
         // Pay executor bounty (before secondary absorbs excess)
-        _payExecutorBounty(executor, bountyBps, total);
+        uint256 bountyPaid = _payExecutorBounty(executor, bountyBps, total);
 
         // Secondary rail: absorb remaining idle excess
         _rebalanceSecondary(buffer);
         _parkIdleInVenus(buffer);
 
-
-        // Slippage check: verify totalAssets didn't drop beyond acceptable threshold
+        // Slippage check: verify totalAssets didn't drop beyond acceptable threshold.
+        // The executor bounty is an intentional cost; exclude it from the baseline so
+        // only actual swap losses (not the bounty transfer) trigger this guard.
         {
             uint256 postTotal = totalAssets();
-            uint256 minAcceptable = (total * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
+            uint256 baseline = total > bountyPaid ? total - bountyPaid : 0;
+            uint256 minAcceptable = (baseline * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
             if (postTotal < minAcceptable) {
-                revert ProofVault__SlippageExceeded(total, postTotal, maxSlippageBps);
+                revert ProofVault__SlippageExceeded(baseline, postTotal, maxSlippageBps);
             }
         }
 
@@ -495,12 +497,13 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     }
 
     /// @dev Pay executor bounty from vault's idle assets
+    /// @return actualPaid The exact amount transferred (capped at available balance)
     function _payExecutorBounty(
         address executor,
         uint256 bountyBps,
         uint256 totalAssets_
-    ) internal {
-        if (bountyBps == 0 || executor == address(0)) return;
+    ) internal returns (uint256 actualPaid) {
+        if (bountyBps == 0 || executor == address(0)) return 0;
         uint256 bounty = (totalAssets_ * bountyBps) / BPS_DENOMINATOR;
         uint256 available = IERC20(asset()).balanceOf(address(this));
         bounty = Math.min(bounty, available);
@@ -508,6 +511,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
             IERC20(asset()).safeTransfer(executor, bounty);
             emit BountyPaid(executor, bounty);
         }
+        return bounty;
     }
 
     /// @dev Opportunistic harvest on LP adapter — silent no-op if unavailable or unprofitable

@@ -199,17 +199,17 @@ sequenceDiagram
 
 | Contract                           | Address                                                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `ProofVault`                       | [`0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6`](https://testnet.bscscan.com/address/0xf953624C4b2EB2300454EdaC9B548879F6cFEeB6) |
-| `StrategyEngine`                   | [`0x6fC173849E6a993292F538cA48eB4fd00c3605e5`](https://testnet.bscscan.com/address/0x6fC173849E6a993292F538cA48eB4fd00c3605e5) |
-| `RiskPolicy`                       | [`0xDB16526616a12ED2d0Cb7bfa5681929Fd1e97211`](https://testnet.bscscan.com/address/0xDB16526616a12ED2d0Cb7bfa5681929Fd1e97211) |
-| `CircuitBreaker`                   | [`0xCD58f14320e827E388AeA50Bb48b8E4c1eE48de0`](https://testnet.bscscan.com/address/0xCD58f14320e827E388AeA50Bb48b8E4c1eE48de0) |
-| `SharpeTracker`                    | [`0xE9d9c3564a8dC75c553390f15f7Fbb7a81531BD0`](https://testnet.bscscan.com/address/0xE9d9c3564a8dC75c553390f15f7Fbb7a81531BD0) |
-| `AsterEarnAdapterWithSwap`         | [`0x3d5795ad0f1b160B751ac2a00Cf451c57bb210D8`](https://testnet.bscscan.com/address/0x3d5795ad0f1b160B751ac2a00Cf451c57bb210D8) |
-| `ManagedAdapter` (secondary)       | [`0x5d31f59bE9131B8d884de1c9E2035A9767933881`](https://testnet.bscscan.com/address/0x5d31f59bE9131B8d884de1c9E2035A9767933881) |
-| `StableSwapLPYieldAdapterWithFarm` | [`0x916e3E5225bF6bcf2533343F088921cddC625acd`](https://testnet.bscscan.com/address/0x916e3E5225bF6bcf2533343F088921cddC625acd) |
-| `PegArbExecutor`                   | [`0x6D9C5EE63d8a4eea6E0f6354f38F14525D169be5`](https://testnet.bscscan.com/address/0x6D9C5EE63d8a4eea6E0f6354f38F14525D169be5) |
-| `ExecutionAuction`                 | [`0x800BCDa679e8D458248D4342D8DD53253CC2ffBE`](https://testnet.bscscan.com/address/0x800BCDa679e8D458248D4342D8DD53253CC2ffBE) |
-| Mock USDT                          | [`0x65079A226a23f3F7786aa7FB231f84FB81CB43B3`](https://testnet.bscscan.com/address/0x65079A226a23f3F7786aa7FB231f84FB81CB43B3) |
+| `ProofVault`                       | [`0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D`](https://testnet.bscscan.com/address/0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D) |
+| `StrategyEngine`                   | [`0x6518CFAf53C39D6127723D67402e63E636Dd1c3E`](https://testnet.bscscan.com/address/0x6518CFAf53C39D6127723D67402e63E636Dd1c3E) |
+| `RiskPolicy`                       | [`0x55D9BCB9F13Ca2d5aD3345E60234E48e6A719133`](https://testnet.bscscan.com/address/0x55D9BCB9F13Ca2d5aD3345E60234E48e6A719133) |
+| `CircuitBreaker`                   | [`0xfB5D6f83b1a5c42dFCd3fFAF76d0eF0d5ae5cB66`](https://testnet.bscscan.com/address/0xfB5D6f83b1a5c42dFCd3fFAF76d0eF0d5ae5cB66) |
+| `SharpeTracker`                    | [`0xe4eB72e5d29AA868948F2a691255BAAFf4A8b479`](https://testnet.bscscan.com/address/0xe4eB72e5d29AA868948F2a691255BAAFf4A8b479) |
+| `AsterEarnAdapterWithSwap`         | [`0x096148CE528701614dF518B217A430A88635d561`](https://testnet.bscscan.com/address/0x096148CE528701614dF518B217A430A88635d561) |
+| `ManagedAdapter` (secondary)       | [`0x30d4F9f3e98BadD935872b03F64Bdb4F7AaE8628`](https://testnet.bscscan.com/address/0x30d4F9f3e98BadD935872b03F64Bdb4F7AaE8628) |
+| `StableSwapLPYieldAdapterWithFarm` | [`0x8915910ba90327C8B822D3d61B7cD08f9b5624A5`](https://testnet.bscscan.com/address/0x8915910ba90327C8B822D3d61B7cD08f9b5624A5) |
+| `PegArbExecutor`                   | [`0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c`](https://testnet.bscscan.com/address/0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c) |
+| `ExecutionAuction`                 | [`0x9e5763A7C11DB894A6aA1164cFDc849F9243751B`](https://testnet.bscscan.com/address/0x9e5763A7C11DB894A6aA1164cFDc849F9243751B) |
+| Mock USDT                          | [`0x74bda872E528c58D66d5DBd9Bb9072b06d99f510`](https://testnet.bscscan.com/address/0x74bda872E528c58D66d5DBd9Bb9072b06d99f510) |
 
 ## Network Mode (Feature Flag)
 

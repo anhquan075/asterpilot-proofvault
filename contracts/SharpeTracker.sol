@@ -18,12 +18,15 @@ contract SharpeTracker {
     error SharpeTracker__OnlyEngine();
     error SharpeTracker__EngineAlreadySet();
     error SharpeTracker__ZeroAddress();
+    error SharpeTracker__CallerNotDeployer();
 
     // ── state ──
     int128[30] public observations;
     uint8 public index;
     uint8 public count;
     uint8 public immutable windowSize;
+    /// @dev Stored at construction so setEngine() cannot be front-run by a third party.
+    address private immutable _deployer;
     address public engine;
 
     // ── downside tracking for Sortino ──
@@ -40,15 +43,19 @@ contract SharpeTracker {
     constructor(uint8 windowSize_) {
         if (windowSize_ < MIN_WINDOW || windowSize_ > MAX_WINDOW) revert SharpeTracker__WindowOutOfRange();
         windowSize = windowSize_;
+        _deployer = msg.sender;
     }
 
     /*//////////////////////////////////////////////////////////////
                           STATE-CHANGING FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice One-time engine address setter (resolves circular deploy dependency)
+    /// @notice One-time engine address setter (resolves circular deploy dependency).
+    /// @dev Restricted to the original deployer address so it cannot be front-run.
+    ///      Call this immediately after deploying StrategyEngine.
     /// @param engine_ The StrategyEngine address that will call recordYield
     function setEngine(address engine_) external {
+        if (msg.sender != _deployer) revert SharpeTracker__CallerNotDeployer();
         if (engine != address(0)) revert SharpeTracker__EngineAlreadySet();
         if (engine_ == address(0)) revert SharpeTracker__ZeroAddress();
         engine = engine_;

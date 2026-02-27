@@ -334,6 +334,7 @@ contract StrategyEngine {
     }
 
     /// @notice Full snapshot of all three yield rails and vault composition
+    /// @dev idleUsdt includes Venus-deposited idle (via vault.bufferStatus) for accuracy
     function previewAllRails()
         external
         view
@@ -349,14 +350,17 @@ contract StrategyEngine {
             uint256 targetLpBps_
         )
     {
-        idleUsdt = IERC20(vault.asset()).balanceOf(address(vault));
+        // bufferStatus.current = _idleAssets() = raw balance + venus underlying
+        (, uint256 vaultIdle, ) = vault.bufferStatus();
+        idleUsdt = vaultIdle;
         asterManaged = vault.asterAdapter().managedAssets();
         secondaryManaged = vault.secondaryAdapter().managedAssets();
         address lpAddr = address(vault.lpAdapter());
         lpManaged = lpAddr != address(0)
             ? IManagedAdapter(lpAddr).managedAssets()
             : 0;
-        totalAssets_ = idleUsdt + asterManaged + secondaryManaged + lpManaged;
+        // Use vault.totalAssets() for consistency with ERC-4626 share-price basis
+        totalAssets_ = vault.totalAssets();
 
         if (totalAssets_ > 0) {
             asterShareBps = (asterManaged * BPS_DENOMINATOR) / totalAssets_;
@@ -518,10 +522,9 @@ contract StrategyEngine {
     function _harvestLpRewards() internal {
         address lpAddr = address(vault.lpAdapter());
         if (lpAddr != address(0)) {
-            (bool success, ) = lpAddr.call(
-                abi.encodeWithSignature("harvestRewards()")
-            );
-            (success);
+            // Opportunistic harvest — failure is intentionally ignored; never block execution cycle
+            (bool _ok,) = lpAddr.call(abi.encodeWithSignature("harvestRewards()"));
+            _ok; // suppress "unused local variable" warning
         }
     }
 

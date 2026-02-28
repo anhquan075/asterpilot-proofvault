@@ -83,6 +83,7 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     error ProofVault__VenusDecimalsInvalid();
     error ProofVault__VenusMintFailed(uint256 code);
     error ProofVault__VenusRedeemFailed(uint256 code);
+    error ProofVault__AdapterReportingFailure(address adapter);
 
     // --- Modifiers ---
     modifier onlyEngine() {
@@ -184,18 +185,35 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
     /// @dev Each adapter call is try/catch-guarded: a reverting adapter returns 0 rather than
     ///      propagating the revert and bricking deposits/withdrawals/share-price calculations.
     function totalAssets() public view override returns (uint256) {
+        (uint256 total, ) = _totalAssetsInternal();
+        return total;
+    }
+
+    function _totalAssetsInternal() internal view returns (uint256 total, address failingAdapter) {
         uint256 asterManaged;
-        try asterAdapter.managedAssets() returns (uint256 v) { asterManaged = v; } catch {}
+        try asterAdapter.managedAssets() returns (uint256 v) {
+            asterManaged = v;
+        } catch {
+            failingAdapter = address(asterAdapter);
+        }
 
         uint256 secondaryManaged;
-        try secondaryAdapter.managedAssets() returns (uint256 v) { secondaryManaged = v; } catch {}
+        try secondaryAdapter.managedAssets() returns (uint256 v) {
+            secondaryManaged = v;
+        } catch {
+            if (failingAdapter == address(0)) failingAdapter = address(secondaryAdapter);
+        }
 
         uint256 lpManaged;
         if (address(lpAdapter) != address(0)) {
-            try lpAdapter.managedAssets() returns (uint256 v) { lpManaged = v; } catch {}
+            try lpAdapter.managedAssets() returns (uint256 v) {
+                lpManaged = v;
+            } catch {
+                if (failingAdapter == address(0)) failingAdapter = address(lpAdapter);
+            }
         }
 
-        return _idleAssets() + asterManaged + secondaryManaged + lpManaged;
+        total = _idleAssets() + asterManaged + secondaryManaged + lpManaged;
     }
 
     function deposit(
@@ -261,7 +279,10 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         uint256 lpTargetBps
     ) external nonReentrant onlyEngine {
         if (!configurationLocked) revert ProofVault__NotLocked();
-        uint256 total = totalAssets();
+
+        (uint256 total, address failingStart) = _totalAssetsInternal();
+        if (failingStart != address(0)) revert ProofVault__AdapterReportingFailure(failingStart);
+
         uint256 buffer = _bufferTarget(total);
         uint256 deployable = total > buffer ? total - buffer : 0;
 
@@ -309,7 +330,9 @@ contract ProofVault is ERC4626, Ownable2Step, ReentrancyGuard {
         // The executor bounty is an intentional cost; exclude it from the baseline so
         // only actual swap losses (not the bounty transfer) trigger this guard.
         {
-            uint256 postTotal = totalAssets();
+            (uint256 postTotal, address failingEnd) = _totalAssetsInternal();
+            if (failingEnd != address(0)) revert ProofVault__AdapterReportingFailure(failingEnd);
+
             uint256 baseline = total > bountyPaid ? total - bountyPaid : 0;
             uint256 minAcceptable = (baseline * (BPS_DENOMINATOR - maxSlippageBps)) / BPS_DENOMINATOR;
             if (postTotal < minAcceptable) {

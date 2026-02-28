@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IManagedAdapter} from "./interfaces/IManagedAdapter.sol";
 
@@ -12,6 +13,7 @@ interface IVToken {
     function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
     function balanceOf(address owner) external view returns (uint256);
     function exchangeRateStored() external view returns (uint256);
+    function decimals() external view returns (uint8);
 }
 
 /// @title VenusYieldAdapter — Yield-bearing buffer integrating Venus Protocol (vUSDT)
@@ -26,9 +28,11 @@ contract VenusYieldAdapter is Ownable2Step, IManagedAdapter {
     error VenusAdapter__ZeroAmount();
     error VenusAdapter__MintFailed(uint256 errorCode);
     error VenusAdapter__RedeemFailed(uint256 errorCode);
+    error VenusAdapter__VenusDecimalsInvalid();
 
     IERC20 private immutable _asset;
     IVToken private immutable _vToken;
+    uint256 public immutable exchangeRateScale;
     address public vault;
     bool public configurationLocked;
 
@@ -46,6 +50,16 @@ contract VenusYieldAdapter is Ownable2Step, IManagedAdapter {
         if (asset_ == address(0) || vToken_ == address(0)) revert VenusAdapter__ZeroAddress();
         _asset = IERC20(asset_);
         _vToken = IVToken(vToken_);
+
+        uint8 assetDecimals = IERC20Metadata(asset_).decimals();
+        uint8 vTokenDecimals = _vToken.decimals();
+        uint256 exponent = 18 + uint256(assetDecimals);
+
+        if (exponent < vTokenDecimals || exponent - vTokenDecimals > 77) {
+            revert VenusAdapter__VenusDecimalsInvalid();
+        }
+
+        exchangeRateScale = 10 ** (exponent - vTokenDecimals);
     }
 
     function setVault(address vault_) external onlyOwner {
@@ -67,8 +81,8 @@ contract VenusYieldAdapter is Ownable2Step, IManagedAdapter {
     function managedAssets() external view returns (uint256) {
         uint256 vTokenBalance = _vToken.balanceOf(address(this));
         uint256 exchangeRate = _vToken.exchangeRateStored();
-        // exchangeRate is scaled by 1e18
-        uint256 underlyingBalance = (vTokenBalance * exchangeRate) / 1e18;
+        // exchangeRate is scaled by 10^(18 + underlyingDecimals - vTokenDecimals)
+        uint256 underlyingBalance = (vTokenBalance * exchangeRate) / exchangeRateScale;
         return underlyingBalance + _asset.balanceOf(address(this));
     }
 

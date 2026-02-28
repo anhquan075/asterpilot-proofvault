@@ -19,10 +19,10 @@
 
 const { ethers } = require("hardhat");
 
-// Known testnet addresses from V2_TESTNET_PRESET (redeployed 2026-02-27 v2)
-const ASTER_ADAPTER_ADDR = "0x096148CE528701614dF518B217A430A88635d561";
-const CIRCUIT_BREAKER_ADDR = "0xfB5D6f83b1a5c42dFCd3fFAF76d0eF0d5ae5cB66";
-const USDT_ADDR = "0x74bda872E528c58D66d5DBd9Bb9072b06d99f510";
+// Known testnet addresses from deployment
+const ASTER_ADAPTER_ADDR = "0xA231a4d5bc9749FC26d109Aa3BebE8CC2b622dcF";
+const LP_ADAPTER_ADDR = "0xf6ff5C42accaC935Ca6b83687280A1E8dc637D33";
+const USDT_ADDR = "0xd827C3F7402cA705F5Dae317203dd3b69796eB81";
 
 const SEED_AMOUNT = ethers.parseUnits("10000000", 18); // 10M tokens
 
@@ -31,20 +31,18 @@ async function main() {
   console.log("Signer:", signer.address);
 
   // ── 1. Discover addresses ──────────────────────────────────────────────────
-  const asterAdapter = new ethers.Contract(
-    ASTER_ADAPTER_ADDR,
-    ["function router() view returns (address)"],
+  const lpAdapter = new ethers.Contract(
+    LP_ADAPTER_ADDR,
+    [
+      "function router() view returns (address)",
+      "function pool() view returns (address)",
+    ],
     signer
   );
-  const routerAddr = await asterAdapter.router();
+  const routerAddr = await lpAdapter.router();
   console.log("Router:        ", routerAddr);
 
-  const circuitBreaker = new ethers.Contract(
-    CIRCUIT_BREAKER_ADDR,
-    ["function stableSwapPool() view returns (address)"],
-    signer
-  );
-  const poolAddr = await circuitBreaker.stableSwapPool();
+  const poolAddr = await lpAdapter.pool();
   console.log("StableSwapPool:", poolAddr);
 
   const pool = new ethers.Contract(

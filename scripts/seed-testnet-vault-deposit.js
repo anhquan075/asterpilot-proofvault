@@ -13,8 +13,8 @@
 
 const { ethers } = require("hardhat");
 
-const VAULT_ADDR = "0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D";
-const USDT_ADDR = "0x74bda872E528c58D66d5DBd9Bb9072b06d99f510"; // mock USDT (no access control on mint)
+const VAULT_ADDR = "0x0Bb17DbBF19Db46bA29e322675B5bc39e861C5a1";
+const USDT_ADDR = "0xd827C3F7402cA705F5Dae317203dd3b69796eB81"; // mock USDT (no access control on mint)
 
 const MINT_AMOUNT = ethers.parseUnits("100000", 18); // 100k USDT minted
 const DEPOSIT_AMOUNT = ethers.parseUnits("50000", 18); // 50k USDT deposited

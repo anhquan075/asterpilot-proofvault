@@ -15,7 +15,7 @@
  *   (requires BNB_MAINNET_RPC_URL in .env and hardhat forking enabled)
  */
 
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
 
 // ── Mainnet protocol addresses ────────────────────────────────────────────────
 const USDT_ADDR = "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT (18 dec)
@@ -71,7 +71,33 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
   console.log("\nDeployer:", deployer.address);
-  console.log("Block:", await ethers.provider.getBlockNumber());
+
+  // ── 0. RESET FORK TO PINNED BLOCK ──────────────────────────────────────────
+  // Pinning a block number avoids "missing trie node" errors on public RPCs
+  // that prune historical state quickly.
+  const rpcUrl =
+    process.env.BNB_ARCHIVE_RPC_URL ||
+    process.env.BNB_MAINNET_RPC_URL ||
+    "https://bsc-dataseed.bnbchain.org";
+
+  // Get latest block and subtract a bit to be safe
+  const latestBlock = await ethers.provider.getBlockNumber();
+  const forkBlock = latestBlock - 50;
+  console.log(`Resetting fork to block ${forkBlock} using ${rpcUrl}...`);
+
+  await network.provider.request({
+    method: "hardhat_reset",
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: rpcUrl,
+          blockNumber: forkBlock,
+        },
+      },
+    ],
+  });
+  console.log("Fork reset successful.");
+  console.log("Current Block:", await ethers.provider.getBlockNumber());
 
   // ── 1. PROBE LIVE MAINNET STATE ───────────────────────────────────────────
   console.log(
@@ -83,7 +109,7 @@ async function main() {
     [
       "function latestRoundData() view returns (uint80,int256,uint256,uint256,uint80)",
     ],
-    ethers.provider
+    deployer // Use signer instead of provider to avoid historical block hardfork issues
   );
   await probe("Chainlink USDT/USD", async () => {
     const data = await chainlink.latestRoundData();
@@ -99,7 +125,7 @@ async function main() {
       "function get_virtual_price() view returns (uint256)",
       "function balances(uint256) view returns (uint256)",
     ],
-    ethers.provider
+    deployer // Use signer instead of provider
   );
   await probe("StableSwap virtual_price", async () => {
     const vp = await ssPool.get_virtual_price();
@@ -119,7 +145,7 @@ async function main() {
   const factory = new ethers.Contract(
     PANCAKE_V2_FACTORY,
     ["function getPair(address,address) view returns (address)"],
-    ethers.provider
+    deployer // Use signer instead of provider
   );
   const pairAddr = await probe("PancakeSwap USDT/USDF pair", async () => {
     const addr = await factory.getPair(USDT_ADDR, USDF_ADDR);
@@ -131,7 +157,7 @@ async function main() {
         "function getReserves() view returns (uint112,uint112,uint32)",
         "function token0() view returns (address)",
       ],
-      ethers.provider
+      deployer // Use signer instead of provider
     );
     const [r0, r1] = await pair.getReserves();
     return `${addr} r0=${ethers.formatUnits(r0, 18)} r1=${ethers.formatUnits(
@@ -158,7 +184,7 @@ async function main() {
       "function transfer(address,uint256) returns (bool)",
       "function approve(address,uint256) returns (bool)",
     ],
-    ethers.provider
+    deployer // Use signer instead of provider
   );
   await probe("USDT whale balance", async () => {
     const bal = await usdt.balanceOf(WHALE);

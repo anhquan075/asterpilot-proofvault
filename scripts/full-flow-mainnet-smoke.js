@@ -14,7 +14,7 @@ async function main() {
     params: [
       {
         forking: {
-          jsonRpcUrl: "https://bsc-mainnet.public.blastapi.io",
+          jsonRpcUrl: process.env.BNB_ARCHIVE_NODE_URL || process.env.BNB_MAINNET_RPC_URL || "https://bscrpc.com",
         },
       },
     ],

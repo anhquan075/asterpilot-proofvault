@@ -14,7 +14,7 @@ async function main() {
     params: [
       {
         forking: {
-          jsonRpcUrl: process.env.BNB_MAINNET_RPC_URL || "https://bsc-dataseed.binance.org",
+          jsonRpcUrl: "https://bsc-mainnet.public.blastapi.io",
         },
       },
     ],

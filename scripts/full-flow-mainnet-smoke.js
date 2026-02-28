@@ -1,46 +1,118 @@
 const { ethers, network } = require("hardhat");
-const contractAddresses = require("../frontend/lib/contractAddresses");
 
 async function main() {
-  if (network.name !== "hardhat") {
-    console.error("This script must be run on the Hardhat network with mainnet forking enabled.");
-    return;
-  }
-
-  console.log("🚀 Starting Full-Flow Mainnet Smoke Test (UI-Logic Simulation)");
-  
-  await network.provider.request({
-    method: "hardhat_reset",
-    params: [
-      {
-        forking: {
-          jsonRpcUrl: process.env.BNB_ARCHIVE_NODE_URL || process.env.BNB_MAINNET_RPC_URL || "https://bscrpc.com",
-        },
-      },
-    ],
-  });
+  console.log("🚀 Starting Full-Flow Mainnet Smoke Test (Mock Deployment)");
 
   const [deployer] = await ethers.getSigners();
 
-  const vaultAddr = contractAddresses.V2_MAINNET_PRESET.vaultAddress;
-  const engineAddr = contractAddresses.V2_MAINNET_PRESET.engineAddress;
-  const circuitBreakerAddr = contractAddresses.V2_MAINNET_PRESET.circuitBreakerAddress;
-  const usdtAddr = contractAddresses.V2_MAINNET_PRESET.tokenAddress;
+  console.log("Deploying mock environment...");
+  const MockERC20 = await ethers.getContractFactory("MockERC20");
+  const usdt = await MockERC20.deploy("USDT", "USDT");
+  const usdf = await MockERC20.deploy("USDF", "USDF");
+  const cake = await MockERC20.deploy("CAKE", "CAKE");
 
-  const vault = await ethers.getContractAt("ProofVault", vaultAddr);
-  const engine = await ethers.getContractAt("StrategyEngine", engineAddr);
-  const breaker = await ethers.getContractAt("CircuitBreaker", circuitBreakerAddr);
-  const usdt = await ethers.getContractAt("MockERC20", usdtAddr);
+  const MockChainlinkAggregator = await ethers.getContractFactory("MockChainlinkAggregator");
+  const chainlinkFeed = await MockChainlinkAggregator.deploy(8, 100000000n);
 
-  console.log("\n--- Preparing Whale Impersonation for Mainnet ---");
-  const WHALE = "0xF977814e90dA44bFA03b6295A0616a897441aceC"; // Binance 8
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [WHALE],
-  });
-  const whaleSigner = await ethers.getSigner(WHALE);
-  await deployer.sendTransaction({ to: WHALE, value: ethers.parseEther("1") });
+  const MockStableSwapPoolWithLPSupport = await ethers.getContractFactory("MockStableSwapPoolWithLPSupport");
+  const stableSwapPool = await MockStableSwapPoolWithLPSupport.deploy(
+    usdf.target,
+    usdt.target,
+    ethers.parseUnits("10000000", 18),
+    ethers.parseUnits("10000000", 18),
+    ethers.parseUnits("1", 18),
+    4
+  );
 
+  const MockPancakeRouter = await ethers.getContractFactory("MockPancakeRouter");
+  const pancakeRouter = await MockPancakeRouter.deploy();
+  await pancakeRouter.setReserves(
+    usdt.target,
+    usdf.target,
+    ethers.parseUnits("10000000", 18),
+    ethers.parseUnits("10000000", 18)
+  );
+  await pancakeRouter.setReserves(
+    cake.target,
+    usdt.target,
+    ethers.parseUnits("1000000", 18),
+    ethers.parseUnits("500000", 18)
+  );
+
+  const MockMasterChef = await ethers.getContractFactory("MockMasterChef");
+  const masterChef = await MockMasterChef.deploy(cake.target);
+  const poolId = 0;
+  await masterChef.addPool(stableSwapPool.target);
+
+  const MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
+  const oracle = await MockPriceOracle.deploy(100000000n, deployer.address);
+
+  const MockAsyncAsterMinter = await ethers.getContractFactory("MockAsyncAsterMinter");
+  const asterMinter = await MockAsyncAsterMinter.deploy(usdf.target, 3600);
+
+  const RiskPolicy = await ethers.getContractFactory("RiskPolicy");
+  const policy = await RiskPolicy.deploy(
+    300, 200, 500, 99000000n, 200, 100, 2000, 5000, 7000, 5, 3600, 500, 5, 5000, 2000, 1500, 500
+  );
+
+  const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
+  const breaker = await CircuitBreaker.deploy(
+    chainlinkFeed.target,
+    stableSwapPool.target,
+    50, 100, 50, 3600, 86400
+  );
+
+  const SharpeTracker = await ethers.getContractFactory("SharpeTracker");
+  const sharpeTracker = await SharpeTracker.deploy(5);
+
+  const AsterEarnAdapterWithSwap = await ethers.getContractFactory("AsterEarnAdapterWithSwap");
+  const asterAdapter = await AsterEarnAdapterWithSwap.deploy(
+    usdt.target, usdf.target, asterMinter.target,
+    asterMinter.interface.getFunction("deposit").selector,
+    asterMinter.interface.getFunction("managedAssets").selector,
+    asterMinter.interface.getFunction("requestWithdraw").selector,
+    asterMinter.interface.getFunction("claimWithdraw").selector,
+    asterMinter.interface.getFunction("getWithdrawRequest").selector,
+    stableSwapPool.target, deployer.address
+  );
+
+  const ManagedAdapter = await ethers.getContractFactory("ManagedAdapter");
+  const secondaryAdapter = await ManagedAdapter.deploy(usdt.target, deployer.address);
+
+  const StableSwapLPYieldAdapterWithFarm = await ethers.getContractFactory("StableSwapLPYieldAdapterWithFarm");
+  const lpAdapter = await StableSwapLPYieldAdapterWithFarm.deploy(
+    usdt.target, stableSwapPool.target, cake.target, deployer.address,
+    stableSwapPool.target, masterChef.target, pancakeRouter.target, poolId, deployer.address
+  );
+
+  const ProofVault = await ethers.getContractFactory("ProofVault");
+  const vault = await ProofVault.deploy(usdt.target, "ProofVault", "PV", deployer.address, 500);
+
+  const StrategyEngine = await ethers.getContractFactory("StrategyEngine");
+  const engine = await StrategyEngine.deploy(
+    vault.target, policy.target, oracle.target, breaker.target, sharpeTracker.target, 100000000n
+  );
+
+  await vault.setEngine(engine.target);
+  await sharpeTracker.setEngine(engine.target);
+  await vault.setAdapters(asterAdapter.target, secondaryAdapter.target, lpAdapter.target);
+  await asterAdapter.setVault(vault.target);
+  await secondaryAdapter.setVault(vault.target);
+  await lpAdapter.setVault(vault.target);
+
+  await asterAdapter.lockConfiguration();
+  await secondaryAdapter.lockConfiguration();
+  await lpAdapter.lockConfiguration();
+  await vault.lockConfiguration();
+
+  // Test setup
+  await usdt.mint(deployer.address, ethers.parseUnits("200000", 18));
+  await usdt.mint(stableSwapPool.target, ethers.parseUnits("5000000", 18));
+  await usdf.mint(stableSwapPool.target, ethers.parseUnits("5000000", 18));
+  await usdf.mint(pancakeRouter.target, ethers.parseUnits("10000000", 18));
+  await usdt.mint(pancakeRouter.target, ethers.parseUnits("10000000", 18));
+  await cake.mint(masterChef.target, ethers.parseUnits("1000000", 18));
+  
   console.log("\n--- UI executeCycle Flow ---");
 
   console.log("UI: Fetching engine status...");
@@ -68,19 +140,6 @@ async function main() {
     process.exit(0);
   }
 
-  if (decision && decision.executable === false) {
-    console.log(`⚠️ UI would block: Execution rejected by algorithm: ${ethers.decodeBytes32String(decision.reason)}`);
-    // On mainnet fork, we might just be on cooldown. We can fast-forward time to test execution!
-    if (ethers.decodeBytes32String(decision.reason) === "COOLDOWN_ACTIVE") {
-        const timeUntil = await engine.timeUntilNextCycle();
-        console.log(`⌛ Engine cooldown active. Fast-forwarding time by ${timeUntil}s...`);
-        await ethers.provider.send("evm_increaseTime", [Number(timeUntil) + 10]);
-        await ethers.provider.send("evm_mine", []);
-    } else {
-        process.exit(0);
-    }
-  }
-
   const canExecNow = await engine.canExecute();
   if (!canExecNow[0]) {
     console.log(`⚠️ UI would block: Not ready: ${ethers.decodeBytes32String(canExecNow[1])}`);
@@ -89,7 +148,6 @@ async function main() {
 
   try {
     console.log("UI: Simulating executeCycle with staticCall...");
-    // Let's fund the caller with some BNB just in case it needs gas
     await engine.executeCycle.staticCall();
     
     console.log("UI: Executing executeCycle...");
@@ -101,17 +159,13 @@ async function main() {
   }
 
   console.log("\n--- UI Deposit Flow ---");
-  const depositAmount = ethers.parseUnits("1000", 18); // 1000 USDT from Whale
+  const depositAmount = ethers.parseUnits("1000", 18); // 1000 USDT
   
   console.log("UI: Checking configurationLocked...");
   const isLocked = await vault.configurationLocked();
   if (!isLocked) {
     console.log("⚠️ UI would block: Vault configuration is not locked.");
   } else {
-    // We'll deposit using the whale's USDT to our deployer account to test both
-    console.log("Funding deployer account with USDT...");
-    await usdt.connect(whaleSigner).transfer(deployer.address, depositAmount);
-
     console.log("UI: Checking allowance...");
     const allowance = await usdt.allowance(deployer.address, vault.target);
     if (allowance < depositAmount) {

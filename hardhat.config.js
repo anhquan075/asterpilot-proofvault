@@ -45,8 +45,8 @@ module.exports = {
         url: "https://binance.llamarpc.com",
         enabled: false, // We will enable it dynamically in the scripts via hardhat_reset
       },
-      chainId: 31337,
-      hardfork: "shanghai",
+      chainId: 56,
+      hardfork: "cancun",
       allowUnlimitedContractSize: true,
       initialBaseFeePerGas: 0,
     },

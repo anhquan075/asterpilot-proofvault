@@ -144,10 +144,14 @@ export function useVaultV2WriteActions({ refresh }) {
         if (allowance < amount) {
           setStatus("Approving token...");
           if (allowance > 0n) {
-            const resetTx = await token.approve(vaultContractAddress, 0n);
+            const resetTx = await token.approve(vaultContractAddress, 0n, {
+              gasLimit: 60000,
+            });
             await resetTx.wait();
           }
-          const approveTx = await token.approve(vaultContractAddress, amount);
+          const approveTx = await token.approve(vaultContractAddress, amount, {
+            gasLimit: 100000,
+          });
           await approveTx.wait();
         }
 
@@ -161,7 +165,9 @@ export function useVaultV2WriteActions({ refresh }) {
         }
 
         setStatus("Depositing...");
-        const tx = await vault.deposit(amount, signerAddress);
+        const tx = await vault.deposit(amount, signerAddress, {
+          gasLimit: 1200000, // Sane limit for deposit + Venus park + harvest
+        });
         await tx.wait();
         appendTx("Deposit", tx.hash, "success", "Deposit mined");
         await refresh(refreshArgs);
@@ -213,7 +219,9 @@ export function useVaultV2WriteActions({ refresh }) {
         }
 
         setStatus("Withdrawing...");
-        const tx = await vault.withdraw(amount, userAddr, userAddr);
+        const tx = await vault.withdraw(amount, userAddr, userAddr, {
+          gasLimit: 1200000, // Sane limit for potential Venus redemption + stack
+        });
         await tx.wait();
         appendTx("Withdraw", tx.hash, "success", "Withdraw mined");
         await refresh(refreshArgs);
@@ -306,7 +314,9 @@ export function useVaultV2WriteActions({ refresh }) {
         await engine.executeCycle.staticCall();
 
         setStatus("Executing cycle...");
-        const tx = await engine.executeCycle();
+        const tx = await engine.executeCycle({
+          gasLimit: 5000000, // Full rebalance is heavy (swaps + many transfers)
+        });
         await tx.wait();
         appendTx(
           "Execute Cycle",
@@ -476,7 +486,9 @@ export function useVaultV2WriteActions({ refresh }) {
         );
 
         setStatus("Executing arbitrage...");
-        const tx = await pegArb.executeArb();
+        const tx = await pegArb.executeArb({
+          gasLimit: 1000000, // Sane limit for PegArb swaps
+        });
         await tx.wait();
         appendTx("Execute Arb", tx.hash, "success", "Arbitrage executed");
         await refresh(refreshArgs);

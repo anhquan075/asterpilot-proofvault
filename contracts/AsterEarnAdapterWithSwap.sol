@@ -240,7 +240,7 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
 
     // ── internals ──
 
-    /// @dev Swap USDT → USDF via StableSwap pool (coin1=USDT → coin0=USDF).
+    /// @dev Swap USDT → USDF via StableSwap pool (coin0=USDT → coin1=USDF).
     ///      StableSwap maintains near-1:1 peg; minOut = input * (1 - slippage).
     function _swapUsdtToUsdf(uint256 usdtAmount) internal returns (uint256 usdfReceived) {
         if (usdtAmount == 0) revert AsterEarnAdapterWithSwap__ZeroAmount();
@@ -248,22 +248,22 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         uint256 minUsdfOut = usdtAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
         _inputAsset.forceApprove(address(swapPool), usdtAmount);
-        // coin 1 = USDT (sell), coin 0 = USDF (buy) — pool: coin0=USDF, coin1=USDT
-        usdfReceived = swapPool.exchange(1, 0, usdtAmount, minUsdfOut);
+        // coin 0 = USDT (sell), coin 1 = USDF (buy) — pool: coin0=USDT, coin1=USDF
+        usdfReceived = swapPool.exchange(0, 1, usdtAmount, minUsdfOut);
         _inputAsset.forceApprove(address(swapPool), 0);
 
         emit SwapExecuted(usdtAmount, usdfReceived);
     }
 
-    /// @dev Swap USDF → USDT via StableSwap pool (coin0=USDF → coin1=USDT).
+    /// @dev Swap USDF → USDT via StableSwap pool (coin1=USDF → coin0=USDT).
     function _swapUsdfToUsdt(uint256 usdfAmount) internal returns (uint256 usdtReceived) {
         if (usdfAmount == 0) return 0;
 
         uint256 minUsdtOut = usdfAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
         _outputAsset.forceApprove(address(swapPool), usdfAmount);
-        // coin 0 = USDF (sell), coin 1 = USDT (buy) — pool: coin0=USDF, coin1=USDT
-        usdtReceived = swapPool.exchange(0, 1, usdfAmount, minUsdtOut);
+        // coin 1 = USDF (sell), coin 0 = USDT (buy) — pool: coin0=USDT, coin1=USDF
+        usdtReceived = swapPool.exchange(1, 0, usdfAmount, minUsdtOut);
         _outputAsset.forceApprove(address(swapPool), 0);
 
         emit ReverseSwapExecuted(usdfAmount, usdtReceived);

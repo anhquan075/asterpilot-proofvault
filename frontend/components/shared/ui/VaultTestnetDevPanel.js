@@ -60,8 +60,13 @@ export function VaultTestnetDevPanel({
         ["function mint(address to, uint256 amount) external"],
         signer
       );
-      const amount = parseUnits("10000", decimals != null ? Number(decimals) : 18);
-      const tx = await mockToken.mint(walletAddress, amount);
+      const amount = parseUnits(
+        "10000",
+        decimals != null ? Number(decimals) : 18
+      );
+      const tx = await mockToken.mint(walletAddress, amount, {
+        gasLimit: 100000,
+      });
       await tx.wait();
       setMintMsg("Minted 10,000 mock USDT");
       if (onMinted) onMinted();
@@ -75,45 +80,85 @@ export function VaultTestnetDevPanel({
   const mintSuccess = mintMsg?.startsWith("Minted");
 
   return (
-    <div style={{
-      margin: "0 12px 6px",
-      padding: "10px 16px",
-      background: "rgba(234, 179, 8, 0.06)",
-      border: "1px solid rgba(234, 179, 8, 0.25)",
-      borderRadius: "8px",
-      display: "flex",
-      alignItems: "center",
-      gap: "20px",
-      flexWrap: "wrap",
-      fontSize: "12px",
-      fontFamily: "inherit",
-    }}>
-
+    <div
+      style={{
+        margin: "0 12px 6px",
+        padding: "10px 16px",
+        background: "rgba(234, 179, 8, 0.06)",
+        border: "1px solid rgba(234, 179, 8, 0.25)",
+        borderRadius: "8px",
+        display: "flex",
+        alignItems: "center",
+        gap: "20px",
+        flexWrap: "wrap",
+        fontSize: "12px",
+        fontFamily: "inherit",
+      }}
+    >
       {/* Testnet badge */}
-      <div style={{ display: "flex", alignItems: "center", gap: "7px", color: "#FBBF24", fontWeight: 700, letterSpacing: "0.03em" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "7px",
+          color: "#FBBF24",
+          fontWeight: 700,
+          letterSpacing: "0.03em",
+        }}
+      >
         <Radio size={14} />
         <span>TESTNET · BSC Testnet · Chain 97</span>
-        <span style={{ color: "rgba(251,191,36,0.45)", fontWeight: 400 }}>— mock contracts</span>
+        <span style={{ color: "rgba(251,191,36,0.45)", fontWeight: 400 }}>
+          — mock contracts
+        </span>
       </div>
 
       {/* Live stats */}
-      <div style={{ display: "flex", gap: "18px", color: "rgba(251, 191, 36, 0.75)" }}>
-        <span>TVL: <strong style={{ color: "#FBBF24" }}>{fmtTokens(totalAssetsRaw, decimals)}</strong></span>
-        <span>Cycles: <strong style={{ color: "#FBBF24" }}>{cycleCountVal ?? "—"}</strong></span>
-        <span>Wallet: <strong style={{ color: "#FBBF24" }}>{fmtTokens(userTokenBalance, decimals)} USDT</strong></span>
+      <div
+        style={{
+          display: "flex",
+          gap: "18px",
+          color: "rgba(251, 191, 36, 0.75)",
+        }}
+      >
+        <span>
+          TVL:{" "}
+          <strong style={{ color: "#FBBF24" }}>
+            {fmtTokens(totalAssetsRaw, decimals)}
+          </strong>
+        </span>
+        <span>
+          Cycles:{" "}
+          <strong style={{ color: "#FBBF24" }}>{cycleCountVal ?? "—"}</strong>
+        </span>
+        <span>
+          Wallet:{" "}
+          <strong style={{ color: "#FBBF24" }}>
+            {fmtTokens(userTokenBalance, decimals)} USDT
+          </strong>
+        </span>
       </div>
 
       {/* Mint button + explorer link */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "auto" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginLeft: "auto",
+        }}
+      >
         {mintMsg && (
-          <span style={{
-            color: mintSuccess ? "#4ADE80" : "#F87171",
-            fontSize: "11px",
-            maxWidth: "200px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
+          <span
+            style={{
+              color: mintSuccess ? "#4ADE80" : "#F87171",
+              fontSize: "11px",
+              maxWidth: "200px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {mintMsg}
           </span>
         )}
@@ -127,13 +172,15 @@ export function VaultTestnetDevPanel({
             padding: "4px 14px",
             borderRadius: "6px",
             border: "1px solid rgba(234, 179, 8, 0.4)",
-            background: mintBusy ? "rgba(234, 179, 8, 0.04)" : "rgba(234, 179, 8, 0.12)",
+            background: mintBusy
+              ? "rgba(234, 179, 8, 0.04)"
+              : "rgba(234, 179, 8, 0.12)",
             color: "#FBBF24",
             fontSize: "12px",
             fontWeight: 600,
             fontFamily: "inherit",
-            cursor: (mintBusy || !signer) ? "not-allowed" : "pointer",
-            opacity: (mintBusy || !signer) ? 0.55 : 1,
+            cursor: mintBusy || !signer ? "not-allowed" : "pointer",
+            opacity: mintBusy || !signer ? 0.55 : 1,
             transition: "opacity 0.15s",
           }}
         >
@@ -146,7 +193,12 @@ export function VaultTestnetDevPanel({
               rel="noopener noreferrer"
               title="View mock USDT on testnet BSC scan"
               onClick={(e) => e.stopPropagation()}
-              style={{ color: "rgba(251,191,36,0.5)", display: "inline-flex", alignItems: "center", marginLeft: "4px" }}
+              style={{
+                color: "rgba(251,191,36,0.5)",
+                display: "inline-flex",
+                alignItems: "center",
+                marginLeft: "4px",
+              }}
             >
               <ExternalLink size={10} />
             </a>

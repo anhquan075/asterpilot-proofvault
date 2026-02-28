@@ -239,12 +239,16 @@ export function VaultExecutionAuctionRraBidCard({
           signer
         );
         onStatus?.("Approving bid token...");
-        const approveTx = await token.approve(executionAuctionAddress, amount);
+        const approveTx = await token.approve(executionAuctionAddress, amount, {
+          gasLimit: 100000,
+        });
         await approveTx.wait();
       }
 
       onStatus?.("Placing bid...");
-      const tx = await auction.bid(amount);
+      const tx = await auction.bid(amount, {
+        gasLimit: 300000,
+      });
       await tx.wait();
       onStatus?.("Bid placed");
       setBidAmount("");
@@ -277,7 +281,9 @@ export function VaultExecutionAuctionRraBidCard({
         signer
       );
       onStatus?.("Executing as winner...");
-      const tx = await auction.winnerExecute();
+      const tx = await auction.winnerExecute({
+        gasLimit: 5000000, // Winner execution can be heavy rebalance
+      });
       await tx.wait();
       onStatus?.("Winner execute confirmed");
       await fetchState();
@@ -301,7 +307,9 @@ export function VaultExecutionAuctionRraBidCard({
         signer
       );
       onStatus?.("Fallback executing...");
-      const tx = await auction.fallbackExecute();
+      const tx = await auction.fallbackExecute({
+        gasLimit: 5000000, // Fallback execution is a full rebalance
+      });
       await tx.wait();
       onStatus?.("Fallback execute confirmed");
       await fetchState();
@@ -325,7 +333,9 @@ export function VaultExecutionAuctionRraBidCard({
         signer
       );
       onStatus?.("Claiming refund...");
-      const tx = await auction.claimRefund();
+      const tx = await auction.claimRefund({
+        gasLimit: 150000,
+      });
       await tx.wait();
       onStatus?.("Refund claimed");
       await fetchState();

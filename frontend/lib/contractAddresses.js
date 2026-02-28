@@ -4,22 +4,21 @@
 // networkConfig.js imports these as fallback values.
 
 // BNB Chain Mainnet (Chain ID 56)
-// Deployed: 2026-02-27 (v2 r5) via scripts/deploy-mainnet-full-stack.js
-// Fix r5: Correct USDF address (0x5A110fC = Astherus USDF, actual pool coin1)
-//         Fix exchange coin indices: exchange(0,1) for USDT→USDF, exchange(1,0) for USDF→USDT
+// Deployed: 2026-02-28 (v2) via scripts/DeployMainnetFullStack.js
+// Fix: Corrected Venus decimal scaling and Aster swap indices
 // Deployer: 0xB789D888A53D34f6701C1A5876101Cb32dbF17cF
 export const V2_MAINNET_PRESET = {
-  vaultAddress: "0x2db50C57F8F3D64bF9EfD8e387b460C744c3B5a8",
-  engineAddress: "0x0b62Db1A942b4346F99516746b883eb848292126",
+  vaultAddress: "0x377ca215D07794C904e6B000B25B11934FE5d2f1",
+  engineAddress: "0xa2c09C35F91E181e20872706597Ef1E333BB8A1f",
   tokenAddress: "0x55d398326f99059fF775485246999027B3197955", // BSC USDT
-  circuitBreakerAddress: "0x7B64283e43A15DCE74517a9B43Bcb110ABcb9bD6",
-  sharpeTrackerAddress: "0x51cB598F207E8D7Aee8138864e8Ec22313c4bA66",
-  pegArbExecutorAddress: "0x178Ea822aDa80c21385CEB0E153D887Dd50b8779",
-  riskPolicyAddress: "0xfC01B5b5Feb7Cd83E33156D3e1ea55Cc33DF501F",
-  asterAdapterAddress: "0x636888514c3a475817eDc71F2000460925Ff1399",
-  secondaryAdapterAddress: "0xFE4680524fdFEF452CeD1fafF5319CD05380E92b",
-  lpAdapterAddress: "0xDb5a6b027EA60bdbec6D45212F353Ee9a6099009",
-  executionAuctionAddress: "0xa9F21bCCD4B4Be87EE8Cb6Ab1841B6597513CDdc",
+  circuitBreakerAddress: "0x8f2e3c9B29ebc89785101e8f291b299f5e04d65B",
+  sharpeTrackerAddress: "0x6520D0366A43081008049CdD4c87Db3A5ec203B8",
+  pegArbExecutorAddress: "0x16D0b61daF75C955784BE0ff9B484F3a095b1408",
+  riskPolicyAddress: "0xE15296aB11d75A093A18a7912ad5F93Bc6313cdB",
+  asterAdapterAddress: "0x477be4B8485fA3a56Ca7eE6d025A6bDBea1Be35c",
+  secondaryAdapterAddress: "0x0E16c32De0272B24E1064C3F069F6b9AE4a13254",
+  lpAdapterAddress: "0x0000000000000000000000000000000000000000",
+  executionAuctionAddress: "0x6f7ba78e3916AAC9e158E266c786dFbBa99FAa24",
 };
 
 // BNB Chain Testnet (Chain ID 97)

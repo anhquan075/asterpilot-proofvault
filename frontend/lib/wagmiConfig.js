@@ -1,10 +1,28 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { bsc, bscTestnet } from 'wagmi/chains';
+import { defineChain } from 'viem';
+
+export const creditcoinTestnet = defineChain({
+  id: 102031,
+  name: 'Creditcoin Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Test Creditcoin',
+    symbol: 'tCTC',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.cc3-testnet.creditcoin.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'Blockscout', url: 'https://creditcoin-testnet.blockscout.com' },
+  },
+  testnet: true,
+});
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'ProofVault',
   projectId: 'YOUR_PROJECT_ID', // Get from https://cloud.walletconnect.com
-  chains: [bsc, bscTestnet],
+  chains: [bsc, bscTestnet, creditcoinTestnet],
   ssr: false,
   theme: {
     blurs: {

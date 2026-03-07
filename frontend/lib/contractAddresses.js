@@ -37,3 +37,18 @@ export const V2_TESTNET_PRESET = {
   secondaryAdapterAddress: "0x30d4F9f3e98BadD935872b03F64Bdb4F7AaE8628",
   executionAuctionAddress: "0x9e5763A7C11DB894A6aA1164cFDc849F9243751B",
 };
+
+// Creditcoin Testnet (Hella, Chain ID 102031)
+// Deployed: 2026-03-07 for BUIDL CTC Hackathon
+export const CREDITCOIN_TESTNET_PRESET = {
+  vaultAddress: "0xD44CF9da553F6e552F6C99608Df0B319E64803ce",
+  engineAddress: "0x26bD06A5C03Be622027d3A6176B3AFEf4AF53c1b",
+  tokenAddress: "0x7cee56b267Fe556d813616b4b74e4292CA7DC4b3", // mock USDT
+  circuitBreakerAddress: "0x35db81bbC0F1A00268f94581f4B906ABd9Ef2112",
+  sharpeTrackerAddress: "0x39bC71136e93143cD0BcC0b25E64c876545b4f48",
+  pegArbExecutorAddress: "0x568f8fB62631D50F7fBA0B0630941C878144c81b",
+  riskPolicyAddress: "0x5F647E84F3C0aB83CA10112689Ad13d12F24fb45",
+  asterAdapterAddress: "0xe5722f0A4a93CF656921BB6353CA0D316178202C",
+  secondaryAdapterAddress: "0x873627C9A2788d195388dfF66b3f3406E95f00BA",
+  executionAuctionAddress: "0x338A46d7C2937848530aC276a69b66E83ECecBdA",
+};

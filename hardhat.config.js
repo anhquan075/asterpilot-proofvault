@@ -3,6 +3,7 @@ require("dotenv").config();
 
 const BNB_TESTNET_RPC_URL = process.env.BNB_TESTNET_RPC_URL || "";
 const BNB_MAINNET_RPC_URL = process.env.BNB_MAINNET_RPC_URL || "";
+const CREDITCOIN_TESTNET_RPC_URL = process.env.CREDITCOIN_TESTNET_RPC_URL || "https://rpc.cc3-testnet.creditcoin.network";
 const RAW_PRIVATE_KEY = (process.env.PRIVATE_KEY || "").trim();
 const PRIVATE_KEY = RAW_PRIVATE_KEY
   ? RAW_PRIVATE_KEY.startsWith("0x")
@@ -20,12 +21,16 @@ const GAS_PRICE_MAINNET = Math.round(
 const GAS_PRICE_TESTNET = Math.round(
   parseFloat(process.env.GAS_PRICE_GWEI || "3") * 1_000_000_000
 );
+const GAS_PRICE_CREDITCOIN = Math.round(
+  parseFloat(process.env.GAS_PRICE_GWEI || "10000000") * 1_000_000_000
+);
 
 module.exports = {
   solidity: {
     version: "0.8.24",
     settings: {
       viaIR: true,
+      evmVersion: "paris", // Required for Creditcoin L1 (does not support PUSH0 opcode yet)
       optimizer: {
         enabled: true,
         // runs=50: smaller bytecode than 200 → cheaper deployment.
@@ -62,8 +67,27 @@ module.exports = {
       chainId: 56,
       gasPrice: GAS_PRICE_MAINNET,
     },
+    creditcoinTestnet: {
+      url: CREDITCOIN_TESTNET_RPC_URL,
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 102031,
+    },
   },
   etherscan: {
-    apiKey: process.env.BSCAN_API_KEY || "",
+    apiKey: {
+      bsc: process.env.BSCAN_API_KEY || "",
+      bscTestnet: process.env.BSCAN_API_KEY || "",
+      creditcoinTestnet: "no-key-needed",
+    },
+    customChains: [
+      {
+        network: "creditcoinTestnet",
+        chainId: 102031,
+        urls: {
+          apiURL: "https://creditcoin-testnet.blockscout.com/api",
+          browserURL: "https://creditcoin-testnet.blockscout.com",
+        },
+      },
+    ],
   },
 };

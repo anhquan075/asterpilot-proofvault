@@ -10,7 +10,11 @@ export function useNetworkMode() {
   const [networkMode, setNetworkModeState] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === NETWORK_MODE.TESTNET || stored === NETWORK_MODE.MAINNET) {
+      if (
+        stored === NETWORK_MODE.TESTNET ||
+        stored === NETWORK_MODE.MAINNET ||
+        stored === NETWORK_MODE.CREDITCOIN_TESTNET
+      ) {
         return stored;
       }
     } catch {
@@ -20,7 +24,12 @@ export function useNetworkMode() {
   });
 
   const setNetworkMode = useCallback((mode) => {
-    if (mode !== NETWORK_MODE.MAINNET && mode !== NETWORK_MODE.TESTNET) return;
+    if (
+      mode !== NETWORK_MODE.MAINNET &&
+      mode !== NETWORK_MODE.TESTNET &&
+      mode !== NETWORK_MODE.CREDITCOIN_TESTNET
+    )
+      return;
     try {
       localStorage.setItem(STORAGE_KEY, mode);
     } catch {
@@ -30,15 +39,23 @@ export function useNetworkMode() {
   }, []);
 
   const toggleNetworkMode = useCallback(() => {
-    setNetworkMode(
-      networkMode === NETWORK_MODE.MAINNET ? NETWORK_MODE.TESTNET : NETWORK_MODE.MAINNET
-    );
+    // Cycles through: Mainnet -> Testnet -> Creditcoin -> Mainnet
+    let nextMode;
+    if (networkMode === NETWORK_MODE.MAINNET) {
+      nextMode = NETWORK_MODE.TESTNET;
+    } else if (networkMode === NETWORK_MODE.TESTNET) {
+      nextMode = NETWORK_MODE.CREDITCOIN_TESTNET;
+    } else {
+      nextMode = NETWORK_MODE.MAINNET;
+    }
+    setNetworkMode(nextMode);
   }, [networkMode, setNetworkMode]);
 
   return {
     networkMode,
     isTestnet: networkMode === NETWORK_MODE.TESTNET,
     isMainnet: networkMode === NETWORK_MODE.MAINNET,
+    isCreditcoin: networkMode === NETWORK_MODE.CREDITCOIN_TESTNET,
     toggleNetworkMode,
     setNetworkMode,
   };

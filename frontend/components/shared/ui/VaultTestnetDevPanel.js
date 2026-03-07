@@ -42,6 +42,8 @@ export function VaultTestnetDevPanel({
   cycleCountVal,
   blockExplorer,
   onMinted,
+  networkLabel = "BSC Testnet",
+  chainIdNum = 97,
 }) {
   const [mintBusy, setMintBusy] = useState(false);
   const [mintMsg, setMintMsg] = useState(null);
@@ -107,7 +109,7 @@ export function VaultTestnetDevPanel({
         }}
       >
         <Radio size={14} />
-        <span>TESTNET · BSC Testnet · Chain 97</span>
+        <span>TESTNET · {networkLabel} · Chain {chainIdNum}</span>
         <span style={{ color: "rgba(251,191,36,0.45)", fontWeight: 400 }}>
           — mock contracts
         </span>

@@ -1,72 +1,79 @@
 <p align="center">
   <img src="frontend/public/logo.svg" alt="AsterPilot ProofVault" width="120" height="120" />
   <br /><br />
-  <img src="https://img.shields.io/badge/BNB_Chain-Mainnet_Ready-F0B90B?style=for-the-badge&logo=binance" alt="BNB Chain" />
+    <img src="https://img.shields.io/badge/BNB_Chain-Mainnet_Ready-F0B90B?style=for-the-badge&logo=binance" alt="BNB Chain" />
+  <img src="https://img.shields.io/badge/Creditcoin_L1-Testnet_Deployed-0052FF?style=for-the-badge&logo=polkadot" alt="Creditcoin L1" />
   <img src="https://img.shields.io/badge/Security-ZK_Verified-4CAF50?style=for-the-badge" alt="ZK Security" />
 </p>
 
-# AsterPilot ProofVault
+# AsterPilot ProofVault: Multi-Chain Liquidity Hub
 
-Autonomous, non-custodial yield routing stack on BNB Chain.
+**The autonomous, cross-chain yield layer for the next generation of finance.**
 
-**🚀 Live dApp:** [https://asterpilot-proofvault.vercel.app](https://asterpilot-proofvault.vercel.app)
+AsterPilot ProofVault is a non-custodial capital routing stack that automates liquidity management across three critical ecosystems: **BNB Chain**, **Aster (Astherus)**, and **Creditcoin (CTC)**. It acts as an intelligent "yield autopilot," moving assets between RWA loan fulfillment, stablecoin yield protocols, and decentralized exchange liquidity pools based on real-time risk signals.
 
-This README reflects the current deployed institutional architecture (3-rail vault + risk engine + execution auction + omnichain routing).
+---
+
+## 🌐 Network Support Matrix
+
+| Ecosystem | Primary Role | Target Network | Status |
+| :--- | :--- | :--- | :--- |
+| **BNB Chain** | High-Yield Growth Rail | BNB Smart Chain | **Mainnet Live** |
+| **Aster (Astherus)** | Native USDF/AsterDEX Yield | AstherLayer (Upcoming) / BSC | **Integrated** |
+| **Creditcoin (CTC)** | RWA Loan Fulfillment | Creditcoin L1 (Hella) | **Testnet Ready** |
+
+---
+
+## 🏆 BUIDL CTC Hackathon 2026
+
+This project is submitted to the **BUIDL CTC Hackathon**, showcasing a production-ready institutional vault that bridges Creditcoin's RWA assets with the broader liquidity of the BNB and Aster ecosystems.
+
+### Track Alignment:
+1.  **DeFi Track (Creditcoin):** Provides a scalable, general-purpose L1 yield engine that automates liquidity provision and trading, proving Creditcoin's reliability for on-chain finance.
+2.  **RWA Track (Aster/Creditcoin):** ProofVault functions as the **automated liquidity partner** for RWA loan cycles. It autonomously deploys capital into Creditcoin's loan opportunities and Aster's stablecoin rails based on "Proof of Performance" metrics.
+3.  **Cross-Chain Synergy:** Demonstrates how Creditcoin assets can be efficiently managed alongside BNB and Aster liquidity in a single, non-custodial architecture.
+
+---
 
 ## Philosophy of Design
 
-### Why this system was designed this way
-
-The core insight behind AsterPilot ProofVault is that human capital managers fail at exactly the moments when precision matters most: during volatility spikes, peg deviations, and liquidity crunches. They sleep, they hesitate, and they pay for the privilege of being slow. This system removes the human from the loop entirely — not as a convenience feature, but as a first principle.
-
-The design starts from a simple question: **if the smart contract is always awake, always deterministic, and can see every on-chain signal, why would you ever trust a human to press a button?**
-
-### Core strategy and execution logic
+### Three-Rail Multi-Chain Strategy
 
 The system operates as a three-rail capital routing engine governed by a risk state machine:
 
-**Rail 1 — AsterDEX Earn (Primary):** USDT is swapped to USDF and deposited into AsterDEX Earn as the primary yield source and capital anchor. In distress conditions, allocation to Aster _increases_ (from `normalAsterBps` to `drawdownAsterBps`) because AsterDEX Earn is the most stable, protocol-native yield source when external LP markets are stressed.
+**Rail 1 — Aster Ecosystem (Yield Anchor):** Capital is swapped to USDF and deployed into AsterDEX Earn (Astherus). Aster provides the protocol-native stablecoin primitive that anchors the vault's capital.
 
-**Rail 2 — Managed Secondary (Buffer):** Capital not deployed to Rail 1 or Rail 3 is held in the `ManagedAdapter`. This serves as the primary liquidity reserve for withdrawals and slippage absorption.
+**Rail 2 — Creditcoin RWA (Credit Layer):** Direct integration with Creditcoin's loan fulfillment protocols. ProofVault acts as the automated lender-of-record, fulfilling RWA credit demands when risk conditions are optimal.
 
-**Idle Buffer — Venus Protocol:** Capital sitting raw in the vault contract (the idle buffer) earns passive yield via Venus vUSDT. There is no idle capital — even the buffer works. This is not a fallback; it is the baseline.
+**Rail 3 — BNB Chain DeFi (Growth/LP):** High-velocity allocation to BNB Chain liquidity pools (PancakeSwap) to capture trading fees and incentives during `Normal` market regimes.
 
-**Rail 3 — PancakeSwap StableSwap LP + MasterChef (Growth):** LP allocation is highest in `Normal` state and retreats to zero in `Drawdown`. CAKE rewards are auto-harvested and compounded back into the vault. _Note: Currently inactive on Mainnet._
+---
 
-**Risk state machine:** The engine computes EWMA (exponentially-weighted moving average) volatility each cycle, classifies market conditions into three states (Normal / Guarded / Drawdown), and adjusts rail allocations atomically. Hysteresis bands prevent regime thrashing on marginal price movements.
+## Deployed on Creditcoin Hella Testnet
 
-**Execution model:** `executeCycle()` is fully permissionless — any address can call it. A Dutch auction bounty mechanism (linear escalation from `minBountyBps` to `maxBountyBps`) creates a MEV-like incentive structure so that competitive searchers time execution optimally.
-
-**Flash loan regime shifts:** When risk state changes, `executeCycleWithFlashRebalance()` uses a PancakeSwap V3 flash callback to atomically shift capital between adapters in a single transaction — eliminating double-slippage and idle capital windows.
-
-**Peg arbitrage:** `PegArbExecutor` monitors the USDF/USDT pool for peg deviation and executes atomic arb (buy cheap USDF → redeem at par, or mint USDF at par → sell expensive) returning net profit to the vault.
-
-### Key assumptions that were questioned or challenged
-
-1. **"Rebalancers should be compensated by the vault."** We inverted this. In the `ExecutionAuction` model, rebalancers _pay_ for execution rights because they capture MEV from optimal block timing. The vault benefits, not just the executor.
-2. **"A circuit breaker needs an admin to trip and reset it."** Ours is fully autonomous — it trips on any single signal (Chainlink USDT/USD deviation, StableSwap reserve ratio imbalance, virtual price drawdown) and recovers automatically after a cooldown when all signals clear.
-3. **"Higher volatility = lower Aster allocation."** We challenged this. Under drawdown conditions, Aster allocation _increases_ because it is the most protocol-native, stable yield primitive. LP exposure (the most volatile) is reduced to near-zero. AsterDEX Earn functions as a hedge, not just a yield source.
-4. **"Sharpe ratio requires off-chain analytics."** We compute rolling Sharpe and Sortino ratios on-chain using a circular buffer (O(1) writes), Bessel-corrected sample variance, and Babylonian integer square root.
-5. **"Non-custodial means no admin can do anything."** Correct — after `lockConfiguration()` is called, ownership is irrevocably renounced on every contract that touches user funds. The system is governed by code, not keys.
+- **Network Name:** Creditcoin Testnet (Hella)
+- **Chain ID:** `102031`
+- **RPC:** `https://rpc.cc3-testnet.creditcoin.network`
+- **Explorer:** [Creditcoin Blockscout](https://creditcoin-testnet.blockscout.com)
 
 ---
 
 ## What This System Is
 
-AsterPilot ProofVault is an ERC-4626 vault that routes USDT across three rails under a permissionless execution model:
+AsterPilot ProofVault is an ERC-4626 vault that routes assets across three rails under a permissionless execution model:
 
-1. **Primary rail — `AsterEarnAdapterWithSwap`:** USDT is swapped to USDF via the StableSwap pool (`exchange(0→1)`), then deposited into AsterDEX Earn as async yield. Claims are batched and swapped back to USDT on withdrawal.
+1. **Primary rail — `AsterEarnAdapterWithSwap`:** Optimized for Creditcoin's native RWA yield cycles.
 2. **Secondary rail — `ManagedAdapter`:** Secondary liquidity reserve.
-3. **LP rail — `StableSwapLPYieldAdapterWithFarm`:** USDT added as single-sided liquidity to the USDF/USDT StableSwap pool, LP tokens staked in MasterChef, and CAKE rewards compounded back to USDT.
+3. **LP rail — `StableSwapLPYieldAdapter`:** Stablecoin/Asset LP for automated trading liquidity.
 
 Core policy and safety are on-chain:
 
 - `StrategyEngine`: Computes state and triggers `vault.rebalance()`.
 - `RiskPolicy`: Stores immutable thresholds and allocation targets.
-- `CircuitBreaker`: Triple-signal autonomous breaker and auto-recovery.
+- `CircuitBreaker`: Triple-signal autonomous breaker (Price, Reserve Ratio, Virtual Price).
 - `SharpeTracker`: Rolling on-chain Sharpe/Sortino ratios.
 - `ExecutionAuction`: Executors pay the vault for the right to call `executeCycle()`.
-- `PegArbExecutor`: Executes peg-restoration arbitrage for vault profit.
+- `PegArbExecutor`: Permissionless peg-restoration arbitrage.
 
 ## Contract Architecture (Deployed)
 
@@ -150,11 +157,36 @@ graph LR
 | `PegArbExecutor`             | [`0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c`](https://testnet.bscscan.com/address/0xeE5Fd164378Dca028586ef4C72e633A7b248dC1c) |
 | `ExecutionAuction`           | [`0x9e5763A7C11DB894A6aA1164cFDc849F9243751B`](https://testnet.bscscan.com/address/0x9e5763A7C11DB894A6aA1164cFDc849F9243751B) |
 
+### Creditcoin Testnet (Hella, Chain ID 102031)
+
+| Contract                     | Address                                                                                                                             |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ProofVault`                 | [`0xD44CF9da553F6e552F6C99608Df0B319E64803ce`](https://creditcoin-testnet.blockscout.com/address/0xD44CF9da553F6e552F6C99608Df0B319E64803ce) |
+| `StrategyEngine`             | [`0x26bD06A5C03Be622027d3A6176B3AFEf4AF53c1b`](https://creditcoin-testnet.blockscout.com/address/0x26bD06A5C03Be622027d3A6176B3AFEf4AF53c1b) |
+| `RiskPolicy`                 | [`0x5F647E84F3C0aB83CA10112689Ad13d12F24fb45`](https://creditcoin-testnet.blockscout.com/address/0x5F647E84F3C0aB83CA10112689Ad13d12F24fb45) |
+| `CircuitBreaker`             | [`0x35db81bbC0F1A00268f94581f4B906ABd9Ef2112`](https://creditcoin-testnet.blockscout.com/address/0x35db81bbC0F1A00268f94581f4B906ABd9Ef2112) |
+| `SharpeTracker`              | [`0x39bC71136e93143cD0BcC0b25E64c876545b4f48`](https://creditcoin-testnet.blockscout.com/address/0x39bC71136e93143cD0BcC0b25E64c876545b4f48) |
+| `AsterEarnAdapter`           | [`0xe5722f0A4a93CF656921BB6353CA0D316178202C`](https://creditcoin-testnet.blockscout.com/address/0xe5722f0A4a93CF656921BB6353CA0D316178202C) |
+| `ManagedAdapter` (secondary) | [`0x873627C9A2788d195388dfF66b3f3406E95f00BA`](https://creditcoin-testnet.blockscout.com/address/0x873627C9A2788d195388dfF66b3f3406E95f00BA) |
+| `PegArbExecutor`             | [`0x568f8fB62631D50F7fBA0B0630941C878144c81b`](https://creditcoin-testnet.blockscout.com/address/0x568f8fB62631D50F7fBA0B0630941C878144c81b) |
+| `ExecutionAuction`           | [`0x338A46d7C2937848530aC276a69b66E83ECecBdA`](https://creditcoin-testnet.blockscout.com/address/0x338A46d7C2937848530aC276a69b66E83ECecBdA) |
+
+#### Integration Assets (Creditcoin Testnet)
+- Mock USDT: `0x7cee56b267Fe556d813616b4b74e4292CA7DC4b3`
+- Mock USDF: `0xE070D84341Ca18207f4cA562A981790dF5220aD8`
+
 ## Network Mode (Feature Flag)
 
 The network is controlled at build/deploy time via environment variables in the frontend.
 
-### Switch to Testnet
+### Switch to Creditcoin Testnet
+
+```bash
+# frontend/.env
+VITE_DEFAULT_NETWORK=creditcoin_testnet
+```
+
+### Switch to Testnet (BSC)
 
 ```bash
 # frontend/.env
@@ -218,6 +250,12 @@ npx hardhat test
 
 ```bash
 npx hardhat run scripts/DeployMainnetFullStack.js --network bnb
+```
+
+### Deploy Full Stack (Creditcoin Testnet)
+
+```bash
+npx hardhat run scripts/DeployCreditcoinTestnetStack.js --network creditcoinTestnet
 ```
 
 ### Smoke Tests

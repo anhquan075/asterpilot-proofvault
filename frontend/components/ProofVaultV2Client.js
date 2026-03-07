@@ -74,7 +74,7 @@ function ContractAddressBadge({ label, address, icon: Icon, bscScanAddr }) {
 export default function ProofVaultV2Client() {
   const [, setStatus] = useState("Loading live data...");
   const [busyAction, setBusyAction] = useState(null);
-  const { networkMode, isTestnet, setNetworkMode } = useNetworkMode();
+  const { networkMode, isTestnet, isCreditcoin, setNetworkMode } = useNetworkMode();
   const networkConfig = NETWORK_CONFIGS[networkMode];
   const {
     vaultAddress,
@@ -137,11 +137,13 @@ export default function ProofVaultV2Client() {
   );
 
   // Auto-sync UI network mode when wallet switches chains.
-  // Chain 56 → mainnet, Chain 97 → testnet, other → keep current (show warning).
+  // Chain 56 → mainnet, Chain 97 → testnet, Chain 102031 -> creditcoin_testnet
   useEffect(() => {
     if (wallet.networkChainId === 56n) setNetworkMode(NETWORK_MODE.MAINNET);
     else if (wallet.networkChainId === 97n)
       setNetworkMode(NETWORK_MODE.TESTNET);
+    else if (wallet.networkChainId === 102031n)
+      setNetworkMode(NETWORK_MODE.CREDITCOIN_TESTNET);
   }, [wallet.networkChainId, setNetworkMode]);
 
   // Clear transaction history when wallet disconnects
@@ -319,7 +321,8 @@ export default function ProofVaultV2Client() {
   const networkSupported =
     wallet.networkChainId === null ||
     wallet.networkChainId === 56n ||
-    wallet.networkChainId === 97n;
+    wallet.networkChainId === 97n ||
+    wallet.networkChainId === 102031n;
   const depositsBlocked = vaultState.configLocked === false;
   const latestTx = actions.txHistory?.[0] ?? null;
   const latestTxId = latestTx?.id;
@@ -372,7 +375,7 @@ export default function ProofVaultV2Client() {
     <section className="panel panel--enhanced">
       <VaultTopNavbar busyAction={busyAction} />
 
-      {isTestnet && (
+      {(isTestnet || isCreditcoin) && (
         <VaultTestnetDevPanel
           tokenAddress={tokenAddress}
           signer={wallet.signer}
@@ -383,6 +386,8 @@ export default function ProofVaultV2Client() {
           cycleCountVal={vaultState.cycleCountVal}
           blockExplorer={networkConfig.blockExplorer}
           onMinted={handleMinted}
+          networkLabel={networkConfig.label}
+          chainIdNum={networkConfig.chainIdNum}
         />
       )}
 
@@ -442,8 +447,8 @@ export default function ProofVaultV2Client() {
             }}
           />
           Unsupported network ({wallet.networkLabel}). Switch your wallet to{" "}
-          <strong>BNB Mainnet (Chain ID 56)</strong> or{" "}
-          <strong>BNB Testnet (Chain ID 97)</strong>.
+          <strong>BNB Mainnet (56)</strong>, <strong>BNB Testnet (97)</strong> or{" "}
+          <strong>Creditcoin Testnet (102031)</strong>.
         </div>
       )}
 

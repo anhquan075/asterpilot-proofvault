@@ -77,6 +77,7 @@ contract MockAsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
 
     function onVaultDeposit(uint256 amount) external onlyVault {
         if (amount == 0) revert MockAsterEarnAdapter__ZeroAmount();
+        _asset.safeTransferFrom(msg.sender, address(this), amount);
         emit VaultDepositRecorded(amount);
     }
 
@@ -86,7 +87,7 @@ contract MockAsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         uint256 available = _asset.balanceOf(address(this));
         toSend = amount > available ? available : amount;
         if (toSend == 0) return 0;
-        _asset.safeTransfer(vault, toSend);
+        _asset.safeTransfer(msg.sender, toSend);
         emit VaultWithdrawal(amount, toSend);
     }
 

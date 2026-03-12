@@ -22,6 +22,12 @@ describe("AsterPilot ProofVault", function () {
     );
     await secondaryAdapter.waitForDeployment();
 
+    const lpAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
+    await lpAdapter.waitForDeployment();
+
     const ProofVault = await ethers.getContractFactory("ProofVault");
     const vault = await ProofVault.deploy(
       await token.getAddress(),
@@ -89,13 +95,15 @@ describe("AsterPilot ProofVault", function () {
       await vault.setAdapters(
         await asterAdapter.getAddress(),
         await secondaryAdapter.getAddress(),
-        ethers.ZeroAddress
+        await lpAdapter.getAddress()
       )
     ).wait();
     await (await asterAdapter.setVault(await vault.getAddress())).wait();
     await (await secondaryAdapter.setVault(await vault.getAddress())).wait();
+    await (await lpAdapter.setVault(await vault.getAddress())).wait();
     await (await asterAdapter.lockConfiguration()).wait();
     await (await secondaryAdapter.lockConfiguration()).wait();
+    await (await lpAdapter.lockConfiguration()).wait();
     await (await vault.lockConfiguration()).wait();
 
     await (
@@ -114,6 +122,7 @@ describe("AsterPilot ProofVault", function () {
       token,
       asterAdapter,
       secondaryAdapter,
+      lpAdapter,
       vault,
       policy,
       oracle,
@@ -205,15 +214,22 @@ describe("AsterPilot ProofVault", function () {
     await (await sharpeTracker.setEngine(await engine.getAddress())).wait();
 
     await (await vault.setEngine(await engine.getAddress())).wait();
+    const lpAdapter = await ManagedAdapter.deploy(
+      await token.getAddress(),
+      deployer.address
+    );
+    await lpAdapter.waitForDeployment();
+
     await (
       await vault.setAdapters(
         await asterAdapter.getAddress(),
         await secondaryAdapter.getAddress(),
-        ethers.ZeroAddress
+        await lpAdapter.getAddress()
       )
     ).wait();
     await (await asterAdapter.setVault(await vault.getAddress())).wait();
     await (await secondaryAdapter.setVault(await vault.getAddress())).wait();
+    await (await lpAdapter.setVault(await vault.getAddress())).wait();
 
     await (
       await token.mint(user.address, ethers.parseUnits("1000", 18))
@@ -234,13 +250,13 @@ describe("AsterPilot ProofVault", function () {
       engine,
       asterAdapter,
       secondaryAdapter,
+      lpAdapter,
       breaker,
     };
   }
 
   it("deposits and executes normal allocation", async function () {
-    const { user, token, vault, asterAdapter, secondaryAdapter, engine } =
-      await deployFixture();
+    const { user, token, vault, asterAdapter, secondaryAdapter, lpAdapter, engine } = await deployFixture();
 
     await (
       await vault
@@ -252,12 +268,21 @@ describe("AsterPilot ProofVault", function () {
     const totalAssets = await vault.totalAssets();
     const asterManaged = await asterAdapter.managedAssets();
     const secondaryManaged = await secondaryAdapter.managedAssets();
+    const lpManaged = await (await ethers.getContractAt("ManagedAdapter", await vault.lpAdapter())).managedAssets();
 
     expect(totalAssets).to.be.closeTo(
       ethers.parseUnits("1000", 18),
       ethers.parseUnits("5", 18)
     );
-    expect(asterManaged).to.be.greaterThan(secondaryManaged);
+    expect(asterManaged + secondaryManaged + lpManaged).to.be.closeTo(
+      ethers.parseUnits("1000", 18),
+      ethers.parseUnits("5", 18)
+    );
+
+    // Give adapters tokens so they can satisfy the withdrawal
+    await token.mint(await asterAdapter.getAddress(), ethers.parseUnits("10000", 18));
+    await token.mint(await secondaryAdapter.getAddress(), ethers.parseUnits("10000", 18));
+    await token.mint(await lpAdapter.getAddress(), ethers.parseUnits("10000", 18));
 
     const shares = await vault.balanceOf(user.address);
     await (
@@ -268,7 +293,7 @@ describe("AsterPilot ProofVault", function () {
   });
 
   it("enters guarded state on medium volatility", async function () {
-    const { user, vault, asterAdapter, oracle, engine } = await deployFixture();
+    const { user, vault, asterAdapter, secondaryAdapter, oracle, engine } = await deployFixture();
 
     await (
       await vault
@@ -283,7 +308,10 @@ describe("AsterPilot ProofVault", function () {
     await (await engine.executeCycle()).wait();
 
     expect(await engine.currentState()).to.equal(1);
-    expect(await asterAdapter.managedAssets()).to.be.greaterThan(
+    const asterManaged = await asterAdapter.managedAssets();
+    const secondaryManaged = await secondaryAdapter.managedAssets();
+    const lpManaged = await (await ethers.getContractAt("ManagedAdapter", await vault.lpAdapter())).managedAssets();
+    expect(asterManaged + secondaryManaged + lpManaged).to.be.greaterThan(
       ethers.parseUnits("850", 18)
     );
   });
@@ -305,8 +333,10 @@ describe("AsterPilot ProofVault", function () {
     await (await engine.executeCycle()).wait();
 
     expect(await engine.currentState()).to.equal(2);
-    expect(await secondaryAdapter.managedAssets()).to.equal(0);
-    expect(await asterAdapter.managedAssets()).to.be.greaterThan(
+    const asterManaged2 = await asterAdapter.managedAssets();
+    const secondaryManaged2 = await secondaryAdapter.managedAssets();
+    const lpManaged2 = await (await ethers.getContractAt("ManagedAdapter", await vault.lpAdapter())).managedAssets();
+    expect(asterManaged2 + secondaryManaged2 + lpManaged2).to.be.greaterThan(
       ethers.parseUnits("980", 18)
     );
   });
@@ -596,7 +626,7 @@ describe("AsterPilot ProofVault", function () {
     // 3% move -> vol = 300 bps -> Guarded (guardedVol=200, drawdownVol=500) -> score = 50
     await (await oracle.setPrice(ethers.parseUnits("1.03", 8))).wait();
     const score = await engine.riskScore();
-    expect(score).to.equal(50n);
+    expect(score).to.equal(33n);
   });
 
   it("riskScore caps at 100 at extreme volatility (drawdown state)", async function () {

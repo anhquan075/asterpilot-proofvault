@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PieChart } from "lucide-react";
-import { toSafeNumber, fmtBps, fmtUsdf } from "@/lib/vaultDisplayFormatters";
+import { toSafeNumber, fmtBps, fmtUsdf, getRailName } from "@/lib/vaultDisplayFormatters";
 import { formatUnits } from "ethers";
 
 function toBigIntSafe(v) {
@@ -24,6 +24,8 @@ export function VaultStrategyAllocationBarCard({
   harvestGasMultiplier,
   rpcUrl,
   vUSDTAddress,
+  isPolkadotHub,
+  isCreditcoin,
 }) {
   const [venusApy, setVenusApy] = useState("...");
 
@@ -81,6 +83,11 @@ export function VaultStrategyAllocationBarCard({
   const lp = toSafeNumber(lpManagedAssets) ?? 0;
   const buffer = toSafeNumber(bufferRaw) ?? 0;
 
+  const rail1Name = getRailName(1, isPolkadotHub, isCreditcoin);
+  const rail2Name = getRailName(2, isPolkadotHub, isCreditcoin);
+  const rail3Name = getRailName(3, isPolkadotHub, isCreditcoin);
+  const rewardToken = isPolkadotHub ? "GLINT" : "CAKE";
+
   const asterPct = total > 0 ? Math.round((aster / total) * 100) : 0;
   const lpPct = total > 0 ? Math.round((lp / total) * 100) : 0;
   const bufferPct = total > 0 ? Math.round((buffer / total) * 100) : 0;
@@ -97,28 +104,28 @@ export function VaultStrategyAllocationBarCard({
         <div
           className="allocationSegment allocationSegment--aster"
           style={{ width: `${asterPct}%` }}
-          title={`AsterDEX ${asterPct}%`}
+          title={`${rail1Name} ${asterPct}%`}
         />
         <div
           className="allocationSegment allocationSegment--lp"
           style={{ width: `${lpPct}%` }}
-          title={`StableSwap LP ${lpPct}%`}
+          title={`${rail2Name} ${lpPct}%`}
         />
         <div
           className="allocationSegment allocationSegment--secondary"
           style={{ width: `${bufferPct}%` }}
-          title={`Buffer ${bufferPct}%`}
+          title={`${rail3Name} ${bufferPct}%`}
         />
       </div>
       <div className="allocationLegend">
         <span className="allocationLegendItem allocationLegendItem--aster">
-          AsterDEX {asterPct}%
+          {rail1Name} {asterPct}%
         </span>
         <span className="allocationLegendItem allocationLegendItem--lp">
-          StableSwap LP {lpPct}%
+          {rail2Name} {lpPct}%
         </span>
         <span className="allocationLegendItem allocationLegendItem--secondary">
-          Buffer (vUSDT) {bufferPct}%
+          {rail3Name} {bufferPct}%
         </span>
       </div>
 
@@ -134,23 +141,23 @@ export function VaultStrategyAllocationBarCard({
         </thead>
         <tbody>
           <tr>
-            <td>AsterDEX</td>
+            <td>{rail1Name}</td>
             <td>{fmtUsdf(asterManagedAssets)}</td>
             <td>{fmtUsdf(asterStakedRaw)}</td>
             <td>{fmtUsdf(pendingAsterRaw)}</td>
             <td>0.0000</td>
           </tr>
           <tr>
-            <td>StableSwap LP</td>
+            <td>{rail2Name}</td>
             <td>{fmtUsdf(lpManagedAssets)}</td>
             <td>{fmtUsdf(lpStakingInfo?.staked ?? 0n)}</td>
             <td>{fmtUsdf(lpStakingInfo?.unstaked ?? 0n)}</td>
             <td>{`${parseFloat(
               formatUnits(lpStakingInfo?.pending ?? 0n, 18)
-            ).toFixed(4)} CAKE`}</td>
+            ).toFixed(4)} ${rewardToken}`}</td>
           </tr>
           <tr>
-            <td>Buffer (vUSDT)</td>
+            <td>{rail3Name}</td>
             <td>{fmtUsdf(bufferRaw)}</td>
             <td>{fmtUsdf(secondaryRaw)}</td>
             <td>{fmtUsdf(bufferCurrentRaw)}</td>
@@ -171,7 +178,7 @@ export function VaultStrategyAllocationBarCard({
           </thead>
           <tbody>
             <tr>
-              <td>AsterDEX Target BPS</td>
+              <td>{rail1Name} Target BPS</td>
               <td>{fmtBps(algoMetrics?.normalAsterBps)}</td>
               <td>{fmtBps(algoMetrics?.guardedAsterBps)}</td>
               <td>{fmtBps(algoMetrics?.drawdownAsterBps)}</td>
@@ -231,9 +238,9 @@ export function VaultStrategyAllocationBarCard({
           <span style={{ color: "var(--text-muted)" }}>Active Protocols</span>
           <span style={{ color: "var(--text)", fontWeight: 600 }}>
             {[
-              asterPct > 0 && "AsterDEX",
-              lpPct > 0 && "StableSwap LP",
-              bufferPct > 0 && "Buffer",
+              asterPct > 0 && rail1Name,
+              lpPct > 0 && rail2Name,
+              bufferPct > 0 && rail3Name,
             ]
               .filter(Boolean)
               .join(", ") || "—"}
@@ -265,7 +272,7 @@ export function VaultStrategyAllocationBarCard({
         >
           <span style={{ color: "var(--text-muted)" }}>Buffer Engine</span>
           <span style={{ color: "#F8B128", fontWeight: 600 }}>
-            Venus Protocol (vUSDT) ✦ {venusApy}% APY
+            {isPolkadotHub ? "Moonwell Protocol" : "Venus Protocol (vUSDT)"} ✦ {venusApy}% APY
           </span>
         </div>
       </div>

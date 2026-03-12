@@ -4,9 +4,6 @@
 // networkConfig.js imports these as fallback values.
 
 // BNB Chain Mainnet (Chain ID 56)
-// Deployed: 2026-02-28 (v2) via scripts/DeployMainnetFullStack.js
-// Fix: Corrected Venus decimal scaling and Aster swap indices
-// Deployer: 0xB789D888A53D34f6701C1A5876101Cb32dbF17cF
 export const V2_MAINNET_PRESET = {
   vaultAddress: "0x377ca215D07794C904e6B000B25B11934FE5d2f1",
   engineAddress: "0xa2c09C35F91E181e20872706597Ef1E333BB8A1f",
@@ -22,9 +19,6 @@ export const V2_MAINNET_PRESET = {
 };
 
 // BNB Chain Testnet (Chain ID 97)
-// Deployed: 2026-02-27 (v2) via scripts/deploy-testnet-full-stack-with-mocks.js
-// chainlinkStalePeriod = 259200 (3 days)
-// Fix: ProofVault slippage check now excludes executor bounty from baseline
 export const V2_TESTNET_PRESET = {
   vaultAddress: "0xA7207caCEA25b8a9BFf289C8aCCcD257C862314D",
   engineAddress: "0x6518CFAf53C39D6127723D67402e63E636Dd1c3E",
@@ -38,17 +32,33 @@ export const V2_TESTNET_PRESET = {
   executionAuctionAddress: "0x9e5763A7C11DB894A6aA1164cFDc849F9243751B",
 };
 
-// Creditcoin Testnet (Hella, Chain ID 102031)
-// Deployed: 2026-03-07 for BUIDL CTC Hackathon
-export const CREDITCOIN_TESTNET_PRESET = {
-  vaultAddress: "0xD44CF9da553F6e552F6C99608Df0B319E64803ce",
-  engineAddress: "0x26bD06A5C03Be622027d3A6176B3AFEf4AF53c1b",
-  tokenAddress: "0x7cee56b267Fe556d813616b4b74e4292CA7DC4b3", // mock USDT
-  circuitBreakerAddress: "0x35db81bbC0F1A00268f94581f4B906ABd9Ef2112",
-  sharpeTrackerAddress: "0x39bC71136e93143cD0BcC0b25E64c876545b4f48",
-  pegArbExecutorAddress: "0x568f8fB62631D50F7fBA0B0630941C878144c81b",
-  riskPolicyAddress: "0x5F647E84F3C0aB83CA10112689Ad13d12F24fb45",
-  asterAdapterAddress: "0xe5722f0A4a93CF656921BB6353CA0D316178202C",
-  secondaryAdapterAddress: "0x873627C9A2788d195388dfF66b3f3406E95f00BA",
-  executionAuctionAddress: "0x338A46d7C2937848530aC276a69b66E83ECecBdA",
+// Creditcoin Testnet (Chain ID 102031)
+export const V2_CREDITCOIN_TESTNET_PRESET = {
+  vaultAddress: "0x7c30B24B91Cd9923d565239fA517F3C06371E196",
+  engineAddress: "0x3036840C588a51Fe77C4E38a838e5451b1b896Ae",
+  tokenAddress: "0xaB4F67AfCb9B9C390049705022A0237E81465C00", // USDT
+  circuitBreakerAddress: "0x6b8776492e529fe1e33Df0Af42ffb7430F34660e",
+  sharpeTrackerAddress: "0xD47B776e957687D1789d813eBeF79149658d00F0",
+  pegArbExecutorAddress: "0x42127f801ff5137ceC8b78573bADc3FCB1Bb10bf",
+  riskPolicyAddress: "0x8A7cb0F7e04028EF7cb4189175B29FB370e9A4eC",
+  asterAdapterAddress: "0xd5ff531870c75FA29f495e70E0D406a207018D02",
+  secondaryAdapterAddress: "0x6f31520271B85b14a035F7e86DeB46A5702Aa871",
+  lpAdapterAddress: "0x4Ac2126DceF25CBBB7C09Bbf628233736e3703e9",
+  executionAuctionAddress: "0x6470aC20dFeBdFbf4384Fe81Cef96A76EEd6bDb2",
+};
+
+// Polkadot Hub Testnet (Paseo Asset Hub, Chain ID 420420417)
+// Deployed for Polkadot Solidity Hackathon
+export const POLKADOT_HUB_TESTNET_PRESET = {
+  vaultAddress: "0x071958E16A54E3a963d17FdeEf2e6938CB8fbB10",
+  engineAddress: "0x4dDf07b881Bd0B7cc93deB9D2a7A3c5a6cE094ba",
+  tokenAddress: "0x3cCcB5E20193affc9E4C1C1aa5Aee425F0FfB049", // USDC
+  circuitBreakerAddress: "0x42127f801ff5137ceC8b78573bADc3FCB1Bb10bf",
+  sharpeTrackerAddress: "0xbC3D99421A93e4f2E5bB868DAEC2a03aE96aFD33",
+  pegArbExecutorAddress: "0x0000000000000000000000000000000000000000", // No peg arb on Hub yet
+  riskPolicyAddress: "0x6470aC20dFeBdFbf4384Fe81Cef96A76EEd6bDb2",
+  asterAdapterAddress: "0x4695ef4ADE0D065C8901870876e75fE7b13210E3",
+  lpAdapterAddress: "0x76505B830098302e94906Bd5a77B89569bCc7498",
+  secondaryAdapterAddress: "0x198E9ECfaA22d8385c386038e810788c9a358c74",
+  xcmMessengerAddress: "0x4B1f39ed7B96Ff870fF1B18f2201E21bE75f4eEf",
 };

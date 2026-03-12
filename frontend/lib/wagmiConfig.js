@@ -19,10 +19,44 @@ export const creditcoinTestnet = defineChain({
   testnet: true,
 });
 
+export const polkadotHubTestnet = defineChain({
+  id: 420420417,
+  name: 'Polkadot Hub Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Paseo',
+    symbol: 'PAS',
+  },
+  rpcUrls: {
+    default: { http: ['https://services.polkadothub-rpc.com/testnet'] },
+  },
+  blockExplorers: {
+    default: { name: 'Moonscan', url: 'https://paseo.moonscan.io' },
+  },
+  testnet: true,
+});
+
+export const polkadotHubTestnet = defineChain({
+  id: 420420417,
+  name: 'Polkadot Hub Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Paseo',
+    symbol: 'PAS',
+  },
+  rpcUrls: {
+    default: { http: ['https://services.polkadothub-rpc.com/testnet'] },
+  },
+  blockExplorers: {
+    default: { name: 'Moonscan', url: 'https://paseo.moonscan.io' },
+  },
+  testnet: true,
+});
+
 export const wagmiConfig = getDefaultConfig({
   appName: 'ProofVault',
   projectId: 'YOUR_PROJECT_ID', // Get from https://cloud.walletconnect.com
-  chains: [bsc, bscTestnet, creditcoinTestnet],
+  chains: [bsc, bscTestnet, creditcoinTestnet, polkadotHubTestnet],
   ssr: false,
   theme: {
     blurs: {

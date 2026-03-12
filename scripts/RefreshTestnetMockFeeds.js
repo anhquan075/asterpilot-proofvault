@@ -15,7 +15,7 @@
 
 const { ethers } = require("hardhat");
 
-const CIRCUIT_BREAKER_ADDR = "0x1E63C0F23D89eC3b58b696d7c17Bb0159A25DEF5";
+const CIRCUIT_BREAKER_ADDR = "0x35db81bbC0F1A00268f94581f4B906ABd9Ef2112";
 
 const CIRCUIT_BREAKER_ABI = [
   "function chainlinkFeed() view returns (address)",

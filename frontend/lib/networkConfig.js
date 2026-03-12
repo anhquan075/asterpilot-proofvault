@@ -3,12 +3,13 @@
  * Single source of truth for mainnet vs testnet switching.
  * Env vars override the preset fallbacks from contractAddresses.js.
  */
-import { V2_MAINNET_PRESET, V2_TESTNET_PRESET, CREDITCOIN_TESTNET_PRESET } from "./contractAddresses.js";
+import { V2_MAINNET_PRESET, V2_TESTNET_PRESET, V2_CREDITCOIN_TESTNET_PRESET, POLKADOT_HUB_TESTNET_PRESET } from "./contractAddresses.js";
 
 export const NETWORK_MODE = {
   MAINNET: "mainnet",
   TESTNET: "testnet",
   CREDITCOIN_TESTNET: "creditcoin_testnet",
+  POLKADOT_HUB: "polkadot_hub",
 };
 
 export const NETWORK_CONFIGS = {
@@ -54,7 +55,7 @@ export const NETWORK_CONFIGS = {
   },
 
   [NETWORK_MODE.TESTNET]: {
-    label: "Testnet",
+    label: "BNB Testnet",
     chainId: 97n,
     chainIdNum: 97,
     rpcUrl:
@@ -98,7 +99,7 @@ export const NETWORK_CONFIGS = {
   },
 
   [NETWORK_MODE.CREDITCOIN_TESTNET]: {
-    label: "Creditcoin Testnet",
+    label: "Creditcoin",
     chainId: 102031n,
     chainIdNum: 102031,
     rpcUrl:
@@ -106,28 +107,73 @@ export const NETWORK_CONFIGS = {
       "https://rpc.cc3-testnet.creditcoin.network",
     blockExplorer: "https://creditcoin-testnet.blockscout.com",
     nativeCurrency: { name: "tCTC", symbol: "tCTC", decimals: 18 },
-    vUSDTAddress: "0x0000000000000000000000000000000000000000", // Will use mock or be disabled
+    vUSDTAddress: "0x0000000000000000000000000000000000000000",
     contracts: {
-      vaultAddress: import.meta.env.VITE_CREDITCOIN_VAULT_ADDRESS || CREDITCOIN_TESTNET_PRESET.vaultAddress,
-      engineAddress: import.meta.env.VITE_CREDITCOIN_ENGINE_ADDRESS || CREDITCOIN_TESTNET_PRESET.engineAddress,
-      tokenAddress: import.meta.env.VITE_CREDITCOIN_TOKEN_ADDRESS || CREDITCOIN_TESTNET_PRESET.tokenAddress,
-      circuitBreakerAddress: import.meta.env.VITE_CREDITCOIN_CIRCUIT_BREAKER_ADDRESS || CREDITCOIN_TESTNET_PRESET.circuitBreakerAddress,
-      sharpeTrackerAddress: import.meta.env.VITE_CREDITCOIN_SHARPE_TRACKER_ADDRESS || CREDITCOIN_TESTNET_PRESET.sharpeTrackerAddress,
-      pegArbExecutorAddress: import.meta.env.VITE_CREDITCOIN_PEG_ARB_EXECUTOR_ADDRESS || CREDITCOIN_TESTNET_PRESET.pegArbExecutorAddress,
-      riskPolicyAddress: import.meta.env.VITE_CREDITCOIN_POLICY_ADDRESS || CREDITCOIN_TESTNET_PRESET.riskPolicyAddress,
-      asterAdapterAddress: import.meta.env.VITE_CREDITCOIN_ASTER_ADAPTER_ADDRESS || CREDITCOIN_TESTNET_PRESET.asterAdapterAddress,
-      secondaryAdapterAddress: import.meta.env.VITE_CREDITCOIN_SECONDARY_ADAPTER_ADDRESS || CREDITCOIN_TESTNET_PRESET.secondaryAdapterAddress,
-      executionAuctionAddress: import.meta.env.VITE_CREDITCOIN_EXECUTION_AUCTION_ADDRESS || CREDITCOIN_TESTNET_PRESET.executionAuctionAddress,
+      vaultAddress:
+        import.meta.env.VITE_CREDITCOIN_VAULT_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.vaultAddress,
+      engineAddress:
+        import.meta.env.VITE_CREDITCOIN_ENGINE_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.engineAddress,
+      tokenAddress:
+        import.meta.env.VITE_CREDITCOIN_TOKEN_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.tokenAddress,
+      circuitBreakerAddress:
+        import.meta.env.VITE_CREDITCOIN_CIRCUIT_BREAKER_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.circuitBreakerAddress,
+      sharpeTrackerAddress:
+        import.meta.env.VITE_CREDITCOIN_SHARPE_TRACKER_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.sharpeTrackerAddress,
+      pegArbExecutorAddress:
+        import.meta.env.VITE_CREDITCOIN_PEG_ARB_EXECUTOR_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.pegArbExecutorAddress,
+      riskPolicyAddress:
+        import.meta.env.VITE_CREDITCOIN_POLICY_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.riskPolicyAddress,
+      asterAdapterAddress:
+        import.meta.env.VITE_CREDITCOIN_ASTER_ADAPTER_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.asterAdapterAddress,
+      secondaryAdapterAddress:
+        import.meta.env.VITE_CREDITCOIN_SECONDARY_ADAPTER_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.secondaryAdapterAddress,
+      executionAuctionAddress:
+        import.meta.env.VITE_CREDITCOIN_EXECUTION_AUCTION_ADDRESS ||
+        V2_CREDITCOIN_TESTNET_PRESET.executionAuctionAddress,
+    },
+  },
+
+  [NETWORK_MODE.POLKADOT_HUB]: {
+    label: "Polkadot Hub",
+    chainId: 420420417n,
+    chainIdNum: 420420417,
+    rpcUrl:
+      import.meta.env.VITE_POLKADOT_HUB_RPC_URL ||
+      "https://services.polkadothub-rpc.com/testnet",
+    blockExplorer: "https://paseo.moonscan.io",
+    nativeCurrency: { name: "Paseo", symbol: "PAS", decimals: 18 },
+    vUSDTAddress: "0x0000000000000000000000000000000000000000",
+    contracts: {
+      vaultAddress: import.meta.env.VITE_POLKADOT_VAULT_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.vaultAddress,
+      engineAddress: import.meta.env.VITE_POLKADOT_ENGINE_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.engineAddress,
+      tokenAddress: import.meta.env.VITE_POLKADOT_TOKEN_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.tokenAddress,
+      circuitBreakerAddress: import.meta.env.VITE_POLKADOT_CIRCUIT_BREAKER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.circuitBreakerAddress,
+      sharpeTrackerAddress: import.meta.env.VITE_POLKADOT_SHARPE_TRACKER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.sharpeTrackerAddress,
+      pegArbExecutorAddress: import.meta.env.VITE_POLKADOT_PEG_ARB_EXECUTOR_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.pegArbExecutorAddress,
+      riskPolicyAddress: import.meta.env.VITE_POLKADOT_POLICY_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.riskPolicyAddress,
+      asterAdapterAddress: import.meta.env.VITE_POLKADOT_ASTER_ADAPTER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.asterAdapterAddress,
+      secondaryAdapterAddress: import.meta.env.VITE_POLKADOT_SECONDARY_ADAPTER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.secondaryAdapterAddress,
+      lpAdapterAddress: import.meta.env.VITE_POLKADOT_LP_ADAPTER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.lpAdapterAddress,
+      xcmMessengerAddress: import.meta.env.VITE_POLKADOT_XCM_MESSENGER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.xcmMessengerAddress,
     },
   },
 };
 
-/** Default mode — testnet unless VITE_DEFAULT_NETWORK=mainnet is set */
+/** Default mode — polkadot hub for hackathon */
 export const DEFAULT_NETWORK_MODE =
   import.meta.env.VITE_DEFAULT_NETWORK === NETWORK_MODE.MAINNET
     ? NETWORK_MODE.MAINNET
-    : import.meta.env.VITE_DEFAULT_NETWORK === NETWORK_MODE.CREDITCOIN_TESTNET
-    ? NETWORK_MODE.CREDITCOIN_TESTNET
-    : NETWORK_MODE.TESTNET;
+    : import.meta.env.VITE_DEFAULT_NETWORK === NETWORK_MODE.TESTNET
+    ? NETWORK_MODE.TESTNET
+    : NETWORK_MODE.POLKADOT_HUB;
 
 export const STORAGE_KEY = "proofvault_network_mode";

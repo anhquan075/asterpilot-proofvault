@@ -13,7 +13,10 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
     // Mock tokens
     const MockERC20 = await ethers.getContractFactory("MockERC20");
     const usdt = await MockERC20.deploy("USDT", "USDT");
+    // Force 6 decimals for USDT/USDF to match Polkadot Hub USDC
+    await usdt.setDecimals(6);
     const usdf = await MockERC20.deploy("USDF", "USDF");
+    await usdf.setDecimals(6);
 
     // Mock oracle / chainlink / pool
     // Use MockStableSwapPoolWithLPSupport — it is both pool AND an ERC20 LP token
@@ -28,10 +31,10 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
     const stableSwapPool = await MockStableSwapPoolWithLPSupport.deploy(
       usdf.target,
       usdt.target, // token0=USDF (index 0), token1=USDT (index 1)
-      ethers.parseUnits("10000000", 18),
-      ethers.parseUnits("10000000", 18),
-      ethers.parseUnits("1", 18),
-      4
+      ethers.parseUnits("10000000", 6),
+      ethers.parseUnits("10000000", 6),
+      ethers.parseUnits("1", 6),
+      0
     );
 
     const MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
@@ -180,9 +183,9 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
     await vault.lockConfiguration();
 
     // Fund tokens — pool needs USDT for remove_liquidity_one_coin payouts
-    await usdt.mint(user.address, ethers.parseUnits("200000", 18));
-    await usdt.mint(stableSwapPool.target, ethers.parseUnits("5000000", 18));
-    await usdf.mint(stableSwapPool.target, ethers.parseUnits("5000000", 18));
+    await usdt.mint(user.address, ethers.parseUnits("200000", 6));
+    await usdt.mint(stableSwapPool.target, ethers.parseUnits("5000000", 6));
+    await usdf.mint(stableSwapPool.target, ethers.parseUnits("5000000", 6));
     await usdt.connect(user).approve(vault.target, ethers.MaxUint256);
 
     return {
@@ -315,9 +318,9 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       const pool = await MockStableSwapPoolWithLPSupport2.deploy(
         usdf2.target,
         usdt.target,
-        ethers.parseUnits("1000000", 18),
-        ethers.parseUnits("1000000", 18),
-        ethers.parseUnits("1", 18),
+        ethers.parseUnits("1000000", 6),
+        ethers.parseUnits("1000000", 6),
+        ethers.parseUnits("1", 6),
         4
       );
       const CircuitBreaker = await ethers.getContractFactory("CircuitBreaker");
@@ -364,7 +367,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       const { vault, user, engine, executor } = await loadFixture(
         deployThreeRailFixture
       );
-      const amount = ethers.parseUnits("10000", 18);
+      const amount = ethers.parseUnits("10000", 6);
       await vault.connect(user).deposit(amount, user.address);
 
       await time.increase(301);
@@ -378,7 +381,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       const { vault, engine, lpAdapter, user, executor } = await loadFixture(
         deployThreeRailFixture
       );
-      const amount = ethers.parseUnits("10000", 18);
+      const amount = ethers.parseUnits("10000", 6);
       await vault.connect(user).deposit(amount, user.address);
 
       await time.increase(301);
@@ -395,7 +398,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       );
       await vault
         .connect(user)
-        .deposit(ethers.parseUnits("10000", 18), user.address);
+        .deposit(ethers.parseUnits("10000", 6), user.address);
 
       await time.increase(301);
       await expect(engine.connect(executor).executeCycle()).to.emit(
@@ -410,7 +413,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       );
       await vault
         .connect(user)
-        .deposit(ethers.parseUnits("10000", 18), user.address);
+        .deposit(ethers.parseUnits("10000", 6), user.address);
 
       await time.increase(301);
       const tx = await engine.connect(executor).executeCycle();
@@ -580,11 +583,21 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
 
   describe("Liquidity Waterfall (4-tier)", function () {
     it("Should pull from LP when secondary is drained", async function () {
-      const { vault, engine, lpAdapter, user, executor, usdt } =
+      const { vault, engine, lpAdapter, asterAdapter, secondaryAdapter, user, executor, usdt } =
         await loadFixture(deployThreeRailFixture);
-      const amount = ethers.parseUnits("10000", 18);
+      const amount = ethers.parseUnits("10000", 6);
       await vault.connect(user).deposit(amount, user.address);
 
+      await time.increase(301);
+      await engine.connect(executor).executeCycle();
+
+      // Ensure LP adapter has enough underlying for the pull by depositing more through the vault
+      const extraAmount = ethers.parseUnits("100000", 6);
+      await usdt.mint(user.address, extraAmount);
+      await usdt.connect(user).approve(vault.target, extraAmount);
+      await vault.connect(user).deposit(extraAmount, user.address);
+      
+      // Move time and execute cycle to deploy the extra funds
       await time.increase(301);
       await engine.connect(executor).executeCycle();
 
@@ -611,7 +624,7 @@ describe("ProofVault V2 — Three-Rail LP Integration", function () {
       const { vault, engine, user, executor, lpAdapter } = await loadFixture(
         deployThreeRailFixture
       );
-      const amount = ethers.parseUnits("20000", 18);
+      const amount = ethers.parseUnits("20000", 6);
       await vault.connect(user).deposit(amount, user.address);
 
       await time.increase(301);

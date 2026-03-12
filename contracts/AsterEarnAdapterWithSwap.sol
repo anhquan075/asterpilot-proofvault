@@ -139,6 +139,8 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
     /// @notice Called by vault after transferring USDT to this adapter
     /// @dev ROBOT ROUTE: USDT → USDF (swap) → AsterDEX Earn deposit
     function onVaultDeposit(uint256 amount) external onlyVault {
+        SafeERC20.safeTransferFrom(_inputAsset, msg.sender, address(this), amount);
+        
         // 1. Swap USDT → USDF on PancakeSwap
         uint256 usdfReceived = _swapUsdtToUsdf(amount);
         
@@ -159,6 +161,13 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
         if (actual > 0) {
             _inputAsset.safeTransfer(vault, actual);
         }
+
+        // Trigger async request for the remainder if needed
+        if (amount > actual) {
+            uint256 needed = amount - actual;
+            this.requestWithdraw(needed);
+        }
+
         return actual;
     }
 
@@ -247,23 +256,25 @@ contract AsterEarnAdapterWithSwap is Ownable2Step, IAsterEarnAdapter {
 
         uint256 minUsdfOut = usdtAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
+        // Ensure approval
         _inputAsset.forceApprove(address(swapPool), usdtAmount);
-        // coin 0 = USDT (sell), coin 1 = USDF (buy) — pool: coin0=USDT, coin1=USDF
-        usdfReceived = swapPool.exchange(0, 1, usdtAmount, minUsdfOut);
+        
+        // coin 1 = USDT (sell), coin 0 = USDF (buy) — pool: coin0=USDF, coin1=USDT
+        usdfReceived = swapPool.exchange(1, 0, usdtAmount, minUsdfOut);
         _inputAsset.forceApprove(address(swapPool), 0);
 
         emit SwapExecuted(usdtAmount, usdfReceived);
     }
 
-    /// @dev Swap USDF → USDT via StableSwap pool (coin1=USDF → coin0=USDT).
+    /// @dev Swap USDF → USDT via StableSwap pool (coin0=USDF → coin1=USDT).
     function _swapUsdfToUsdt(uint256 usdfAmount) internal returns (uint256 usdtReceived) {
         if (usdfAmount == 0) return 0;
 
         uint256 minUsdtOut = usdfAmount * (BPS_DENOMINATOR - swapSlippageBps) / BPS_DENOMINATOR;
 
         _outputAsset.forceApprove(address(swapPool), usdfAmount);
-        // coin 1 = USDF (sell), coin 0 = USDT (buy) — pool: coin0=USDT, coin1=USDF
-        usdtReceived = swapPool.exchange(1, 0, usdfAmount, minUsdtOut);
+        // coin 0 = USDF (sell), coin 1 = USDT (buy) — pool: coin0=USDF, coin1=USDT
+        usdtReceived = swapPool.exchange(0, 1, usdfAmount, minUsdtOut);
         _outputAsset.forceApprove(address(swapPool), 0);
 
         emit ReverseSwapExecuted(usdfAmount, usdtReceived);

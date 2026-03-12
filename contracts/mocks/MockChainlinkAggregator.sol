@@ -20,6 +20,16 @@ contract MockChainlinkAggregator {
         _roundId += 1;
     }
 
+    function updateAnswer(int256 answer_) external {
+        _answer = answer_;
+        _updatedAt = block.timestamp;
+        _roundId += 1;
+    }
+
+    function setUpdatedAt(uint256 updatedAt_) external {
+        _updatedAt = updatedAt_;
+    }
+
     function latestRoundData()
         external
         view

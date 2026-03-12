@@ -30,12 +30,26 @@ contract MockStableSwapPoolWithLPSupport is IStableSwapPool, ERC20 {
         poolBalances[1] = _bal1;
         virtualPrice = _virtualPrice;
         feeBps = _feeBps;
+
+        // Allow this contract to transfer tokens from itself (needed for exchange)
+        token0.approve(address(this), type(uint256).max);
+        token1.approve(address(this), type(uint256).max);
     }
 
     // ── IStableSwapPool ──────────────────────────────────────────────────────
 
     function get_balances() external view returns (uint256[2] memory) {
         return poolBalances;
+    }
+
+    function get_dy(int128 i, int128 j, uint256 dx) external view returns (uint256 dy) {
+        uint256 idxIn  = uint256(uint128(i));
+        uint256 idxOut = uint256(uint128(j));
+        dy = dx * (10_000 - feeBps) / 10_000;
+        if (poolBalances[idxOut] > 0 && poolBalances[idxIn] > 0) {
+            dy = dx * poolBalances[idxOut] / poolBalances[idxIn];
+            dy = dy * (10_000 - feeBps) / 10_000;
+        }
     }
 
     function get_virtual_price() external view returns (uint256) {

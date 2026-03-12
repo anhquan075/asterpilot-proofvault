@@ -25,6 +25,20 @@ const GAS_PRICE_CREDITCOIN = Math.round(
   parseFloat(process.env.GAS_PRICE_GWEI || "10000000") * 1_000_000_000
 );
 
+// Polkadot Hub configuration
+const POLKADOT_HUB_TESTNET_RPC = process.env.POLKADOT_HUB_TESTNET_RPC || "https://services.polkadothub-rpc.com/testnet";
+const POLKADOT_CHAIN_ID = 420420417;
+
+// Moonbeam configuration (for full EVM DeFi integration)
+const MOONBEAM_MAINNET_RPC = process.env.MOONBEAM_MAINNET_RPC || "https://rpc.api.moonbeam.network";
+const MOONBEAM_TESTNET_RPC = process.env.MOONBEAM_TESTNET_RPC || "https://rpc.api.moonbase.moonbeam.network";
+
+const GAS_PRICE_POLKADOT = Math.round(
+  parseFloat(process.env.GAS_PRICE_GWEI || "1") * 1_000_000_000
+);
+
+
+
 module.exports = {
   solidity: {
     version: "0.8.24",
@@ -71,6 +85,14 @@ module.exports = {
       url: CREDITCOIN_TESTNET_RPC_URL,
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 102031,
+    },
+    // Polkadot Hub Testnet (for Hackathon)
+    polkadotHubTestnet: {
+      type: "http",
+      chainType: "l1",
+      url: POLKADOT_HUB_TESTNET_RPC,
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: POLKADOT_CHAIN_ID,
     },
   },
   etherscan: {

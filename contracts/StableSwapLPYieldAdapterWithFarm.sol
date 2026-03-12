@@ -135,6 +135,9 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
     function onVaultDeposit(uint256 amount) external onlyVault nonReentrant {
         if (amount == 0) revert StableSwapLP__ZeroAmount();
 
+        // Pull tokens from vault
+        SafeERC20.safeTransferFrom(usdt, msg.sender, address(this), amount);
+
         // 1. Add liquidity to StableSwap pool with slippage protection
         uint256[2] memory amounts;
         amounts[USDT_INDEX] = amount;
@@ -196,7 +199,7 @@ contract StableSwapLPYieldAdapterWithFarm is Ownable2Step, ReentrancyGuard, IMan
         lpToken.forceApprove(address(pool), 0);
 
         // 5. Transfer USDT back to vault
-        usdt.safeTransfer(vault, usdtOut);
+        SafeERC20.safeTransfer(usdt, msg.sender, usdtOut);
         emit LiquidityRemoved(lpToBurn, usdtOut);
         return usdtOut;
     }

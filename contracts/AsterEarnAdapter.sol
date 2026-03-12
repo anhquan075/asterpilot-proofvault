@@ -118,6 +118,7 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
 
     function onVaultDeposit(uint256 amount) external onlyVault {
         if (amount == 0) revert AsterEarnAdapter__ZeroAmount();
+        SafeERC20.safeTransferFrom(_asset, msg.sender, address(this), amount);
         _asset.forceApprove(asterMinter, amount);
         _callWithAmount(depositSelector, amount);
         _asset.forceApprove(asterMinter, 0);
@@ -134,6 +135,13 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         if (actual > 0) {
             _asset.safeTransfer(vault, actual);
         }
+
+        // If we still need more, trigger an async request automatically
+        if (amount > actual) {
+            uint256 needed = amount - actual;
+            _callWithAmount(requestWithdrawSelector, needed);
+        }
+
         return actual;
     }
 
@@ -279,7 +287,7 @@ contract AsterEarnAdapter is Ownable2Step, IAsterEarnAdapter {
         );
         emit ExternalCallResult(selector, ok, data);
         if (!ok) revert AsterEarnAdapter__CallFailed();
-        if (data.length >= 32) {
+        if (data.length >= 32 && selector != requestWithdrawSelector) {
             bool result = abi.decode(data, (bool));
             if (!result) revert AsterEarnAdapter__CallReturnedFalse();
         }

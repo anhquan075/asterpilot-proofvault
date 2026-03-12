@@ -1,0 +1,24 @@
+{
+  "network": "polkadotHubTestnet",
+  "timestamp": "2026-03-12T19:07:46.073Z",
+  "contracts": {
+    "usdc": "0x3cCcB5E20193affc9E4C1C1aa5Aee425F0FfB049",
+    "glint": "0x721882D98194D5177F2336Bd97f50ABA44410365",
+    "mockChainlink": "0x6b8776492e529fe1e33Df0Af42ffb7430F34660e",
+    "stableSwap": "0xD47B776e957687D1789d813eBeF79149658d00F0",
+    "moonwellVault": "0xd5ff531870c75FA29f495e70E0D406a207018D02",
+    "mToken": "0xa2F476614cBE031F3E15Fe0973494b3BFcFab573",
+    "masterChef": "0x6f31520271B85b14a035F7e86DeB46A5702Aa871",
+    "router": "0x4Ac2126DceF25CBBB7C09Bbf628233736e3703e9",
+    "oracle": "0x60a0EcB049248Da1A609F5a855bb2BAa5aD7A21C",
+    "breaker": "0x42127f801ff5137ceC8b78573bADc3FCB1Bb10bf",
+    "policy": "0x6470aC20dFeBdFbf4384Fe81Cef96A76EEd6bDb2",
+    "sharpeTracker": "0xbC3D99421A93e4f2E5bB868DAEC2a03aE96aFD33",
+    "vault": "0x071958E16A54E3a963d17FdeEf2e6938CB8fbB10",
+    "strategyEngine": "0x4dDf07b881Bd0B7cc93deB9D2a7A3c5a6cE094ba",
+    "xcmMessenger": "0x4B1f39ed7B96Ff870fF1B18f2201E21bE75f4eEf",
+    "moonwellERC4626Adapter": "0x4695ef4ADE0D065C8901870876e75fE7b13210E3",
+    "moonwellLendingAdapter": "0x76505B830098302e94906Bd5a77B89569bCc7498",
+    "beamSwapFarmAdapter": "0x198E9ECfaA22d8385c386038e810788c9a358c74"
+  }
+}

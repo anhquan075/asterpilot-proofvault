@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-/// @title RiskPolicy — Immutable policy parameters for StrategyEngine
-/// @notice Extends v1 RiskPolicy with Dutch auction bounty, idle buffer, Sharpe ratio params,
-///         and LP rail allocation targets per risk state.
-///         All values set once at construction; no setters, no owner.
-/// @custom:security-contact security@asterpilot.xyz
+/**
+ * @title RiskPolicy
+ * @notice Global risk parameters and allocation targets for StrategyEngine.
+ */
 contract RiskPolicy {
-    // ── errors ──
+    // --- Errors ---
     error RiskPolicy__ZeroCooldown();
     error RiskPolicy__VolatilityOrderInvalid();
     error RiskPolicy__ZeroDepegPrice();
@@ -56,18 +55,15 @@ contract RiskPolicy {
         uint256 normalAsterBps_,
         uint256 guardedAsterBps_,
         uint256 drawdownAsterBps_,
-        // v2 additions
         uint256 minBountyBps_,
         uint256 auctionDurationSeconds_,
         uint256 idleBufferBps_,
         uint8   sharpeWindowSize_,
         uint256 sharpeLowThreshold_,
-        // LP rail
         uint256 normalLpBps_,
         uint256 guardedLpBps_,
         uint256 drawdownLpBps_
     ) {
-        // ── v1 validations ──────────────────────────────────────
         if (cooldown_ == 0) revert RiskPolicy__ZeroCooldown();
         if (guardedVolatilityBps_ > drawdownVolatilityBps_) revert RiskPolicy__VolatilityOrderInvalid();
         if (depegPrice_ == 0) revert RiskPolicy__ZeroDepegPrice();
@@ -77,19 +73,15 @@ contract RiskPolicy {
         if (guardedAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__AllocationTooHigh();
         if (drawdownAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__AllocationTooHigh();
 
-        // Aster concentration INCREASES as risk increases: Normal ≤ Guarded ≤ Drawdown
-        // (In distress, concentrate in Aster as the safest protocol; reduce LP/secondary)
         if (normalAsterBps_ > guardedAsterBps_ || guardedAsterBps_ > drawdownAsterBps_) {
             revert RiskPolicy__AllocsNotMonotonic();
         }
 
-        // ── v2 validations ──────────────────────────────────────
         if (minBountyBps_ > maxBountyBps_) revert RiskPolicy__MinBountyExceedsMax();
         if (auctionDurationSeconds_ == 0) revert RiskPolicy__ZeroAuctionDuration();
         if (idleBufferBps_ > 2000) revert RiskPolicy__IdleBufferTooHigh();
         if (sharpeWindowSize_ < 3 || sharpeWindowSize_ > 30) revert RiskPolicy__SharpeWindowOutOfRange();
 
-        // ── LP rail validations ─────────────────────────────────
         if (normalLpBps_ + normalAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
         if (guardedLpBps_ + guardedAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
         if (drawdownLpBps_ + drawdownAsterBps_ > BPS_DENOMINATOR) revert RiskPolicy__CombinedAllocationTooHigh();
@@ -98,7 +90,6 @@ contract RiskPolicy {
             revert RiskPolicy__AllocsNotMonotonic();
         }
 
-        // ── v1 assignments ──────────────────────────────────────
         cooldown = cooldown_;
         guardedVolatilityBps = guardedVolatilityBps_;
         drawdownVolatilityBps = drawdownVolatilityBps_;
@@ -108,15 +99,11 @@ contract RiskPolicy {
         normalAsterBps = normalAsterBps_;
         guardedAsterBps = guardedAsterBps_;
         drawdownAsterBps = drawdownAsterBps_;
-
-        // ── v2 assignments ──────────────────────────────────────
         minBountyBps = minBountyBps_;
         auctionDurationSeconds = auctionDurationSeconds_;
         idleBufferBps = idleBufferBps_;
         sharpeWindowSize = sharpeWindowSize_;
         sharpeLowThreshold = sharpeLowThreshold_;
-
-        // ── LP rail assignments ─────────────────────────────────
         normalLpBps = normalLpBps_;
         guardedLpBps = guardedLpBps_;
         drawdownLpBps = drawdownLpBps_;

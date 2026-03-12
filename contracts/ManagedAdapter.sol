@@ -72,6 +72,7 @@ contract ManagedAdapter is Ownable2Step, IManagedAdapter {
 
     function onVaultDeposit(uint256 amount) external onlyVault {
         if (amount == 0) revert ManagedAdapter__ZeroAmount();
+        SafeERC20.safeTransferFrom(_asset, msg.sender, address(this), amount);
         emit VaultDepositRecorded(amount);
     }
 

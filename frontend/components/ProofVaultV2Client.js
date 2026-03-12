@@ -74,7 +74,7 @@ function ContractAddressBadge({ label, address, icon: Icon, bscScanAddr }) {
 export default function ProofVaultV2Client() {
   const [, setStatus] = useState("Loading live data...");
   const [busyAction, setBusyAction] = useState(null);
-  const { networkMode, isTestnet, isCreditcoin, setNetworkMode } = useNetworkMode();
+  const { networkMode, isTestnet, isCreditcoin, isPolkadotHub, setNetworkMode } = useNetworkMode();
   const networkConfig = NETWORK_CONFIGS[networkMode];
   const {
     vaultAddress,
@@ -137,13 +137,15 @@ export default function ProofVaultV2Client() {
   );
 
   // Auto-sync UI network mode when wallet switches chains.
-  // Chain 56 → mainnet, Chain 97 → testnet, Chain 102031 -> creditcoin_testnet
+  // Chain 56 → mainnet, Chain 97 → testnet, Chain 102031 -> creditcoin_testnet, Chain 420420417 -> polkadot_hub
   useEffect(() => {
     if (wallet.networkChainId === 56n) setNetworkMode(NETWORK_MODE.MAINNET);
     else if (wallet.networkChainId === 97n)
       setNetworkMode(NETWORK_MODE.TESTNET);
     else if (wallet.networkChainId === 102031n)
       setNetworkMode(NETWORK_MODE.CREDITCOIN_TESTNET);
+    else if (wallet.networkChainId === 420420417n)
+      setNetworkMode(NETWORK_MODE.POLKADOT_HUB);
   }, [wallet.networkChainId, setNetworkMode]);
 
   // Clear transaction history when wallet disconnects
@@ -447,8 +449,9 @@ export default function ProofVaultV2Client() {
             }}
           />
           Unsupported network ({wallet.networkLabel}). Switch your wallet to{" "}
-          <strong>BNB Mainnet (56)</strong>, <strong>BNB Testnet (97)</strong> or{" "}
-          <strong>Creditcoin Testnet (102031)</strong>.
+          <strong>BNB Mainnet (56)</strong>, <strong>BNB Testnet (97)</strong>,{" "}
+          <strong>Creditcoin Testnet (102031)</strong> or{" "}
+          <strong>Polkadot Hub (420420417)</strong>.
         </div>
       )}
 
@@ -618,6 +621,8 @@ export default function ProofVaultV2Client() {
             harvestGasMultiplier={vaultState.harvestGasMultiplier}
             rpcUrl={networkConfig.rpcUrl}
             vUSDTAddress={networkConfig.vUSDTAddress}
+            isPolkadotHub={isPolkadotHub}
+            isCreditcoin={isCreditcoin}
           />
           <VaultExecutionAuctionRraBidCard
             executionAuctionAddress={executionAuctionAddress}
@@ -633,6 +638,8 @@ export default function ProofVaultV2Client() {
             algoMetrics={vaultState.algoMetrics}
             harvestGasEstimate={vaultState.harvestGasEstimate}
             harvestGasMultiplier={vaultState.harvestGasMultiplier}
+            isPolkadotHub={isPolkadotHub}
+            isCreditcoin={isCreditcoin}
           />
         </div>
 

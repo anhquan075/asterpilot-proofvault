@@ -115,4 +115,15 @@ contract MockMasterChef {
         uint256 blocksSinceLastReward = block.number - user.lastRewardBlock;
         return blocksSinceLastReward * rewardsPerBlock;
     }
+    
+    /// @notice Test helper to set pending rewards for a user
+    function setPendingRewards(uint256 pid, address _user, uint256 amount) external {
+        // Adjust lastRewardBlock to simulate rewards
+        UserInfo storage user = userInfo[pid][_user];
+        if (rewardsPerBlock > 0) {
+            uint256 blocksNeeded = amount / rewardsPerBlock;
+            user.lastRewardBlock = block.number - blocksNeeded;
+        }
+    }
 }
+

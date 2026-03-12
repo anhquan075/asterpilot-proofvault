@@ -13,7 +13,8 @@ export function useNetworkMode() {
       if (
         stored === NETWORK_MODE.TESTNET ||
         stored === NETWORK_MODE.MAINNET ||
-        stored === NETWORK_MODE.CREDITCOIN_TESTNET
+        stored === NETWORK_MODE.CREDITCOIN_TESTNET ||
+        stored === NETWORK_MODE.POLKADOT_HUB
       ) {
         return stored;
       }
@@ -27,7 +28,8 @@ export function useNetworkMode() {
     if (
       mode !== NETWORK_MODE.MAINNET &&
       mode !== NETWORK_MODE.TESTNET &&
-      mode !== NETWORK_MODE.CREDITCOIN_TESTNET
+      mode !== NETWORK_MODE.CREDITCOIN_TESTNET &&
+      mode !== NETWORK_MODE.POLKADOT_HUB
     )
       return;
     try {
@@ -39,11 +41,13 @@ export function useNetworkMode() {
   }, []);
 
   const toggleNetworkMode = useCallback(() => {
-    // Cycles through: Mainnet -> Testnet -> Creditcoin -> Mainnet
+    // Cycles through: Mainnet -> Testnet -> Polkadot Hub -> Creditcoin -> Mainnet
     let nextMode;
     if (networkMode === NETWORK_MODE.MAINNET) {
       nextMode = NETWORK_MODE.TESTNET;
     } else if (networkMode === NETWORK_MODE.TESTNET) {
+      nextMode = NETWORK_MODE.POLKADOT_HUB;
+    } else if (networkMode === NETWORK_MODE.POLKADOT_HUB) {
       nextMode = NETWORK_MODE.CREDITCOIN_TESTNET;
     } else {
       nextMode = NETWORK_MODE.MAINNET;
@@ -55,6 +59,7 @@ export function useNetworkMode() {
     networkMode,
     isTestnet: networkMode === NETWORK_MODE.TESTNET,
     isMainnet: networkMode === NETWORK_MODE.MAINNET,
+    isPolkadotHub: networkMode === NETWORK_MODE.POLKADOT_HUB,
     isCreditcoin: networkMode === NETWORK_MODE.CREDITCOIN_TESTNET,
     toggleNetworkMode,
     setNetworkMode,

@@ -1,7 +1,8 @@
 import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
 import { Activity } from 'lucide-react';
 
-export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, harvestGasMultiplier }) {
+export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, harvestGasMultiplier, isPolkadotHub, isCreditcoin }) {
+  const rewardToken = isPolkadotHub ? "GLINT" : "CAKE";
   return (
     <div className="card">
       <p className="eyebrow">Oracle &amp; Policy</p>
@@ -68,7 +69,7 @@ export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, 
             </div>
             <div>
               <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Behavior</span>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginTop: 2 }}>Skips harvest if CAKE reward &lt; gas cost × multiplier</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginTop: 2 }}>Skips harvest if {rewardToken} reward &lt; gas cost × multiplier</span>
             </div>
           </div>
         </div>

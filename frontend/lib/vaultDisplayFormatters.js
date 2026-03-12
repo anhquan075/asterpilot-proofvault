@@ -29,3 +29,21 @@ export function fmtUsdf(raw) {
     return "—";
   }
 }
+
+export function getRailName(railId, isPolkadotHub, isCreditcoin) {
+  if (isPolkadotHub) {
+    if (railId === 1) return "Moonwell ERC4626";
+    if (railId === 2) return "Moonwell Lending";
+    if (railId === 3) return "BeamSwap Farm";
+  }
+  if (isCreditcoin) {
+    if (railId === 1) return "AsterEarn (Sync)";
+    if (railId === 2) return "Managed Buffer";
+    if (railId === 3) return "RWA Liquidity";
+  }
+  // Default (BNB Chain)
+  if (railId === 1) return "AsterEarn (Async)";
+  if (railId === 2) return "Managed Adapter";
+  if (railId === 3) return "StableSwap LP";
+  return `Rail ${railId}`;
+}

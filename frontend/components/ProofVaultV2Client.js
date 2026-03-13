@@ -210,7 +210,7 @@ export default function ProofVaultV2Client() {
       ) {
         runSilentRefresh();
       }
-    }, 8000);
+    }, 5000);
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") runSilentRefresh();
@@ -336,7 +336,7 @@ export default function ProofVaultV2Client() {
   const latestTx = actions.txHistory?.[0] ?? null;
   const latestTxId = latestTx?.id;
   const liveLabel = lastLiveSyncAt
-    ? `Live data every 8s · last sync ${new Date(
+    ? `Live data every 5s · last sync ${new Date(
         lastLiveSyncAt
       ).toLocaleTimeString()}`
     : "Live data initializing...";

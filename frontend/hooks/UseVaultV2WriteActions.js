@@ -170,6 +170,8 @@ export function useVaultV2WriteActions({ refresh }) {
         });
         await tx.wait();
         appendTx("Deposit", tx.hash, "success", "Deposit mined");
+        // Delay refresh slightly to allow node state to stabilize
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         await refresh(refreshArgs);
         setStatus("Deposit complete");
       } catch (error) {
@@ -224,6 +226,8 @@ export function useVaultV2WriteActions({ refresh }) {
         });
         await tx.wait();
         appendTx("Withdraw", tx.hash, "success", "Withdraw mined");
+        // Delay refresh slightly to allow node state to stabilize
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         await refresh(refreshArgs);
         setStatus("Withdraw complete");
       } catch (error) {
@@ -324,6 +328,8 @@ export function useVaultV2WriteActions({ refresh }) {
           "success",
           "Cycle execution confirmed"
         );
+        // Delay refresh slightly to allow node state to stabilize (especially on Creditcoin)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         await refresh(refreshArgs);
         setStatus("Cycle executed");
       } catch (error) {

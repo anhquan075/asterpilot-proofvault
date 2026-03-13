@@ -69,31 +69,67 @@ graph TD
 
 ---
 
-## Philosophy of Design: The Three-Rail Strategy
+## 🛠️ Getting Started: Full Lifecycle
 
-The system operates as a three-rail capital routing engine governed by a risk state machine:
+### 1. Installation & Environment
+```bash
+# Install dependencies
+npm install
 
-### 1. Rail 1: Primary Yield (Yield Anchor)
-- **Polkadot Hub**: Moonwell ERC-4626 (Synchronous, institutional yield).
-- **BNB Chain**: AsterDEX Earn (USDT -> USDF yield).
-- **Creditcoin**: AsterEarn Sync (Direct RWA-backed yield).
+# Setup environment variables
+cp .env.example .env
+# Edit .env: 
+# PRIVATE_KEY=<your_wallet_key>
+# RPC URLs for bnbTestnet, creditcoinTestnet, polkadotHubTestnet
+```
 
-### 2. Rail 2: LP / Lending (Target-based)
-- **Polkadot Hub**: Moonwell Lending (Collateralized USDC lending).
-- **BNB Chain**: PancakeSwap StableSwap LP (Trading fee capture).
-- **Creditcoin**: RWA Buffer (Capital waiting for loan fulfillment).
+### 2. Deploy Full Stack
+Deploy the core contracts and mock dependencies for your target network.
 
-### 3. Rail 3: Secondary / Remainder (Growth)
-- **Polkadot Hub**: BeamSwap Farm (High-efficiency GLINT reward staking).
-- **BNB Chain**: Secondary Liquidity Buffer (ManagedAdapter).
-- **Creditcoin**: Liquidity Reserve (Base asset safety).
+- **BNB Chain (Testnet)**:
+  ```bash
+  npx hardhat run scripts/DeployTestnetFullStackWithMocks.js --network bnbTestnet
+  ```
+- **Creditcoin (Hella)**:
+  ```bash
+  npx hardhat run scripts/DeployCreditcoinTestnetStack.js --network creditcoinTestnet
+  ```
+- **Polkadot Hub (Paseo)**:
+  ```bash
+  npx hardhat run scripts/DeployPolkadotHubFullStack.js --network polkadotHubTestnet
+  ```
+
+### 3. Seeding & Initialization (Full Flow)
+To test the "Full Flow" (Deposit -> Rebalance -> Harvest), you must ensure mock protocols have liquidity and the vault has assets.
+
+**A. Clear Circuit Breaker Signal A (Stale Feed)**
+Testnet feeds are often stale. Run this to refresh timestamps and unblock execution:
+```bash
+npx hardhat run scripts/RefreshTestnetMockFeeds.js --network <network>
+```
+
+**B. Seed Vault Assets**
+Mint mock USDT/USDC and deposit into the vault:
+```bash
+npx hardhat run scripts/SeedTestnetVaultDeposit.js --network <network>
+```
+
+### 4. Verification & Rebalance
+Execute the first rebalance cycle to move assets from Idle into the 3-Rail strategy:
+```bash
+# For Polkadot Hub:
+npx hardhat run scripts/VerifyPolkadotHubStack.js --network polkadotHubTestnet
+
+# For other networks, use standard test suite:
+npx hardhat test
+```
 
 ---
 
-## 📍 Deployed Addresses
+## 📍 Deployed Addresses (Reference)
 
 ### Polkadot Hub (Paseo Asset Hub)
-- **Chain ID:** `420420417` | **Explorer:** [Paseo Moonscan](https://paseo.moonscan.io)
+- **Chain ID:** `420420417` | **USDC (6 Decimals)**
 
 | Contract | Address |
 | :--- | :--- |
@@ -104,74 +140,27 @@ The system operates as a three-rail capital routing engine governed by a risk st
 | `BeamSwapFarmAdapter` | `0x198E9ECfaA22d8385c386038e810788c9a358c74` |
 
 ### BNB Chain (Mainnet)
-- **Chain ID:** `56` | **Explorer:** [BscScan](https://bscscan.com)
+- **Chain ID:** `56` | **USDT (18 Decimals)**
 
 | Contract | Address |
 | :--- | :--- |
 | `ProofVault` | `0x377ca215D07794C904e6B000B25B11934FE5d2f1` |
 | `StrategyEngine` | `0xa2c09C35F91E181e20872706597Ef1E333BB8A1f` |
 | `AsterEarnAdapter` | `0x477be4B8485fA3a56Ca7eE6d025A6bDBea1Be35c` |
-| `CircuitBreaker` | `0x8f2e3c9B29ebc89785101e8f291b299f5e04d65B` |
 
 ### Creditcoin (Hella Testnet)
-- **Chain ID:** `102031` | **Explorer:** [Creditcoin Blockscout](https://creditcoin-testnet.blockscout.com)
+- **Chain ID:** `102031` | **USDT (18 Decimals)**
 
 | Contract | Address |
 | :--- | :--- |
 | `ProofVault` | `0x7c30B24B91Cd9923d565239fA517F3C06371E196` |
 | `StrategyEngine` | `0x3036840C588a51Fe77C4E38a838e5451b1b896Ae` |
-| `USDT (Mock)` | `0xaB4F67AfCb9B9C390049705022A0237E81465C00` |
 
 ---
 
-## 🛠️ Getting Started
-
-### 1. Prerequisites
-- Node.js (v18+)
-- npm or pnpm
-
-### 2. Installation
-```bash
-# Install dependencies
-npm install
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your private keys and RPC URLs
-```
-
-### 3. Development & Testing
-```bash
-# Compile contracts
-npx hardhat compile
-
-# Run all tests
-npx hardhat test
-
-# Run specific test file
-npx hardhat test test/polkadot/PolkadotHubIntegration.test.js
-```
-
-### 4. Deployment
-
-#### BNB Chain (Testnet)
-```bash
-npx hardhat run scripts/DeployTestnetFullStackWithMocks.js --network bnbTestnet
-```
-
-#### Polkadot Hub (Paseo)
-```bash
-npx hardhat run scripts/DeployPolkadotHubFullStack.js --network polkadotHubTestnet
-```
-
-#### Creditcoin (Hella)
-```bash
-npx hardhat run scripts/DeployCreditcoinTestnetStack.js --network creditcoinTestnet
-```
-
 ## 🛡️ Security Posture
 
-- **Ownership Renounced**: Configuration locked post-deployment to ensure non-custodial operations.
-- **Reentrancy Protected**: All adapters and core vault functions fortified with guards.
+- **Ownership Renounced**: Configuration locked post-deployment.
+- **Reentrancy Protected**: All state-changing functions fortified with guards.
 - **Audit Verified**: Optimized for multi-chain gas mechanics and asset scaling.
-- **ZK Ready**: Built-in hooks for ZK-verified risk metric submission from off-chain coprocessors.
+- **ZK Ready**: Architectural hooks for ZK-verified risk metric submission.

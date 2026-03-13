@@ -1,4 +1,4 @@
-import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
+import { fmtBps, fmtPrice } from "@/lib/VaultDisplayFormatters";
 import { Activity } from 'lucide-react';
 
 export function VaultOraclePolicyMetricsCard({ algoMetrics, harvestGasEstimate, harvestGasMultiplier, isPolkadotHub, isCreditcoin }) {

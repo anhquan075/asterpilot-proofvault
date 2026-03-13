@@ -7,10 +7,10 @@ import {
   pegArbAbi,
   policyV2Abi,
   vaultV2Abi,
-} from "@/lib/abi";
+} from "@/lib/Abi";
 import { useCallback, useState } from "react";
-import { useNetworkMode } from "./useNetworkMode.js";
-import { NETWORK_CONFIGS } from "../lib/networkConfig.js";
+import { useNetworkMode } from "./UseNetworkMode.js";
+import { NETWORK_CONFIGS } from "../lib/NetworkConfig.js";
 
 function toSafeNumber(value) {
   if (value === null || value === undefined) return null;

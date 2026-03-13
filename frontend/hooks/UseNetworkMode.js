@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { NETWORK_MODE, DEFAULT_NETWORK_MODE, STORAGE_KEY } from "../lib/networkConfig.js";
+import { NETWORK_MODE, DEFAULT_NETWORK_MODE, STORAGE_KEY } from "../lib/NetworkConfig.js";
 
 /**
  * Persistent network mode toggle hook.

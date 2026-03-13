@@ -1,5 +1,5 @@
 import { Zap } from 'lucide-react';
-import { fmtBps } from '@/lib/vaultDisplayFormatters';
+import { fmtBps } from '@/lib/VaultDisplayFormatters';
 
 export function VaultDutchAuctionBountyCountdownCard({ auctionState }) {
   if (!auctionState) {

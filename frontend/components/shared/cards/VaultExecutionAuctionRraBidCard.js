@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Gavel } from "lucide-react";
 
-import { executionAuctionAbi, erc20Abi } from "@/lib/abi";
-import { fmtUsdf } from "@/lib/vaultDisplayFormatters";
+import { executionAuctionAbi, erc20Abi } from "@/lib/Abi";
+import { fmtUsdf } from "@/lib/VaultDisplayFormatters";
 
 const PHASE_LABELS = ["NotOpen", "BidPhase", "ExecutePhase", "FallbackPhase"];
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";

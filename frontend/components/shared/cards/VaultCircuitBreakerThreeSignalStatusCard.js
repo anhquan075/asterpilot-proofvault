@@ -1,4 +1,4 @@
-import { fmtBps } from '@/lib/vaultDisplayFormatters';
+import { fmtBps } from '@/lib/VaultDisplayFormatters';
 import { Zap } from 'lucide-react';
 export function VaultCircuitBreakerCard({ breakerState }) {
   const { paused, signalA, signalB, signalC, lastTripTimestamp, recoveryTimestamp } = breakerState ?? {};

@@ -17,6 +17,7 @@ export const creditcoinTestnet = defineChain({
     default: { name: 'Blockscout', url: 'https://creditcoin-testnet.blockscout.com' },
   },
   testnet: true,
+  iconUrl: 'https://raw.githubusercontent.com/polkadot-js/apps/master/packages/apps-config/src/ui/logos/chains/creditcoin.svg',
 });
 
 export const polkadotHubTestnet = defineChain({
@@ -34,23 +35,7 @@ export const polkadotHubTestnet = defineChain({
     default: { name: 'Moonscan', url: 'https://paseo.moonscan.io' },
   },
   testnet: true,
-});
-
-export const polkadotHubTestnet = defineChain({
-  id: 420420417,
-  name: 'Polkadot Hub Testnet',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'Paseo',
-    symbol: 'PAS',
-  },
-  rpcUrls: {
-    default: { http: ['https://services.polkadothub-rpc.com/testnet'] },
-  },
-  blockExplorers: {
-    default: { name: 'Moonscan', url: 'https://paseo.moonscan.io' },
-  },
-  testnet: true,
+  iconUrl: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg',
 });
 
 export const wagmiConfig = getDefaultConfig({

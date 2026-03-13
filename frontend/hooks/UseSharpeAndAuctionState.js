@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { engineV2Abi } from "@/lib/abi";
+import { engineV2Abi } from "@/lib/Abi";
 
 export function useSharpeAndAuctionState() {
   const [currentBountyBps, setCurrentBountyBps] = useState(0n);

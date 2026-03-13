@@ -9,11 +9,15 @@ import { VaultStrategyAllocationBarCard } from "@/components/shared/cards/VaultS
 import { VaultTransactionHistoryCard } from "@/components/shared/cards/VaultTransactionHistoryCard";
 import { VaultTvlStatsDepositWithdrawCard } from "@/components/shared/cards/VaultTvlStatsDepositWithdrawCard";
 import { VaultTopNavbar } from "@/components/shared/ui/VaultTopNavbar";
-import { useRainbowKitWallet } from "@/hooks/useRainbowKitWallet";
-import { useVaultV2ReadState } from "@/hooks/useVaultV2ReadState";
-import { useVaultV2WriteActions } from "@/hooks/useVaultV2WriteActions";
-import { useNetworkMode } from "@/hooks/useNetworkMode";
-import { NETWORK_CONFIGS, NETWORK_MODE } from "@/lib/networkConfig";
+import { useCircuitBreakerState } from "@/hooks/UseCircuitBreakerState";
+import { useNetworkMode } from "@/hooks/UseNetworkMode";
+import { useRainbowKitWallet } from "@/hooks/UseRainbowKitWallet";
+import { useSharpeAndAuctionState } from "@/hooks/UseSharpeAndAuctionState";
+import { useVaultV2ReadState } from "@/hooks/UseVaultV2ReadState";
+import { useVaultV2WriteActions } from "@/hooks/UseVaultV2WriteActions";
+
+import { vaultV2Abi } from "@/lib/Abi";
+import { NETWORK_CONFIGS, NETWORK_MODE } from "@/lib/NetworkConfig";
 import {
   AlertTriangle,
   ExternalLink,
@@ -324,7 +328,8 @@ export default function ProofVaultV2Client() {
     wallet.networkChainId === null ||
     wallet.networkChainId === 56n ||
     wallet.networkChainId === 97n ||
-    wallet.networkChainId === 102031n;
+    wallet.networkChainId === 102031n ||
+    wallet.networkChainId === 420420417n;
   const depositsBlocked = vaultState.configLocked === false;
   const latestTx = actions.txHistory?.[0] ?? null;
   const latestTxId = latestTx?.id;

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { circuitBreakerAbi } from "@/lib/abi";
+import { circuitBreakerAbi } from "@/lib/Abi";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 

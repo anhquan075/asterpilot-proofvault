@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PieChart } from "lucide-react";
-import { toSafeNumber, fmtBps, fmtUsdf, getRailName } from "@/lib/vaultDisplayFormatters";
+import { toSafeNumber, fmtBps, fmtUsdf, getRailName } from "@/lib/VaultDisplayFormatters";
 import { formatUnits } from "ethers";
 
 function toBigIntSafe(v) {

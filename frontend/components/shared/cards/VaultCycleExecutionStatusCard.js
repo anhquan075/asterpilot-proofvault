@@ -1,4 +1,4 @@
-import { fmtBps, fmtPrice } from "@/lib/vaultDisplayFormatters";
+import { fmtBps, fmtPrice } from "@/lib/VaultDisplayFormatters";
 import { CheckCircle2, XCircle, Circle, Info, Loader, Pause, Play, Zap } from 'lucide-react';
 import { useEffect, useState } from "react";
 

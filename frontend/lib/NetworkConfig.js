@@ -3,7 +3,7 @@
  * Single source of truth for mainnet vs testnet switching.
  * Env vars override the preset fallbacks from contractAddresses.js.
  */
-import { V2_MAINNET_PRESET, V2_TESTNET_PRESET, V2_CREDITCOIN_TESTNET_PRESET, POLKADOT_HUB_TESTNET_PRESET } from "./contractAddresses.js";
+import { V2_MAINNET_PRESET, V2_TESTNET_PRESET, V2_CREDITCOIN_TESTNET_PRESET, POLKADOT_HUB_TESTNET_PRESET } from "./ContractAddresses.js";
 
 export const NETWORK_MODE = {
   MAINNET: "mainnet",
@@ -17,6 +17,7 @@ export const NETWORK_CONFIGS = {
     label: "Mainnet",
     chainId: 56n,
     chainIdNum: 56,
+    logoUrl: "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
     rpcUrl:
       import.meta.env.VITE_BNB_PUBLIC_RPC_URL ||
       "https://bsc-rpc.publicnode.com",
@@ -58,6 +59,7 @@ export const NETWORK_CONFIGS = {
     label: "BNB Testnet",
     chainId: 97n,
     chainIdNum: 97,
+    logoUrl: "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg",
     rpcUrl:
       import.meta.env.VITE_BSC_TESTNET_RPC_URL ||
       "https://bsc-testnet-rpc.publicnode.com",
@@ -102,6 +104,7 @@ export const NETWORK_CONFIGS = {
     label: "Creditcoin",
     chainId: 102031n,
     chainIdNum: 102031,
+    logoUrl: "https://raw.githubusercontent.com/polkadot-js/apps/master/packages/apps-config/src/ui/logos/chains/creditcoin.svg",
     rpcUrl:
       import.meta.env.VITE_CREDITCOIN_TESTNET_RPC_URL ||
       "https://rpc.cc3-testnet.creditcoin.network",
@@ -146,6 +149,7 @@ export const NETWORK_CONFIGS = {
     label: "Polkadot Hub",
     chainId: 420420417n,
     chainIdNum: 420420417,
+    logoUrl: "https://cryptologos.cc/logos/polkadot-new-dot-logo.svg",
     rpcUrl:
       import.meta.env.VITE_POLKADOT_HUB_RPC_URL ||
       "https://services.polkadothub-rpc.com/testnet",

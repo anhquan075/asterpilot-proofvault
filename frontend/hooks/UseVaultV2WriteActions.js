@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { engineV2Abi, erc20Abi, vaultV2Abi, pegArbAbi } from "@/lib/abi";
+import { engineV2Abi, erc20Abi, vaultV2Abi, pegArbAbi } from "@/lib/Abi";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 const TX_HISTORY_STORAGE_KEY = "proofvault:v2:tx-history";

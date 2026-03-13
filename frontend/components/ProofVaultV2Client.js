@@ -80,6 +80,20 @@ export default function ProofVaultV2Client() {
   const [busyAction, setBusyAction] = useState(null);
   const { networkMode, isTestnet, isCreditcoin, isPolkadotHub, setNetworkMode } = useNetworkMode();
   const networkConfig = NETWORK_CONFIGS[networkMode];
+
+  // Tracking network transitions for visual effect
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [prevNetworkMode, setPrevNetworkMode] = useState(networkMode);
+
+  useEffect(() => {
+    if (networkMode !== prevNetworkMode) {
+      setIsTransitioning(true);
+      setPrevNetworkMode(networkMode);
+      // Ensure transition lasts at least 600ms for smoothness
+      const timer = setTimeout(() => setIsTransitioning(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [networkMode, prevNetworkMode]);
   const {
     vaultAddress,
     engineAddress,
@@ -381,7 +395,7 @@ export default function ProofVaultV2Client() {
   }, [latestTxId, latestTx]);
 
   return (
-    <section className="panel panel--enhanced">
+    <section className={`panel panel--enhanced transition-container ${isTransitioning ? 'transitioning' : ''}`}>
       <VaultTopNavbar busyAction={busyAction} />
 
       {(isTestnet || isCreditcoin || isPolkadotHub) && (

@@ -2126,3 +2126,15 @@ input, button { border-radius: 8px; }
   box-shadow: 0 8px 24px rgba(0,0,0,.55);
   color: var(--text);
 }
+
+/* ── Network Switch Transition ── */
+.transition-container {
+  transition: filter 0.4s ease, opacity 0.4s ease;
+  will-change: filter, opacity;
+}
+
+.transitioning {
+  filter: blur(8px) saturate(0.5);
+  opacity: 0.6;
+  pointer-events: none;
+}

@@ -17,7 +17,7 @@ export const creditcoinTestnet = defineChain({
     default: { name: 'Blockscout', url: 'https://creditcoin-testnet.blockscout.com' },
   },
   testnet: true,
-  iconUrl: 'https://raw.githubusercontent.com/polkadot-js/apps/master/packages/apps-config/src/ui/logos/chains/creditcoin.svg',
+  iconUrl: '/logos/creditcoin.svg',
 });
 
 export const polkadotHubTestnet = defineChain({
@@ -35,7 +35,7 @@ export const polkadotHubTestnet = defineChain({
     default: { name: 'Moonscan', url: 'https://paseo.moonscan.io' },
   },
   testnet: true,
-  iconUrl: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg',
+  iconUrl: '/logos/polkadot.svg',
 });
 
 export const wagmiConfig = getDefaultConfig({

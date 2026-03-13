@@ -104,7 +104,7 @@ export const NETWORK_CONFIGS = {
     label: "Creditcoin",
     chainId: 102031n,
     chainIdNum: 102031,
-    logoUrl: "https://raw.githubusercontent.com/polkadot-js/apps/master/packages/apps-config/src/ui/logos/chains/creditcoin.svg",
+    logoUrl: "/logos/creditcoin.svg",
     rpcUrl:
       import.meta.env.VITE_CREDITCOIN_TESTNET_RPC_URL ||
       "https://rpc.cc3-testnet.creditcoin.network",
@@ -149,7 +149,7 @@ export const NETWORK_CONFIGS = {
     label: "Polkadot Hub",
     chainId: 420420417n,
     chainIdNum: 420420417,
-    logoUrl: "https://cryptologos.cc/logos/polkadot-new-dot-logo.svg",
+    logoUrl: "/logos/polkadot.svg",
     rpcUrl:
       import.meta.env.VITE_POLKADOT_HUB_RPC_URL ||
       "https://services.polkadothub-rpc.com/testnet",

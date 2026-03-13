@@ -130,7 +130,8 @@ npx hardhat test
 
 ### Polkadot Hub (Paseo Asset Hub)
 - **Chain ID:** `420420417` | **USDC (6 Decimals)**
-- **Explorer:** [Paseo Moonscan](https://paseo.moonscan.io)
+- **RPC:** `https://eth-rpc-testnet.polkadot.io`
+- **Explorer:** [Paseo Blockscout](https://blockscout-testnet.polkadot.io)
 - **Network Dashboard:** [View on Polkadot-JS Apps](https://polkadot.js.org/apps/?rpc=wss%3A%2F%2Fpaseo.api.polkadot.io#/explorer)
 
 | Contract | Address |

@@ -152,8 +152,8 @@ export const NETWORK_CONFIGS = {
     logoUrl: "/logos/polkadot.svg",
     rpcUrl:
       import.meta.env.VITE_POLKADOT_HUB_RPC_URL ||
-      "https://services.polkadothub-rpc.com/testnet",
-    blockExplorer: "https://paseo.moonscan.io",
+      "https://eth-rpc-testnet.polkadot.io",
+    blockExplorer: "https://blockscout-testnet.polkadot.io",
     nativeCurrency: { name: "Paseo", symbol: "PAS", decimals: 18 },
     vUSDTAddress: "0x0000000000000000000000000000000000000000",
     contracts: {

@@ -20,17 +20,6 @@ function fmtTokens(raw, dec) {
  *  - Testnet environment badge (visual indicator)
  *  - Live data row: TVL, cycle count, wallet mock-USDT balance
  *  - "Mint 10k USDT" button (calls MockERC20.mint — unrestricted on mock contract)
- *
- * Props:
- *   tokenAddress     — mock USDT contract address (testnet)
- *   signer           — ethers Signer (null if wallet not connected)
- *   walletAddress    — user wallet address string
- *   userTokenBalance — BigInt raw token balance
- *   decimals         — BigInt or number token decimals
- *   totalAssetsRaw   — BigInt raw vault total assets
- *   cycleCountVal    — number of executed cycles
- *   blockExplorer    — base URL for testnet block explorer
- *   onMinted         — callback fired after successful mint (triggers refresh)
  */
 export function VaultTestnetDevPanel({
   tokenAddress,
@@ -42,21 +31,20 @@ export function VaultTestnetDevPanel({
   cycleCountVal,
   blockExplorer,
   onMinted,
+  onMintStatus, // New callback for global notification
   networkLabel = "BSC Testnet",
   chainIdNum = 97,
   logoUrl,
   isPolkadotHub = false,
 }) {
   const [mintBusy, setMintBusy] = useState(false);
-  const [mintMsg, setMintMsg] = useState(null);
 
   const handleMint = useCallback(async () => {
     if (!signer || !walletAddress) {
-      setMintMsg("Connect wallet first");
+      if (onMintStatus) onMintStatus("error", "Connect wallet first");
       return;
     }
     setMintBusy(true);
-    setMintMsg(null);
     try {
       const { Contract, getAddress, parseUnits } = await import("ethers");
       const mockToken = new Contract(
@@ -64,24 +52,26 @@ export function VaultTestnetDevPanel({
         ["function mint(address to, uint256 amount) external"],
         signer
       );
+      const tokenSym = isPolkadotHub ? "USDC" : "USDT";
+      const amountStr = "10000";
       const amount = parseUnits(
-        "10000",
+        amountStr,
         decimals != null ? Number(decimals) : 18
       );
       const tx = await mockToken.mint(walletAddress, amount, {
         gasLimit: 100000,
       });
       await tx.wait();
-      setMintMsg("Minted 10,000 mock USDT");
+      
+      if (onMintStatus) onMintStatus("success", `Minted ${Number(amountStr).toLocaleString()} mock ${tokenSym}`);
       if (onMinted) onMinted();
     } catch (e) {
-      setMintMsg(e.shortMessage || e.message?.slice(0, 80) || "Mint failed");
+      const msg = e.shortMessage || e.message?.slice(0, 80) || "Mint failed";
+      if (onMintStatus) onMintStatus("error", msg);
     } finally {
       setMintBusy(false);
     }
-  }, [signer, walletAddress, tokenAddress, decimals, onMinted]);
-
-  const mintSuccess = mintMsg?.startsWith("Minted");
+  }, [signer, walletAddress, tokenAddress, decimals, onMinted, onMintStatus, isPolkadotHub]);
 
   return (
     <div
@@ -154,29 +144,8 @@ export function VaultTestnetDevPanel({
           alignItems: "center",
           gap: "10px",
           marginLeft: "auto",
-          position: "relative",
-          minWidth: "220px",
-          justifyContent: "flex-end",
         }}
       >
-        {mintMsg && (
-          <span
-            style={{
-              color: mintSuccess ? "#4ADE80" : "#F87171",
-              fontSize: "11px",
-              position: "absolute",
-              top: "-18px",
-              right: "0",
-              textAlign: "right",
-              width: "100%",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {mintMsg}
-          </span>
-        )}
         <button
           onClick={handleMint}
           disabled={mintBusy || !signer}
@@ -197,6 +166,7 @@ export function VaultTestnetDevPanel({
             cursor: mintBusy || !signer ? "not-allowed" : "pointer",
             opacity: mintBusy || !signer ? 0.55 : 1,
             transition: "opacity 0.15s",
+            width: "fit-content",
           }}
         >
           <Zap size={11} />

@@ -30,8 +30,7 @@ async function main() {
     if (canExec) {
         console.log("\n--- Executing Cycle ---");
         const tx = await strategy.executeCycle({ 
-            gasLimit: 1000000,
-            gasPrice: ethers.parseUnits("3", "gwei")
+            gasLimit: 1000000
         });
         const receipt = await tx.wait();
         console.log(`Cycle transaction sent: ${tx.hash}`);

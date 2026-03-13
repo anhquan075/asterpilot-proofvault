@@ -351,6 +351,15 @@ export default function ProofVaultV2Client() {
     }
   }, [wallet.provider, publicProvider, wallet.signer, refreshArgs, vaultState]);
 
+  const handleMintStatus = useCallback((type, message) => {
+    setScreenTxPush({
+      id: Date.now(),
+      action: "Mint Mock Tokens",
+      status: type,
+      note: message,
+    });
+  }, []);
+
   // Unsupported = connected to a chain that is neither mainnet (56) nor testnet (97).
   // mainnet/testnet mismatch is handled by the auto-sync effect above, so this
   // strip only fires for genuinely unknown chains (e.g., local hardhat, Polygon).
@@ -423,6 +432,7 @@ export default function ProofVaultV2Client() {
           cycleCountVal={vaultState.cycleCountVal}
           blockExplorer={networkConfig.blockExplorer}
           onMinted={handleMinted}
+          onMintStatus={handleMintStatus}
           networkLabel={networkConfig.label}
           chainIdNum={networkConfig.chainIdNum}
           logoUrl={networkConfig.logoUrl}

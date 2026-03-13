@@ -25,24 +25,23 @@ AsterPilot ProofVault is a non-custodial capital routing stack that automates li
 
 ---
 
-## 🏆 Polkadot Solidity Hackathon 2026
+## Philosophy of Design: The Three-Rail Strategy
 
-AsterPilot leverages the **Polkadot Hub (Asset Hub)** to provide institutional-grade yield management with native XCM protection and synchronous ERC-4626 adapters.
+The system operates as a three-rail capital routing engine governed by a risk state machine:
 
-### Track Alignment:
-1.  **Track 1 (EVM Track):** Production-ready DeFi vault managing yields via Moonwell and BeamSwap on Polkadot Hub.
-2.  **Track 2 (PVM Track):** Deep integration with Polkadot **XCM Precompiles** for automated emergency exits.
-
-### Native Polkadot Features:
-- **XCM Protection:** Automated "Emergency Exit" to the Relay Chain via native XCM messages.
-- **Shared Security:** Inherits Polkadot's L0 security model.
-- **Asset Hub Native:** Operates directly on the Asset Hub for maximum interoperability.
+1. **Primary Rail — Moonwell ERC-4626:** Synchronous, low-risk institutional yield anchor on Polkadot Hub. Provides the stablecoin lending primitive that anchors the vault's capital.
+2. **LP Rail — Moonwell Lending:** Target-based capital deployment for liquidity depth and automated trading.
+3. **Secondary Rail — BeamSwap Farm:** High-efficiency remainder sweep for reward optimization and growth.
 
 ---
 
 ## Deployed on Polkadot Hub (Paseo Asset Hub)
 
-- **Chain ID:** `420420417` | **RPC:** `https://services.polkadothub-rpc.com/testnet`
+- **Chain ID:** `420420417`
+- **RPC:** `https://services.polkadothub-rpc.com/testnet`
+- **Explorer:** [Paseo Moonscan](https://paseo.moonscan.io)
+
+### Polkadot Hub Testnet Addresses
 
 | Contract | Address |
 | :--- | :--- |
@@ -55,13 +54,20 @@ AsterPilot leverages the **Polkadot Hub (Asset Hub)** to provide institutional-g
 
 ---
 
-## Philosophy of Design: The Three-Rail Strategy
+## What This System Is
 
-1. **Primary Rail — Moonwell ERC-4626:** Synchronous, low-risk institutional yield anchor.
-2. **LP Rail — Moonwell Lending:** Target-based capital deployment for liquidity depth.
-3. **Secondary Rail — BeamSwap Farm:** High-efficiency remainder sweep for reward optimization.
+AsterPilot ProofVault is an ERC-4626 vault that routes assets across three rails under a permissionless execution model. Core policy and safety are on-chain:
+
+- `StrategyEngine`: Computes state and triggers `vault.rebalance()`.
+- `RiskPolicy`: Stores immutable thresholds and allocation targets.
+- `CircuitBreaker`: Triple-signal autonomous breaker (Price, Reserve Ratio, Virtual Price).
+- `SharpeTracker`: Rolling on-chain Sharpe/Sortino ratios.
+- `ExecutionAuction`: Executors pay the vault for the right to call `executeCycle()`.
+- `CrossChainMessenger`: Deep integration with Polkadot **XCM Precompiles** for automated emergency exits.
 
 ## Security Posture
-- **Ownership Renounced**: Config locked post-deployment.
+
+- **Ownership Renounced**: Configuration locked post-deployment.
 - **Reentrancy Protected**: All adapters fortified with `nonReentrant` guards.
 - **Audit Verified**: Optimized for `pallet_revive` and Polkadot Hub gas mechanics.
+- **ZK Verified**: Architectural integration point for ZK coprocessors to submit verified risk metrics.

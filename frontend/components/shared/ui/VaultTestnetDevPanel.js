@@ -44,6 +44,7 @@ export function VaultTestnetDevPanel({
   onMinted,
   networkLabel = "BSC Testnet",
   chainIdNum = 97,
+  logoUrl,
 }) {
   const [mintBusy, setMintBusy] = useState(false);
   const [mintMsg, setMintMsg] = useState(null);
@@ -108,7 +109,11 @@ export function VaultTestnetDevPanel({
           letterSpacing: "0.03em",
         }}
       >
-        <Radio size={14} />
+        {logoUrl ? (
+          <img src={logoUrl} alt={networkLabel} style={{ width: 16, height: 16, borderRadius: "50%" }} />
+        ) : (
+          <Radio size={14} />
+        )}
         <span>TESTNET · {networkLabel} · Chain {chainIdNum}</span>
         <span style={{ color: "rgba(251,191,36,0.45)", fontWeight: 400 }}>
           — mock contracts

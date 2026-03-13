@@ -395,6 +395,7 @@ export default function ProofVaultV2Client() {
           onMinted={handleMinted}
           networkLabel={networkConfig.label}
           chainIdNum={networkConfig.chainIdNum}
+          logoUrl={networkConfig.logoUrl}
         />
       )}
 

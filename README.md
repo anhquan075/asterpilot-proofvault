@@ -164,6 +164,11 @@ npx hardhat run scripts/DeployTestnetFullStackWithMocks.js --network bnbTestnet
 npx hardhat run scripts/DeployPolkadotHubFullStack.js --network polkadotHubTestnet
 ```
 
+#### Creditcoin (Hella)
+```bash
+npx hardhat run scripts/DeployCreditcoinTestnetStack.js --network creditcoinTestnet
+```
+
 ## 🛡️ Security Posture
 
 - **Ownership Renounced**: Configuration locked post-deployment to ensure non-custodial operations.

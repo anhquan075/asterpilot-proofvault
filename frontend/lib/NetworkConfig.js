@@ -168,6 +168,7 @@ export const NETWORK_CONFIGS = {
       secondaryAdapterAddress: import.meta.env.VITE_POLKADOT_SECONDARY_ADAPTER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.secondaryAdapterAddress,
       lpAdapterAddress: import.meta.env.VITE_POLKADOT_LP_ADAPTER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.lpAdapterAddress,
       xcmMessengerAddress: import.meta.env.VITE_POLKADOT_XCM_MESSENGER_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.xcmMessengerAddress,
+      executionAuctionAddress: import.meta.env.VITE_POLKADOT_EXECUTION_AUCTION_ADDRESS || POLKADOT_HUB_TESTNET_PRESET.executionAuctionAddress,
     },
   },
 };

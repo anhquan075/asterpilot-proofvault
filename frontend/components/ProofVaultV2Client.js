@@ -116,6 +116,7 @@ export default function ProofVaultV2Client() {
       circuitBreakerAddress,
       sharpeTrackerAddress,
       pegArbExecutorAddress,
+      executionAuctionAddress,
       decimals,
       shareDecimals,
       setDecimals,
@@ -135,6 +136,7 @@ export default function ProofVaultV2Client() {
       circuitBreakerAddress,
       sharpeTrackerAddress,
       pegArbExecutorAddress,
+      executionAuctionAddress,
       decimals,
       shareDecimals,
     ]
@@ -382,7 +384,7 @@ export default function ProofVaultV2Client() {
     <section className="panel panel--enhanced">
       <VaultTopNavbar busyAction={busyAction} />
 
-      {(isTestnet || isCreditcoin) && (
+      {(isTestnet || isCreditcoin || isPolkadotHub) && (
         <VaultTestnetDevPanel
           tokenAddress={tokenAddress}
           signer={wallet.signer}
@@ -396,6 +398,7 @@ export default function ProofVaultV2Client() {
           networkLabel={networkConfig.label}
           chainIdNum={networkConfig.chainIdNum}
           logoUrl={networkConfig.logoUrl}
+          isPolkadotHub={isPolkadotHub}
         />
       )}
 

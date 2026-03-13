@@ -1,6 +1,6 @@
 {
   "network": "polkadotHubTestnet",
-  "timestamp": "2026-03-12T19:07:46.073Z",
+  "timestamp": "2026-03-13T02:33:46.475Z",
   "contracts": {
     "usdc": "0x3cCcB5E20193affc9E4C1C1aa5Aee425F0FfB049",
     "glint": "0x721882D98194D5177F2336Bd97f50ABA44410365",
@@ -19,6 +19,9 @@
     "xcmMessenger": "0x4B1f39ed7B96Ff870fF1B18f2201E21bE75f4eEf",
     "moonwellERC4626Adapter": "0x4695ef4ADE0D065C8901870876e75fE7b13210E3",
     "moonwellLendingAdapter": "0x76505B830098302e94906Bd5a77B89569bCc7498",
-    "beamSwapFarmAdapter": "0x198E9ECfaA22d8385c386038e810788c9a358c74"
+    "beamSwapFarmAdapter": "0x198E9ECfaA22d8385c386038e810788c9a358c74",
+    "usdfMinting": "0x5773519BDB23Ec7a85B51aE9e0605DBf28b0D122",
+    "pegArbExecutor": "0xB9b7A4C7B1f667Ed86814D2Fa576a7D26936e5D8",
+    "executionAuction": "0xfB2098534961D15056668Ed4824724cB5D84f16F"
   }
 }

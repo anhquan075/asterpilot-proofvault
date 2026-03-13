@@ -45,6 +45,7 @@ export function VaultTestnetDevPanel({
   networkLabel = "BSC Testnet",
   chainIdNum = 97,
   logoUrl,
+  isPolkadotHub = false,
 }) {
   const [mintBusy, setMintBusy] = useState(false);
   const [mintMsg, setMintMsg] = useState(null);
@@ -141,7 +142,7 @@ export function VaultTestnetDevPanel({
         <span>
           Wallet:{" "}
           <strong style={{ color: "#FBBF24" }}>
-            {fmtTokens(userTokenBalance, decimals)} USDT
+            {fmtTokens(userTokenBalance, decimals)} {isPolkadotHub ? "USDC" : "USDT"}
           </strong>
         </span>
       </div>
@@ -153,6 +154,9 @@ export function VaultTestnetDevPanel({
           alignItems: "center",
           gap: "10px",
           marginLeft: "auto",
+          position: "relative",
+          minWidth: "220px",
+          justifyContent: "flex-end",
         }}
       >
         {mintMsg && (
@@ -160,7 +164,11 @@ export function VaultTestnetDevPanel({
             style={{
               color: mintSuccess ? "#4ADE80" : "#F87171",
               fontSize: "11px",
-              maxWidth: "200px",
+              position: "absolute",
+              top: "-18px",
+              right: "0",
+              textAlign: "right",
+              width: "100%",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -192,13 +200,13 @@ export function VaultTestnetDevPanel({
           }}
         >
           <Zap size={11} />
-          {mintBusy ? "Minting…" : "Mint 10k USDT"}
+          {mintBusy ? "Minting…" : `Mint 10k ${isPolkadotHub ? "USDC" : "USDT"}`}
           {tokenAddress && blockExplorer && (
             <a
               href={`${blockExplorer}/address/${tokenAddress}`}
               target="_blank"
               rel="noopener noreferrer"
-              title="View mock USDT on testnet BSC scan"
+              title={`View mock ${isPolkadotHub ? "USDC" : "USDT"} on explorer`}
               onClick={(e) => e.stopPropagation()}
               style={{
                 color: "rgba(251,191,36,0.5)",

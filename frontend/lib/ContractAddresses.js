@@ -55,10 +55,11 @@ export const POLKADOT_HUB_TESTNET_PRESET = {
   tokenAddress: "0x3cCcB5E20193affc9E4C1C1aa5Aee425F0FfB049", // USDC
   circuitBreakerAddress: "0x42127f801ff5137ceC8b78573bADc3FCB1Bb10bf",
   sharpeTrackerAddress: "0xbC3D99421A93e4f2E5bB868DAEC2a03aE96aFD33",
-  pegArbExecutorAddress: "0x0000000000000000000000000000000000000000", // No peg arb on Hub yet
+  pegArbExecutorAddress: "0xB9b7A4C7B1f667Ed86814D2Fa576a7D26936e5D8",
   riskPolicyAddress: "0x6470aC20dFeBdFbf4384Fe81Cef96A76EEd6bDb2",
   asterAdapterAddress: "0x4695ef4ADE0D065C8901870876e75fE7b13210E3",
   lpAdapterAddress: "0x76505B830098302e94906Bd5a77B89569bCc7498",
   secondaryAdapterAddress: "0x198E9ECfaA22d8385c386038e810788c9a358c74",
   xcmMessengerAddress: "0x4B1f39ed7B96Ff870fF1B18f2201E21bE75f4eEf",
+  executionAuctionAddress: "0xfB2098534961D15056668Ed4824724cB5D84f16F",
 };

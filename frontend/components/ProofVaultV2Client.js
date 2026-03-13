@@ -83,17 +83,31 @@ export default function ProofVaultV2Client() {
 
   // Tracking network transitions for visual effect
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [prevNetworkMode, setPrevNetworkMode] = useState(networkMode);
+  const [lastMode, setLastMode] = useState(networkMode);
 
   useEffect(() => {
-    if (networkMode !== prevNetworkMode) {
+    if (networkMode !== lastMode) {
+      console.log(`Transitioning from ${lastMode} to ${networkMode}`);
       setIsTransitioning(true);
-      setPrevNetworkMode(networkMode);
-      // Ensure transition lasts at least 600ms for smoothness
-      const timer = setTimeout(() => setIsTransitioning(false), 600);
+      setLastMode(networkMode);
+      
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 800); // Slightly longer for stability
+      
       return () => clearTimeout(timer);
     }
-  }, [networkMode, prevNetworkMode]);
+  }, [networkMode, lastMode]);
+
+  // Safety fallback: Never stay stuck in transitioning mode
+  useEffect(() => {
+    if (isTransitioning) {
+      const safetyTimer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 1500);
+      return () => clearTimeout(safetyTimer);
+    }
+  }, [isTransitioning]);
   const {
     vaultAddress,
     engineAddress,

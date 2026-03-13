@@ -124,6 +124,46 @@ The system operates as a three-rail capital routing engine governed by a risk st
 
 ---
 
+## 🛠️ Getting Started
+
+### 1. Prerequisites
+- Node.js (v18+)
+- npm or pnpm
+
+### 2. Installation
+```bash
+# Install dependencies
+npm install
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your private keys and RPC URLs
+```
+
+### 3. Development & Testing
+```bash
+# Compile contracts
+npx hardhat compile
+
+# Run all tests
+npx hardhat test
+
+# Run specific test file
+npx hardhat test test/polkadot/PolkadotHubIntegration.test.js
+```
+
+### 4. Deployment
+
+#### BNB Chain (Testnet)
+```bash
+npx hardhat run scripts/DeployTestnetFullStackWithMocks.js --network bnbTestnet
+```
+
+#### Polkadot Hub (Paseo)
+```bash
+npx hardhat run scripts/DeployPolkadotHubFullStack.js --network polkadotHubTestnet
+```
+
 ## 🛡️ Security Posture
 
 - **Ownership Renounced**: Configuration locked post-deployment to ensure non-custodial operations.

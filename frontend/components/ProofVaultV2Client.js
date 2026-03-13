@@ -570,6 +570,8 @@ export default function ProofVaultV2Client() {
               totalAssetsRaw={vaultState.totalAssetsRaw}
               asterManagedAssets={vaultState.asterManagedAssets}
               userTokenBalance={vaultState.userTokenBalance}
+              isPolkadotHub={isPolkadotHub}
+              isCreditcoin={isCreditcoin}
             />
           </div>
           <div className="bento-row-side" style={{ flex: 3 }}>

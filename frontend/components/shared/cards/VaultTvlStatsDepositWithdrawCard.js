@@ -32,8 +32,10 @@ export function VaultTvlStatsDepositWithdrawCard({
   depositAmount, setDepositAmount, withdrawAmount, setWithdrawAmount,
   onDeposit, onWithdraw, canOperate, busyAction, isConnected,
   totalAssetsRaw, asterManagedAssets, decimals, userTokenBalance,
+  isPolkadotHub, isCreditcoin
 }) {
   const [toast, setToast] = useState(null);
+  const tokenSymbol = isPolkadotHub ? "USDC" : "USDT";
   
   const riskTone = riskState === "Normal" ? "statePill--normal"
     : riskState === "Guarded" ? "statePill--guarded"
@@ -55,7 +57,7 @@ export function VaultTvlStatsDepositWithdrawCard({
 
   const handleDeposit = () => {
     if (depositExceedsBalance) {
-      setToast({ type: "error", message: `Insufficient balance. You have ${userBalanceFormatted} USDT.` });
+      setToast({ type: "error", message: `Insufficient balance. You have ${userBalanceFormatted} ${tokenSymbol}.` });
       return;
     }
     onDeposit();
@@ -63,7 +65,7 @@ export function VaultTvlStatsDepositWithdrawCard({
 
   const handleWithdraw = () => {
     if (withdrawExceedsSafe) {
-      setToast({ type: "error", message: `Max instantly withdrawable: ${safeMax} USDT.` });
+      setToast({ type: "error", message: `Max instantly withdrawable: ${safeMax} ${tokenSymbol}.` });
       return;
     }
     onWithdraw();
@@ -100,13 +102,13 @@ export function VaultTvlStatsDepositWithdrawCard({
           ) : (
             <>
               <div className="vaultActionLabelRow">
-                <label className="vaultActionLabel">Deposit (USDT)</label>
+                <label className="vaultActionLabel">Deposit ({tokenSymbol})</label>
                 {userBalanceDisplay != null && (
                   <button
                     className="vaultMaxBtn"
                     onClick={() => userBalanceFormatted && setDepositAmount(userBalanceFormatted)}
                     disabled={!canOperate || !userBalanceFormatted}
-                    title="Your wallet USDT balance"
+                    title={`Your wallet ${tokenSymbol} balance`}
                   >
                     Max {userBalanceDisplay}
                   </button>
@@ -130,7 +132,7 @@ export function VaultTvlStatsDepositWithdrawCard({
 
         <div className="vaultActionGroup">
           <div className="vaultActionLabelRow">
-            <label className="vaultActionLabel">Withdraw (USDT)</label>
+            <label className="vaultActionLabel">Withdraw ({tokenSymbol})</label>
             {safeMax != null && (
               <button
                 className="vaultMaxBtn"

@@ -26,6 +26,7 @@ export function VaultStrategyAllocationBarCard({
   vUSDTAddress,
   isPolkadotHub,
   isCreditcoin,
+  decimals,
 }) {
   const [venusApy, setVenusApy] = useState("...");
 

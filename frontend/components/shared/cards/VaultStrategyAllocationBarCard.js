@@ -221,7 +221,7 @@ export function VaultStrategyAllocationBarCard({
           <span style={{ color: "var(--text-muted)" }}>Total AUM</span>
           <span style={{ color: "var(--text)", fontWeight: 600 }}>
             {total > 0
-              ? `$${(total / 1e18).toLocaleString(undefined, {
+              ? `$${(total / Math.pow(10, decimals || 18)).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}`

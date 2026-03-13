@@ -634,6 +634,7 @@ export default function ProofVaultV2Client() {
             vUSDTAddress={networkConfig.vUSDTAddress}
             isPolkadotHub={isPolkadotHub}
             isCreditcoin={isCreditcoin}
+            decimals={decimals}
           />
           <VaultExecutionAuctionRraBidCard
             executionAuctionAddress={executionAuctionAddress}
